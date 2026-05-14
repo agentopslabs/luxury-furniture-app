@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -19,7 +18,6 @@ import {
   RefreshCw, 
   DollarSign, 
   User, 
-  BadgeCheck, 
   MoreVertical,
   CheckCircle,
   XCircle,
@@ -29,9 +27,9 @@ import {
   Trash2,
   Pencil,
   Loader2,
-  Filter,
   TrendingUp,
-  Activity
+  Activity,
+  CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +51,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -125,10 +122,22 @@ export default function OpportunitiesPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleOpenCreate = () => {
+    setFormData({ 
+      name: "", 
+      monetaryValue: 0, 
+      pipelineId: pipelines[0]?.id || "", 
+      pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
+      contactId: "", 
+      status: "open" 
+    });
+    setIsCreateOpen(true);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.pipelineId || !formData.pipelineStageId) {
-      toast({ variant: "destructive", title: "Missing Data", description: "Please complete all required identity fields." });
+      toast({ variant: "destructive", title: "Missing Data", description: "Please complete all required fields." });
       return;
     }
 
@@ -136,7 +145,6 @@ export default function OpportunitiesPage() {
     try {
       const result = await createOpportunity(formData);
       setIsCreateOpen(false);
-      setFormData({ name: "", monetaryValue: 0, pipelineId: "", pipelineStageId: "", contactId: "", status: "open" });
       toast({ 
         title: "Opportunity Created", 
         description: `${result.name} has been synchronized with GHL Cloud.`,
@@ -223,124 +231,13 @@ export default function OpportunitiesPage() {
                 {refreshing ? "Syncing..." : "Sync Registry"}
               </Button>
               
-              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    size="lg" 
-                    className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all active:scale-95"
-                    onClick={() => {
-                      setFormData({ 
-                        name: "", 
-                        monetaryValue: 0, 
-                        pipelineId: pipelines[0]?.id || "", 
-                        pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
-                        contactId: "", 
-                        status: "open" 
-                      });
-                    }}
-                  >
-                    <Plus className="mr-2 h-5 w-5" /> New Opportunity
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader className="mb-8">
-                      <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">Inbound deal injection for LeadConnector V2.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Name</Label>
-                        <Input 
-                          className="glass h-12 rounded-xl focus:ring-primary" 
-                          placeholder="e.g. Enterprise License Alpha" 
-                          value={formData.name} 
-                          onChange={e => setFormData({ ...formData, name: e.target.value })} 
-                          required 
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Value ($)</Label>
-                          <Input 
-                            className="glass h-12 rounded-xl" 
-                            type="number" 
-                            placeholder="0" 
-                            value={formData.monetaryValue} 
-                            onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
-                          <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
-                            <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
-                              <SelectValue placeholder="Select Contact" />
-                            </SelectTrigger>
-                            <SelectContent className="glass border-white/10 rounded-xl">
-                              {contacts.map(c => (
-                                <SelectItem key={c.id} value={c.id} className="rounded-lg">
-                                  {c.firstName} {c.lastName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Active Pipeline</Label>
-                        <Select 
-                          value={formData.pipelineId} 
-                          onValueChange={val => {
-                            const pipe = pipelines.find(p => p.id === val);
-                            setFormData({ 
-                              ...formData, 
-                              pipelineId: val, 
-                              pipelineStageId: pipe?.stages[0]?.id || "" 
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
-                            <SelectValue placeholder="Select Pipeline" />
-                          </SelectTrigger>
-                          <SelectContent className="glass border-white/10 rounded-xl">
-                            {pipelines.map(p => (
-                              <SelectItem key={p.id} value={p.id} className="rounded-lg">
-                                {p.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {formData.pipelineId && (
-                        <div className="space-y-2">
-                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
-                          <Select 
-                            value={formData.pipelineStageId} 
-                            onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
-                          >
-                            <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
-                              <SelectValue placeholder="Select Stage" />
-                            </SelectTrigger>
-                            <SelectContent className="glass border-white/10 rounded-xl">
-                              {pipelines.find(p => p.id === formData.pipelineId)?.stages.map(s => (
-                                <SelectItem key={s.id} value={s.id} className="rounded-lg">
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                    <DialogFooter className="mt-10">
-                      <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
-                        {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-5 w-5" />}
-                        Commit Record
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                size="lg" 
+                className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all active:scale-95"
+                onClick={handleOpenCreate}
+              >
+                <Plus className="mr-2 h-5 w-5" /> New Opportunity
+              </Button>
             </div>
           </header>
 
@@ -457,6 +354,109 @@ export default function OpportunitiesPage() {
         </div>
       </main>
 
+      {/* Creation Modal */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
+          <form onSubmit={handleCreate}>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Inbound deal injection for LeadConnector V2.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Name</Label>
+                <Input 
+                  className="glass h-12 rounded-xl focus:ring-primary" 
+                  placeholder="e.g. Enterprise License Alpha" 
+                  value={formData.name} 
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Value ($)</Label>
+                  <Input 
+                    className="glass h-12 rounded-xl" 
+                    type="number" 
+                    placeholder="0" 
+                    value={formData.monetaryValue} 
+                    onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
+                  <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
+                    <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                      <SelectValue placeholder="Select Contact" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-xl">
+                      {contacts.map(c => (
+                        <SelectItem key={c.id} value={c.id} className="rounded-lg">
+                          {c.firstName} {c.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Active Pipeline</Label>
+                <Select 
+                  value={formData.pipelineId} 
+                  onValueChange={val => {
+                    const pipe = pipelines.find(p => p.id === val);
+                    setFormData({ 
+                      ...formData, 
+                      pipelineId: val, 
+                      pipelineStageId: pipe?.stages[0]?.id || "" 
+                    });
+                  }}
+                >
+                  <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                    <SelectValue placeholder="Select Pipeline" />
+                  </SelectTrigger>
+                  <SelectContent className="glass border-white/10 rounded-xl">
+                    {pipelines.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="rounded-lg">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.pipelineId && (
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
+                  <Select 
+                    value={formData.pipelineStageId} 
+                    onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
+                  >
+                    <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                      <SelectValue placeholder="Select Stage" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-xl">
+                      {pipelines.find(p => p.id === formData.pipelineId)?.stages.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="rounded-lg">
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
+                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                Commit Record
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editing Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleUpdate}>

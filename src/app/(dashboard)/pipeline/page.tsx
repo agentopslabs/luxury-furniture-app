@@ -2,20 +2,51 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { ghl, GHLPipeline, GHLOpportunity } from "@/lib/ghl";
+import { ghl, GHLPipeline, GHLOpportunity, GHLContact } from "@/lib/ghl";
+import { createOpportunity, getPipelines, getContacts, getOpportunities } from "@/lib/ghl-actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Layers, Plus, TrendingUp, DollarSign, Target, ArrowRight, RefreshCw, MoreVertical, LayoutGrid, Kanban, Sparkles } from "lucide-react";
+import { Layers, Plus, TrendingUp, DollarSign, Target, RefreshCw, MoreVertical, LayoutGrid, Kanban, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PipelinePage() {
   const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
+  const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    monetaryValue: 0,
+    pipelineId: "",
+    pipelineStageId: "",
+    contactId: "",
+    status: "open" as const
+  });
+
   const { toast } = useToast();
 
   const fetchData = useCallback(async (isManual = false) => {
@@ -23,12 +54,14 @@ export default function PipelinePage() {
     else setLoading(true);
 
     try {
-      const [pData, oData] = await Promise.all([
-        ghl.getPipelines(),
-        ghl.getOpportunities()
+      const [pData, oData, cData] = await Promise.all([
+        getPipelines(),
+        getOpportunities(),
+        getContacts(100)
       ]);
       setPipelines(pData);
       setOpportunities(oData);
+      setContacts(cData);
       
       if (isManual) {
         toast({
@@ -51,6 +84,38 @@ export default function PipelinePage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleOpenCreate = () => {
+    setFormData({ 
+      name: "", 
+      monetaryValue: 0, 
+      pipelineId: pipelines[0]?.id || "", 
+      pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
+      contactId: "", 
+      status: "open" 
+    });
+    setIsCreateOpen(true);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.pipelineId || !formData.pipelineStageId) {
+      toast({ variant: "destructive", title: "Missing Data", description: "Please complete all fields." });
+      return;
+    }
+
+    setIsActionLoading(true);
+    try {
+      await createOpportunity(formData);
+      setIsCreateOpen(false);
+      toast({ title: "Opportunity Created", description: "Successfully pushed to GHL deal flow." });
+      fetchData(true);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Sync Failure", description: "Could not create opportunity." });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   const totalValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
 
@@ -82,7 +147,11 @@ export default function PipelinePage() {
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
                 {refreshing ? "Synchronizing..." : "Sync Deals"}
               </Button>
-              <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 transition-all font-bold">
+              <Button 
+                size="lg" 
+                className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 transition-all font-bold active:scale-95"
+                onClick={handleOpenCreate}
+              >
                 <Plus className="mr-2 h-5 w-5" /> Create Opportunity
               </Button>
             </div>
@@ -115,7 +184,7 @@ export default function PipelinePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl font-bold">Opportunity Feed</CardTitle>
-                  <CardDescription className="text-muted-foreground/80 mt-1">Direct synchronization with Sub-Account nBYJT...T0W4</CardDescription>
+                  <CardDescription className="text-muted-foreground/80 mt-1">Direct synchronization with Sub-Account</CardDescription>
                 </div>
                 <div className="flex gap-2">
                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary"><LayoutGrid size={20} /></Button>
@@ -177,7 +246,7 @@ export default function PipelinePage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-xl font-bold text-muted-foreground">Empty Pipeline Registry</p>
-                    <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed">System is online but no active opportunities were detected in the cloud repository.</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed">System is online but no active opportunities were detected.</p>
                   </div>
                 </div>
               )}
@@ -185,6 +254,107 @@ export default function PipelinePage() {
           </Card>
         </div>
       </main>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
+          <form onSubmit={handleCreate}>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Inject deal into LeadConnector V2 flow.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Name</Label>
+                <Input 
+                  className="glass h-12 rounded-xl focus:ring-primary" 
+                  placeholder="e.g. Enterprise License Alpha" 
+                  value={formData.name} 
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Value ($)</Label>
+                  <Input 
+                    className="glass h-12 rounded-xl" 
+                    type="number" 
+                    placeholder="0" 
+                    value={formData.monetaryValue} 
+                    onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
+                  <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
+                    <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                      <SelectValue placeholder="Select Contact" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-xl">
+                      {contacts.map(c => (
+                        <SelectItem key={c.id} value={c.id} className="rounded-lg">
+                          {c.firstName} {c.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Active Pipeline</Label>
+                <Select 
+                  value={formData.pipelineId} 
+                  onValueChange={val => {
+                    const pipe = pipelines.find(p => p.id === val);
+                    setFormData({ 
+                      ...formData, 
+                      pipelineId: val, 
+                      pipelineStageId: pipe?.stages[0]?.id || "" 
+                    });
+                  }}
+                >
+                  <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                    <SelectValue placeholder="Select Pipeline" />
+                  </SelectTrigger>
+                  <SelectContent className="glass border-white/10 rounded-xl">
+                    {pipelines.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="rounded-lg">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.pipelineId && (
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
+                  <Select 
+                    value={formData.pipelineStageId} 
+                    onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
+                  >
+                    <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                      <SelectValue placeholder="Select Stage" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-xl">
+                      {pipelines.find(p => p.id === formData.pipelineId)?.stages.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="rounded-lg">
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
+                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                Commit Record
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
