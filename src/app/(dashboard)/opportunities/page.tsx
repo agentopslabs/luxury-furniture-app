@@ -27,7 +27,11 @@ import {
   Plus,
   Trash2,
   Pencil,
-  Loader2
+  Loader2,
+  Filter,
+  ArrowUpDown,
+  TrendingUp,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +73,6 @@ export default function OpportunitiesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Create/Edit States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -101,15 +104,15 @@ export default function OpportunitiesPage() {
       
       if (isManual) {
         toast({
-          title: "Data Synchronized",
-          description: "Successfully updated records from LeadConnector V2.",
+          title: "Registry Synchronized",
+          description: "V2 Intelligence reports updated deal flow records.",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "Could not reach LeadConnector V2 server.",
+        description: "Core communication with LeadConnector V2 was severed.",
       });
     } finally {
       setLoading(false);
@@ -127,10 +130,10 @@ export default function OpportunitiesPage() {
     try {
       await createOpportunity(formData);
       setIsCreateOpen(false);
-      toast({ title: "Created", description: "Opportunity added to GHL." });
+      toast({ title: "Deal Created", description: "Opportunity injected into GHL Cloud." });
       fetchData(true);
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Could not create record." });
+      toast({ variant: "destructive", title: "Operation Error", description: "Inbound record failed to synchronize." });
     } finally {
       setIsActionLoading(false);
     }
@@ -143,10 +146,10 @@ export default function OpportunitiesPage() {
     try {
       await updateOpportunity(selectedOpp.id, formData);
       setIsEditOpen(false);
-      toast({ title: "Updated", description: "Record synced with GHL." });
+      toast({ title: "Registry Updated", description: "V2 Metadata successfully overwritten." });
       fetchData(true);
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Update failed." });
+      toast({ variant: "destructive", title: "Mutation Failed", description: "Cloud update command was rejected." });
     } finally {
       setIsActionLoading(false);
     }
@@ -156,9 +159,9 @@ export default function OpportunitiesPage() {
     try {
       await deleteOpportunity(id);
       setOpportunities(prev => prev.filter(o => o.id !== id));
-      toast({ title: "Deleted", description: "Opportunity removed from GHL." });
+      toast({ title: "Record Purged", description: "Opportunity permanently removed from location repository." });
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Delete failed." });
+      toast({ variant: "destructive", title: "Erasure Error", description: "Could not execute DELETE on GHL server." });
     }
   };
 
@@ -166,9 +169,9 @@ export default function OpportunitiesPage() {
     try {
       await updateOpportunityStatus(id, status);
       setOpportunities(prev => prev.map(o => o.id === id ? { ...o, status: status as any } : o));
-      toast({ title: "Status Changed", description: `Marked as ${status}.` });
+      toast({ title: "Status Injected", description: `Deal stage successfully transitioned to ${status}.` });
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Status update failed." });
+      toast({ variant: "destructive", title: "Transition Error", description: "Status override command failed." });
     }
   };
 
@@ -178,71 +181,83 @@ export default function OpportunitiesPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-4xl font-bold tracking-tight">Opportunities</h1>
-              <p className="text-muted-foreground">Full CRUD synchronization with GHL V2 deals.</p>
+      <main className="flex-1 p-8 overflow-y-auto no-scrollbar relative">
+        <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="max-w-6xl mx-auto space-y-10 relative z-10">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="space-y-2">
+              <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40">
+                Opportunities
+              </h1>
+              <p className="text-muted-foreground font-medium flex items-center gap-2">
+                <Target size={16} className="text-primary" />
+                Live deal lifecycle management • V2 Sync
+              </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button 
                 variant="outline" 
-                size="sm" 
+                size="lg" 
                 onClick={() => fetchData(true)} 
                 disabled={loading || refreshing}
+                className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                Sync
+                Sync Registry
               </Button>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => setFormData({ name: "", monetaryValue: 0, pipelineId: pipelines[0]?.id || "", pipelineStageId: pipelines[0]?.stages[0]?.id || "", contactId: "", status: "open" })}>
-                    <Plus className="mr-2 h-4 w-4" /> New Opportunity
+                  <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all" onClick={() => setFormData({ name: "", monetaryValue: 0, pipelineId: pipelines[0]?.id || "", pipelineStageId: pipelines[0]?.stages[0]?.id || "", contactId: "", status: "open" })}>
+                    <Plus className="mr-2 h-5 w-5" /> New Opportunity
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
                   <form onSubmit={handleCreate}>
-                    <DialogHeader>
-                      <DialogTitle>Create Opportunity</DialogTitle>
-                      <DialogDescription>Add a new deal to your LeadConnector pipeline.</DialogDescription>
+                    <DialogHeader className="mb-8">
+                      <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
+                      <DialogDescription className="text-muted-foreground">Infect a new deal record into the GHL V2 cloud registry.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-6">
                       <div className="space-y-2">
-                        <Label>Deal Name</Label>
-                        <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Identity</Label>
+                        <Input className="glass h-12 rounded-xl focus:ring-primary" placeholder="Enterprise Contract Alpha" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Value ($)</Label>
-                          <Input type="number" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
+                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Monetary Value ($)</Label>
+                          <Input className="glass h-12 rounded-xl" type="number" placeholder="5000" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
                         </div>
                         <div className="space-y-2">
-                          <Label>Contact</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Target Contact</Label>
                           <Select onValueChange={val => setFormData({ ...formData, contactId: val })}>
-                            <SelectTrigger><SelectValue placeholder="Select contact" /></SelectTrigger>
-                            <SelectContent>
-                              {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
+                            <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                              <SelectValue placeholder="Select Contact" />
+                            </SelectTrigger>
+                            <SelectContent className="glass border-white/10 rounded-xl">
+                              {contacts.map(c => <SelectItem key={c.id} value={c.id} className="rounded-lg">{c.firstName} {c.lastName}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Pipeline</Label>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Pipeline</Label>
                         <Select value={formData.pipelineId} onValueChange={val => setFormData({ ...formData, pipelineId: val, pipelineStageId: pipelines.find(p => p.id === val)?.stages[0]?.id || "" })}>
-                          <SelectTrigger><SelectValue placeholder="Select pipeline" /></SelectTrigger>
-                          <SelectContent>
-                            {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                          <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                            <SelectValue placeholder="Select Pipeline" />
+                          </SelectTrigger>
+                          <SelectContent className="glass border-white/10 rounded-xl">
+                            {pipelines.map(p => <SelectItem key={p.id} value={p.id} className="rounded-lg">{p.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button type="submit" disabled={isActionLoading}>
-                        {isActionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Deal
+                    <DialogFooter className="mt-10">
+                      <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
+                        {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-5 w-5" />}
+                        Initialize Record
                       </Button>
                     </DialogFooter>
                   </form>
@@ -251,62 +266,81 @@ export default function OpportunitiesPage() {
             </div>
           </header>
 
-          <Card className="glass border-border/40">
-            <CardHeader className="pb-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" /> 
-                  Live Deal Flow ({filtered.length})
-                </CardTitle>
-                <div className="relative w-full md:w-72">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search deals..." 
-                    className="pl-9 h-9 text-xs"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+          <Card className="glass border-border/40 overflow-hidden">
+            <CardHeader className="p-8 border-b border-white/5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1">
+                  <CardTitle className="text-2xl font-bold flex items-center gap-3">
+                    <Activity className="h-6 w-6 text-primary" /> 
+                    Live Deal Inventory
+                  </CardTitle>
+                  <CardDescription>Managed Registry ({filtered.length} Active Records)</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative w-full md:w-80">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                    <Input 
+                      placeholder="Search deal registry..." 
+                      className="glass pl-11 h-11 rounded-xl text-sm border-white/5 focus:ring-primary transition-all"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" size="icon" className="glass h-11 w-11 rounded-xl border-white/5"><Filter size={18} /></Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {loading ? (
-                <div className="space-y-4">
-                  {Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+                <div className="p-8 space-y-4">
+                  {Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
                 </div>
               ) : filtered.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {filtered.map((opp) => (
+                <div className="divide-y divide-white/5">
+                  {filtered.map((opp, i) => (
                     <div 
                       key={opp.id} 
-                      className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2"
+                      className="flex items-center justify-between p-8 hover:bg-white/[0.02] transition-all group animate-in fade-in duration-500"
+                      style={{ animationDelay: `${i * 50}ms` }}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                          {opp.name?.[0] || 'O'}
+                      <div className="flex items-center gap-6">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all" />
+                          <div className="w-16 h-16 rounded-3xl bg-white/[0.03] border border-white/5 text-primary flex items-center justify-center font-bold text-2xl relative z-10 transition-all group-hover:scale-110 group-hover:border-primary/30">
+                            {opp.name?.[0] || 'O'}
+                          </div>
                         </div>
                         <div className="space-y-1">
-                          <p className="font-bold text-sm">{opp.name}</p>
-                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1"><User size={12} className="opacity-50" /> {opp.contact?.name || 'Unknown'}</span>
-                            <span className="flex items-center gap-1 font-mono text-emerald-500 font-bold"><DollarSign size={12} /> {(opp.monetaryValue || 0).toLocaleString()}</span>
+                          <p className="font-bold text-lg group-hover:text-primary transition-colors">{opp.name}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
+                            <span className="flex items-center gap-1.5"><User size={14} className="opacity-50" /> {opp.contact?.name || 'Contact Missing'}</span>
+                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="flex items-center gap-1 text-emerald-400 font-bold font-mono tracking-tighter">
+                              <DollarSign size={14} />
+                              {opp.monetaryValue?.toLocaleString() || 0}
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <Badge variant={opp.status === 'open' ? 'default' : 'secondary'} className={cn("capitalize text-[10px] h-5", opp.status === 'won' && "bg-emerald-500/10 text-emerald-500", opp.status === 'lost' && "bg-destructive/10 text-destructive")}>
+                      <div className="flex items-center gap-6">
+                        <Badge variant={opp.status === 'open' ? 'default' : 'secondary'} className={cn(
+                          "capitalize text-[10px] h-7 px-4 rounded-xl font-bold tracking-widest",
+                          opp.status === 'won' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : 
+                          opp.status === 'lost' ? "bg-destructive/10 text-destructive border-destructive/20" : 
+                          "bg-primary text-white glow-primary"
+                        )}>
                           {opp.status}
                         </Badge>
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical size={16} /></Button>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10"><MoreVertical size={20} /></Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => {
+                          <DropdownMenuContent align="end" className="w-56 glass border-white/10 rounded-2xl p-2 animate-in slide-in-from-right-2">
+                            <DropdownMenuLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest opacity-50">Operation Hub</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-primary/10 cursor-pointer" onClick={() => {
                               setSelectedOpp(opp);
                               setFormData({
                                 name: opp.name,
@@ -318,13 +352,13 @@ export default function OpportunitiesPage() {
                               });
                               setIsEditOpen(true);
                             }}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                              <Pencil className="mr-3 h-4 w-4 text-primary" /> Modify record
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(opp.id, 'won')}><CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Won</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(opp.id, 'lost')}><XCircle className="mr-2 h-4 w-4 text-destructive" /> Mark Lost</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(opp.id)}><Trash2 className="mr-2 h-4 w-4" /> Delete Opportunity</DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-emerald-500/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'won')}><CheckCircle className="mr-3 h-4 w-4 text-emerald-400" /> Mark Victory</DropdownMenuItem>
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-destructive/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'lost')}><XCircle className="mr-3 h-4 w-4 text-destructive" /> Mark Defeat</DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 text-destructive focus:bg-destructive/10 cursor-pointer" onClick={() => handleDelete(opp.id)}><Trash2 className="mr-3 h-4 w-4" /> Purge deal</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -332,9 +366,14 @@ export default function OpportunitiesPage() {
                   ))}
                 </div>
               ) : (
-                <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
-                  <Target className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                  <p className="text-sm text-muted-foreground">No opportunities found.</p>
+                <div className="py-40 text-center space-y-6 animate-in fade-in duration-1000">
+                  <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:glow-primary transition-all">
+                    <Target className="h-10 w-10 text-muted-foreground opacity-20" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-2xl font-bold text-muted-foreground">Deal Reservoir Empty</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-[320px] mx-auto leading-relaxed font-medium">No opportunities were found in the current V2 synchronicity window. Initialize a new deal flow to start tracking.</p>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -342,40 +381,40 @@ export default function OpportunitiesPage() {
         </div>
       </main>
 
-      {/* Edit Dialog */}
+      {/* Futuristic Edit Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleUpdate}>
-            <DialogHeader>
-              <DialogTitle>Edit Opportunity</DialogTitle>
-              <DialogDescription>Sync changes to LeadConnector V2.</DialogDescription>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">Modify Opportunity</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Override deal metadata in the GHL V2 repository.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6">
               <div className="space-y-2">
-                <Label>Deal Name</Label>
-                <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Override</Label>
+                <Input className="glass h-12 rounded-xl" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <Label>Monetary Value</Label>
-                <Input type="number" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Value Alignment ($)</Label>
+                <Input className="glass h-12 rounded-xl" type="number" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Status Transition</Label>
                 <Select value={formData.status} onValueChange={val => setFormData({ ...formData, status: val as any })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="won">Won</SelectItem>
-                    <SelectItem value="lost">Lost</SelectItem>
-                    <SelectItem value="abandoned">Abandoned</SelectItem>
+                  <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary"><SelectValue /></SelectTrigger>
+                  <SelectContent className="glass border-white/10 rounded-xl">
+                    <SelectItem value="open" className="rounded-lg">Open Deal</SelectItem>
+                    <SelectItem value="won" className="rounded-lg">Mark Won</SelectItem>
+                    <SelectItem value="lost" className="rounded-lg">Mark Lost</SelectItem>
+                    <SelectItem value="abandoned" className="rounded-lg">Abandoned</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="submit" disabled={isActionLoading}>
-                {isActionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold transition-all active:scale-95" disabled={isActionLoading}>
+                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TrendingUp className="mr-2 h-5 w-5" />}
+                Commit Synchronization
               </Button>
             </DialogFooter>
           </form>
