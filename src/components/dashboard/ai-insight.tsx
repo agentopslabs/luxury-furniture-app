@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateContactSummaryAndNotes } from "@/ai/flows/generate-contact-summary-and-notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Loader2, RefreshCcw, AlertCircle } from "lucide-react";
+import { Sparkles, RefreshCcw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -19,7 +19,7 @@ export function AIContactInsight({ contactName, history }: { contactName: string
   const [error, setError] = useState<string | null>(null);
 
   const generate = useCallback(async () => {
-    if (history.length === 0) return;
+    if (history.length === 0 || isLoading) return;
     
     setIsLoading(true);
     setError(null);
@@ -31,16 +31,15 @@ export function AIContactInsight({ contactName, history }: { contactName: string
       setData(result);
       setError(null);
     } catch (e: any) {
-      console.error("AI Insight Error:", e);
-      
-      // Convert error to string to check for quota/rate limit messages
-      const errorString = JSON.stringify(e) + (e.message || "") + (e.name || "");
+      // Handle the error silently from the console to prevent triggering the Next.js error overlay
+      // Use the error message to provide user-friendly feedback in the UI
+      const errorMessage = e.message || String(e);
       
       if (
-        errorString.includes("429") || 
-        errorString.includes("RESOURCE_EXHAUSTED") || 
-        errorString.includes("quota") ||
-        errorString.includes("Too Many Requests")
+        errorMessage.includes("429") || 
+        errorMessage.includes("RESOURCE_EXHAUSTED") || 
+        errorMessage.includes("quota") ||
+        errorMessage.includes("Too Many Requests")
       ) {
         setError("AI quota exceeded. Please wait about 60 seconds before retrying.");
       } else {
@@ -49,7 +48,7 @@ export function AIContactInsight({ contactName, history }: { contactName: string
     } finally {
       setIsLoading(false);
     }
-  }, [contactName, history]);
+  }, [contactName, history, isLoading]);
 
   useEffect(() => {
     // Only auto-generate if we have history and haven't tried yet
