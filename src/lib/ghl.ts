@@ -1,4 +1,3 @@
-
 import apiClient from './api-client';
 
 export interface GHLContact {
@@ -64,7 +63,7 @@ class GHLService {
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    return !token || token === 'your_access_token' || !locationId;
+    return !token || token.includes('your_') || !locationId;
   }
 
   async getContacts(limit: number = 50): Promise<GHLContact[]> {
@@ -77,7 +76,7 @@ class GHLService {
       });
       return response.data.contacts || [];
     } catch (error) {
-      return [];
+      return this.isMockMode() ? [this.getMockContact()] : [];
     }
   }
 
@@ -91,7 +90,7 @@ class GHLService {
       });
       return response.data.contacts || [];
     } catch (error) {
-      return [];
+      return this.isMockMode() ? [this.getMockContact()] : [];
     }
   }
 
@@ -100,14 +99,13 @@ class GHLService {
       const response = await apiClient.get(`/contacts/${id}`);
       return response.data.contact;
     } catch (error) {
-      if (id === 'mock_id') return this.getMockContact();
+      if (id === 'mock_id' || this.isMockMode()) return this.getMockContact();
       throw error;
     }
   }
 
   async updateContact(id: string, data: Partial<GHLContact>): Promise<GHLContact> {
     try {
-      // V2 PUT /contacts/{contactId}
       const response = await apiClient.put(`/contacts/${id}`, data);
       return response.data.contact;
     } catch (error) {
@@ -118,7 +116,6 @@ class GHLService {
 
   async deleteContact(id: string): Promise<void> {
     try {
-      // V2 DELETE /contacts/{contactId}
       await apiClient.delete(`/contacts/${id}`);
     } catch (error) {
       console.error("GHL Delete Contact Error:", error);
@@ -131,6 +128,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
+      // V2 Search Appointments requires timestamps in milliseconds
       const now = Date.now();
       const startTime = now - (30 * 24 * 60 * 60 * 1000);
       const endTime = now + (90 * 24 * 60 * 60 * 1000);
@@ -148,7 +146,8 @@ class GHLService {
       return appts.sort((a: GHLAppointment, b: GHLAppointment) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
-    } catch (error: any) {
+    } catch (error) {
+      if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
   }
@@ -169,7 +168,7 @@ class GHLService {
       });
       return response.data.appointments || [];
     } catch (error) {
-      return [];
+      return this.isMockMode() ? this.getMockAppointments() : [];
     }
   }
 
@@ -192,7 +191,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations', {
+      const response = await apiClient.get('/conversations/search', {
         params: { locationId, limit: 50 }
       });
       return response.data.conversations || [];
@@ -220,7 +219,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities', {
+      const response = await apiClient.get('/opportunities/search', {
         params: { locationId, limit: 20 }
       });
       return response.data.opportunities || [];
@@ -238,6 +237,30 @@ class GHLService {
       email: 'alex@sterling.io',
       tags: ['v2-prototype', 'demo-mode']
     };
+  }
+
+  private getMockAppointments(): GHLAppointment[] {
+    const now = Date.now();
+    return [
+      {
+        id: 'mock_appt_1',
+        locationId: 'mock_location',
+        contactId: 'mock_id',
+        title: 'Initial Enterprise Strategy Call',
+        startTime: now + 3600000,
+        endTime: now + 7200000,
+        status: 'confirmed'
+      },
+      {
+        id: 'mock_appt_2',
+        locationId: 'mock_location',
+        contactId: 'mock_id',
+        title: 'Security Compliance Review',
+        startTime: now + 86400000,
+        endTime: now + 90000000,
+        status: 'booked'
+      }
+    ];
   }
 }
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
@@ -24,8 +23,19 @@ apiClient.interceptors.request.use(
     const token = envToken || storageToken;
 
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Ensure "Bearer " prefix is correctly applied
+      const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      config.headers.Authorization = bearerToken;
     }
+    
+    // Safety check for locationId in params
+    if (config.params && !config.params.locationId) {
+      const envLocation = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+      if (envLocation) {
+        config.params.locationId = envLocation;
+      }
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -34,6 +44,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
+    // Silently handle common CORS/Network errors for prototypes
+    if (error.message === 'Network Error') {
+      console.warn('Network Error detected. This is likely a CORS restriction from GHL V2 when called directly from the client.');
+    }
     return Promise.reject(error);
   }
 );
