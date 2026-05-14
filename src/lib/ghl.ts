@@ -107,6 +107,7 @@ class GHLService {
 
   async updateContact(id: string, data: Partial<GHLContact>): Promise<GHLContact> {
     try {
+      // V2 PUT /contacts/{contactId}
       const response = await apiClient.put(`/contacts/${id}`, data);
       return response.data.contact;
     } catch (error) {
@@ -117,6 +118,7 @@ class GHLService {
 
   async deleteContact(id: string): Promise<void> {
     try {
+      // V2 DELETE /contacts/{contactId}
       await apiClient.delete(`/contacts/${id}`);
     } catch (error) {
       console.error("GHL Delete Contact Error:", error);

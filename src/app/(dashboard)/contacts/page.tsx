@@ -27,7 +27,8 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingContact, setEditingContact] = useState<GHLContact | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   const fetchContacts = useCallback(async (isManual = false) => {
@@ -96,7 +98,7 @@ export default function ContactsPage() {
       toast({
         variant: "destructive",
         title: "Delete Failed",
-        description: "Could not remove contact. Please try again.",
+        description: "Could not remove contact from GHL.",
       });
     }
   };
@@ -105,6 +107,7 @@ export default function ContactsPage() {
     e.preventDefault();
     if (!editingContact) return;
 
+    setIsUpdating(true);
     try {
       const updated = await ghl.updateContact(editingContact.id, {
         firstName: editingContact.firstName,
@@ -125,6 +128,8 @@ export default function ContactsPage() {
         title: "Update Failed",
         description: "Could not sync changes to GHL.",
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -238,7 +243,7 @@ export default function ContactsPage() {
                               <DropdownMenuLabel>Contact Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => {
-                                setEditingContact(contact);
+                                setEditingContact({ ...contact });
                                 setIsEditDialogOpen(true);
                               }}>
                                 <Pencil className="mr-2 h-4 w-4" /> Edit Details
@@ -285,6 +290,7 @@ export default function ContactsPage() {
                     id="firstName" 
                     value={editingContact?.firstName || ""} 
                     onChange={(e) => setEditingContact(editingContact ? { ...editingContact, firstName: e.target.value } : null)}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -293,6 +299,7 @@ export default function ContactsPage() {
                     id="lastName" 
                     value={editingContact?.lastName || ""} 
                     onChange={(e) => setEditingContact(editingContact ? { ...editingContact, lastName: e.target.value } : null)}
+                    required
                   />
                 </div>
               </div>
@@ -303,6 +310,7 @@ export default function ContactsPage() {
                   type="email"
                   value={editingContact?.email || ""} 
                   onChange={(e) => setEditingContact(editingContact ? { ...editingContact, email: e.target.value } : null)}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -315,8 +323,13 @@ export default function ContactsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isUpdating}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
