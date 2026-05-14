@@ -1,22 +1,26 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { ghl, GHLConversation } from "@/lib/ghl";
+import { getConversations, sendMessage } from "@/lib/ghl-actions";
+import { GHLConversation } from "@/lib/ghl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, User, Clock, Search, Filter, RefreshCw } from "lucide-react";
+import { MessageSquare, Search, RefreshCw, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<GHLConversation[]>([]);
+  const [selectedConvo, setSelectedConvo] = useState<GHLConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
@@ -25,19 +29,19 @@ export default function ConversationsPage() {
     else setLoading(true);
 
     try {
-      const data = await ghl.getConversations();
+      const data = await getConversations();
       setConversations(data);
       if (isManual) {
         toast({
-          title: "Inbox Synchronized",
-          description: `Loaded ${data.length} conversation threads.`,
+          title: "Inbox Updated",
+          description: `Loaded ${data.length} live threads.`,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "Failed to fetch conversations from GHL V2.",
+        description: "Failed to connect to GHL messaging hub.",
       });
     } finally {
       setLoading(false);
@@ -48,6 +52,29 @@ export default function ConversationsPage() {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  const handleSendMessage = async () => {
+    if (!selectedConvo || !messageText.trim()) return;
+
+    setSending(true);
+    try {
+      await sendMessage(selectedConvo.id, messageText);
+      toast({
+        title: "Message Sent",
+        description: "Your response was synchronized to the GHL contact.",
+      });
+      setMessageText("");
+      fetchConversations(true);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Delivery Failed",
+        description: "Check your GHL sub-account SMS/Email settings.",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const filtered = conversations.filter(c => 
     c.contactName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,7 +89,7 @@ export default function ConversationsPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Conversations</h1>
-              <p className="text-muted-foreground">Live messaging streams via LeadConnector V2.</p>
+              <p className="text-muted-foreground">Live multi-channel messaging (V2 API).</p>
             </div>
             <div className="flex gap-2">
               <Button 
@@ -74,15 +101,6 @@ export default function ConversationsPage() {
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
                 Sync Inbox
               </Button>
-              <div className="relative w-64 hidden md:block">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search messages..." 
-                  className="pl-9 h-10 text-xs" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
             </div>
           </header>
 
@@ -90,9 +108,14 @@ export default function ConversationsPage() {
             <div className="lg:col-span-1 space-y-4">
               <Card className="glass border-border/40 h-[calc(100vh-250px)] flex flex-col overflow-hidden">
                 <CardHeader className="border-b border-border/40 pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Recent Threads</CardTitle>
-                    <Badge variant="secondary" className="text-[10px]">{conversations.length}</Badge>
+                  <div className="relative w-full">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search messages..." 
+                      className="pl-9 h-9 text-xs" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-y-auto">
@@ -107,54 +130,85 @@ export default function ConversationsPage() {
                     filtered.map((convo) => (
                       <div 
                         key={convo.id} 
+                        onClick={() => setSelectedConvo(convo)}
                         className={cn(
                           "p-4 border-b border-border/40 cursor-pointer transition-all hover:bg-muted/50 group",
-                          convo.unreadCount && convo.unreadCount > 0 && "bg-primary/5 border-l-2 border-l-primary"
+                          selectedConvo?.id === convo.id && "bg-primary/10 border-l-2 border-l-primary"
                         )}
                       >
                         <div className="flex justify-between items-start mb-1">
-                          <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">
+                          <p className="font-bold text-sm truncate">
                             {convo.contactName || 'Anonymous'}
                           </p>
                           {convo.lastMessageDate && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-[9px] text-muted-foreground font-mono">
                               {new Date(convo.lastMessageDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                          {convo.lastMessageBody || 'No preview available'}
+                        <p className="text-xs text-muted-foreground line-clamp-1 opacity-70">
+                          {convo.lastMessageBody || 'No messages.'}
                         </p>
-                        {convo.unreadCount && convo.unreadCount > 0 && (
-                          <Badge className="mt-2 h-4 px-1.5 text-[9px]">{convo.unreadCount} new</Badge>
-                        )}
                       </div>
                     ))
                   ) : (
-                    <div className="py-20 text-center space-y-3 opacity-40">
-                      <MessageSquare className="h-10 w-10 mx-auto" />
-                      <p className="text-xs italic">No conversations found.</p>
+                    <div className="py-20 text-center opacity-40">
+                      <MessageSquare className="h-10 w-10 mx-auto mb-2" />
+                      <p className="text-xs italic">Inbox empty.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             </div>
 
-            <div className="lg:col-span-2 space-y-4">
-              <Card className="glass border-border/40 h-[calc(100vh-250px)] flex flex-col items-center justify-center border-dashed">
-                <CardContent className="text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-                    <MessageSquare className="h-8 w-8 text-muted-foreground opacity-50" />
+            <div className="lg:col-span-2">
+              {selectedConvo ? (
+                <Card className="glass border-border/40 h-[calc(100vh-250px)] flex flex-col overflow-hidden">
+                  <CardHeader className="border-b border-border/40">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        {selectedConvo.contactName?.[0] || '?'}
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-bold">{selectedConvo.contactName}</CardTitle>
+                        <CardDescription className="text-[10px]">LeadConnector V2 Thread</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 p-6 overflow-y-auto space-y-4">
+                    <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border/20 self-start max-w-[80%]">
+                      {selectedConvo.lastMessageBody}
+                      <p className="text-[9px] mt-2 opacity-50 font-mono">Received via GHL</p>
+                    </div>
+                  </CardContent>
+                  <div className="p-4 border-t bg-card/20 space-y-3">
+                    <Textarea 
+                      placeholder="Type a message..." 
+                      className="min-h-[80px] text-xs resize-none"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={handleSendMessage} 
+                        disabled={sending || !messageText.trim()}
+                        className="h-9 px-4 font-bold"
+                      >
+                        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                        Sync Reply
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-bold text-lg">Select a Thread</p>
-                    <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">Click on a contact from the left pane to view the live V2 message history.</p>
-                  </div>
-                  <Button variant="secondary" size="sm" className="h-9 px-6 font-semibold">
-                    Draft New Message
-                  </Button>
-                </CardContent>
-              </Card>
+                </Card>
+              ) : (
+                <Card className="glass border-border/40 h-[calc(100vh-250px)] flex flex-col items-center justify-center border-dashed">
+                  <CardContent className="text-center space-y-4">
+                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
+                    <p className="text-sm text-muted-foreground">Select a contact to view and sync messages.</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>

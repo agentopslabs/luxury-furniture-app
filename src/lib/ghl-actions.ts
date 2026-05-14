@@ -1,9 +1,8 @@
 'use server';
 
 /**
- * @fileOverview Server actions for LeadConnector V2 API.
- * This file handles all GHL interactions on the server to bypass CORS restrictions
- * and secure the PIT token.
+ * @fileOverview Secure server actions for LeadConnector V2 API.
+ * Handles live synchronization for Contacts, Appointments, Conversations, and Pipelines.
  */
 
 import { GHLContact, GHLAppointment, GHLCalendar, GHLConversation, GHLPipeline, GHLOpportunity } from './ghl';
@@ -18,28 +17,13 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+// --- CONTACTS ---
+
 export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/contacts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
-
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.contacts || [];
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
-    return [];
-  }
-}
-
-export async function searchContacts(query: string): Promise<GHLContact[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/contacts`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    if (query) url.searchParams.append('query', query);
-    url.searchParams.append('limit', '10');
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     if (!response.ok) return [];
@@ -75,14 +59,17 @@ export async function deleteContact(id: string): Promise<void> {
   }
 }
 
+// --- APPOINTMENTS ---
+
 export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
+    // GHL V2 requires numeric timestamps (ms) for filters
     const now = new Date();
-    const startTime = now.getTime() - (90 * 24 * 60 * 60 * 1000); 
-    const endTime = now.getTime() + (120 * 24 * 60 * 60 * 1000);  
+    const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); // Past 30 days
+    const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  // Next 90 days
     
     url.searchParams.append('startTime', startTime.toString());
     url.searchParams.append('endTime', endTime.toString());
@@ -94,8 +81,19 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
   } catch (error) {
-    console.error('Error fetching appointments:', error);
     return [];
+  }
+}
+
+export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
+  try {
+    await fetch(`${GHL_API_BASE_URL}/appointments/${id}/status`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ status }),
+    });
+  } catch (error) {
+    throw new Error('Failed to update appointment status in GHL');
   }
 }
 
@@ -103,15 +101,15 @@ export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/calendars`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) return [];
+    const response = await fetch(url.toString(), { headers });
     const data = await response.json();
     return data.calendars || [];
   } catch (error) {
     return [];
   }
 }
+
+// --- CONVERSATIONS ---
 
 export async function getConversations(): Promise<GHLConversation[]> {
   try {
@@ -128,17 +126,32 @@ export async function getConversations(): Promise<GHLConversation[]> {
   }
 }
 
+export async function sendMessage(conversationId: string, body: string, type: 'email' | 'sms' = 'sms'): Promise<void> {
+  try {
+    await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        type,
+        body,
+        locationId: GHL_LOCATION_ID,
+      }),
+    });
+  } catch (error) {
+    throw new Error('Failed to send message via GHL');
+  }
+}
+
+// --- PIPELINES ---
+
 export async function getPipelines(): Promise<GHLPipeline[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/pipelines`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) return [];
+    const response = await fetch(url.toString(), { headers });
     const data = await response.json();
     return data.pipelines || [];
   } catch (error) {
-    console.error('Error fetching pipelines:', error);
     return [];
   }
 }
@@ -148,13 +161,10 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', '50');
-
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) return [];
+    const response = await fetch(url.toString(), { headers });
     const data = await response.json();
     return data.opportunities || [];
   } catch (error) {
-    console.error('Error fetching opportunities:', error);
     return [];
   }
 }

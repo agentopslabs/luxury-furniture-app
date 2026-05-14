@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getAllAppointments, getCalendars } from "@/lib/ghl-actions";
+import { getAllAppointments, getCalendars, updateAppointmentStatus } from "@/lib/ghl-actions";
 import { GHLAppointment, GHLCalendar } from "@/lib/ghl";
 import { 
   Card, 
@@ -19,11 +19,21 @@ import {
   CheckCircle2,
   CalendarDays,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  XCircle,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,7 +49,6 @@ export default function CalendarPage() {
     else setLoading(true);
 
     try {
-      // Fetch data using server actions to avoid CORS
       const [apptsData, calsData] = await Promise.all([
         getAllAppointments(),
         getCalendars()
@@ -50,15 +59,15 @@ export default function CalendarPage() {
       
       if (isManualRefresh) {
         toast({
-          title: "Calendar Synchronized",
-          description: `Successfully updated ${apptsData.length} upcoming events from GHL.`,
+          title: "Schedule Synchronized",
+          description: `Loaded ${apptsData.length} events from GHL.`,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Synchronization Error",
-        description: "Could not fetch events from GHL. Server connection issue.",
+        title: "Sync Error",
+        description: "Could not reach GHL servers.",
       });
     } finally {
       setLoading(false);
@@ -70,8 +79,21 @@ export default function CalendarPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleRefresh = () => {
-    fetchData(true);
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      await updateAppointmentStatus(id, newStatus);
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as any } : a));
+      toast({
+        title: "Status Updated",
+        description: `Appointment marked as ${newStatus}.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not sync status change to GHL.",
+      });
+    }
   };
 
   return (
@@ -82,21 +104,18 @@ export default function CalendarPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-              <p className="text-muted-foreground">Real-time schedule management via Server Actions.</p>
+              <p className="text-muted-foreground">Real-time schedule management via GHL V2 API.</p>
             </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={handleRefresh} 
+                onClick={() => fetchData(true)} 
                 disabled={loading || refreshing}
-                className="transition-all active:scale-95 bg-card"
+                className="bg-card"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Refresh Events"}
-              </Button>
-              <Button variant="outline" size="sm">
-                <Filter className="mr-2 h-4 w-4" /> Filter
+                {refreshing ? "Syncing..." : "Sync Schedule"}
               </Button>
               <Button size="sm">
                 <Plus className="mr-2 h-4 w-4" /> Book Appointment
@@ -108,7 +127,7 @@ export default function CalendarPage() {
             <div className="lg:col-span-1 space-y-6">
               <Card className="glass border-border/40">
                 <CardHeader>
-                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Connected Calendars</CardTitle>
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-body">Sub-Account Calendars</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {loading ? (
@@ -116,14 +135,12 @@ export default function CalendarPage() {
                   ) : calendars.length > 0 ? (
                     calendars.map(cal => (
                       <div key={cal.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group">
-                        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+                        <div className="w-2 h-2 rounded-full bg-primary" />
                         <span className="text-xs font-medium truncate">{cal.name}</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-muted-foreground italic flex items-center gap-2">
-                      <AlertCircle size={12} /> No calendars found.
-                    </p>
+                    <p className="text-xs text-muted-foreground italic">No active calendars.</p>
                   )}
                 </CardContent>
               </Card>
@@ -134,10 +151,10 @@ export default function CalendarPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-xl font-headline">Upcoming Events</CardTitle>
-                      <CardDescription>Live data stream from Location: nBYJTjYbHTIsJGiqT0W4</CardDescription>
+                      <CardTitle className="text-xl font-headline">Live Events Feed</CardTitle>
+                      <CardDescription>Location ID: nBYJTjYbHTIsJGiqT0W4</CardDescription>
                     </div>
-                    <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 border-primary/20">
+                    <Badge variant="outline" className="font-mono text-[10px]">
                       {appointments.length} Total
                     </Badge>
                   </div>
@@ -151,13 +168,13 @@ export default function CalendarPage() {
                       return (
                         <div 
                           key={appt.id} 
-                          className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300"
+                          className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2"
                         >
                           <div className="flex items-center gap-4">
                             <div className={cn(
-                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center border transition-all group-hover:border-primary/30",
+                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center border",
                               appt.status === 'confirmed' || appt.status === 'booked' 
-                                ? "bg-primary/5 text-primary border-primary/10 shadow-inner" 
+                                ? "bg-primary/5 text-primary border-primary/10" 
                                 : "bg-muted text-muted-foreground border-border"
                             )}>
                               <span className="text-[10px] font-bold uppercase opacity-70">
@@ -168,7 +185,7 @@ export default function CalendarPage() {
                               </span>
                             </div>
                             <div className="space-y-1">
-                              <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
+                              <p className="font-bold text-sm">{appt.title}</p>
                               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                                 <span className="flex items-center gap-1.5">
                                   <Clock size={12} className="text-primary/60" />
@@ -176,19 +193,37 @@ export default function CalendarPage() {
                                 </span>
                                 {appt.status === 'completed' && (
                                   <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                    <CheckCircle2 size={12} /> Completed
+                                    <CheckCircle size={12} /> Completed
                                   </span>
                                 )}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
-                            <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] font-bold px-2.5 py-0.5">
+                            <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px]">
                               {appt.status}
                             </Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreVertical size={16} />
-                            </Button>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical size={16} />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Update Status</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'completed')}>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'noshow')}>
+                                  <AlertCircle className="mr-2 h-4 w-4 text-amber-500" /> Mark No-Show
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'cancelled')} className="text-destructive">
+                                  <XCircle className="mr-2 h-4 w-4" /> Cancel Event
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       );
@@ -196,10 +231,7 @@ export default function CalendarPage() {
                   ) : (
                     <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
                       <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                      <div className="space-y-1">
-                        <p className="font-medium text-muted-foreground">No upcoming events found</p>
-                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Click 'Refresh Events' to check your GHL sub-account for scheduled activities.</p>
-                      </div>
+                      <p className="font-medium text-muted-foreground">No upcoming events found</p>
                     </div>
                   )}
                 </CardContent>
