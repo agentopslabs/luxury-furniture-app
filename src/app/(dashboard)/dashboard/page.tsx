@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { AIContactInsight } from "@/components/dashboard/ai-insight";
-import { ghl, GHLContact, GHLAppointment } from "@/lib/ghl";
+import { ghl, GHLContact, GHLAppointment, GHLOpportunity } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
@@ -16,17 +17,15 @@ import {
   ChevronRight, 
   ExternalLink,
   PlusCircle,
-  MessageSquare,
   User,
   Activity,
   CheckCircle2,
-  AlertCircle,
   ShieldCheck,
   Zap,
   ArrowUpRight,
   TrendingUp,
   Users,
-  MousePointer2
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +36,8 @@ import Link from "next/link";
 export default function DashboardPage() {
   const [profile, setProfile] = useState<GHLContact | null>(null);
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
+  const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
+  const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'mock'>('syncing');
@@ -48,13 +49,22 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
-        const contacts = await ghl.getContacts(10);
-        const p = contacts.length > 0 ? contacts[0] : await ghl.getContact("mock_id");
+        const [contactsData, oppsData, allAppts] = await Promise.all([
+          ghl.getContacts(100),
+          ghl.getOpportunities(),
+          ghl.getAllAppointments()
+        ]);
         
-        if (p) {
-          const a = await ghl.getAppointments(p.id);
-          setProfile(p);
-          setAppts(a);
+        setContactCount(contactsData.length);
+        setOpportunities(oppsData);
+        
+        const firstContact = contactsData.length > 0 ? contactsData[0] : null;
+        if (firstContact) {
+          setProfile(firstContact);
+          const contactAppts = allAppts.filter(a => a.contactId === firstContact.id);
+          setAppts(contactAppts);
+        } else {
+          setAppts(allAppts.slice(0, 5));
         }
         
         setSyncStatus('synced');
@@ -67,6 +77,20 @@ export default function DashboardPage() {
     }
     fetchData();
   }, []);
+
+  const stats = useMemo(() => {
+    const pipelineValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
+    const activeLeads = contactCount;
+    const wonDeals = opportunities.filter(o => o.status === 'won').length;
+    const conversion = opportunities.length > 0 ? ((wonDeals / opportunities.length) * 100).toFixed(1) : "0.0";
+
+    return [
+      { label: "Pipeline Value", value: `$${(pipelineValue / 1000).toFixed(1)}k`, icon: TrendingUp, color: "text-emerald-400" },
+      { label: "Active Leads", value: activeLeads.toLocaleString(), icon: Users, color: "text-primary" },
+      { label: "Won Deals", value: wonDeals.toString(), icon: Zap, color: "text-amber-400" },
+      { label: "Conversion", value: `${conversion}%`, icon: Clock, color: "text-blue-400" }
+    ];
+  }, [opportunities, contactCount]);
 
   const historyForAI = useMemo(() => {
     return appts.map(a => ({
@@ -81,7 +105,6 @@ export default function DashboardPage() {
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
       <main className="flex-1 p-4 md:p-8 overflow-y-auto no-scrollbar relative">
-        {/* Futuristic Background Glows */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -94,7 +117,7 @@ export default function DashboardPage() {
                 </h1>
                 <div className="flex items-center">
                   {syncStatus === 'synced' ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5 h-6 animate-in fade-in zoom-in-95 duration-500">
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5 h-6">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Live Sync Active
                     </Badge>
@@ -120,14 +143,10 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Top Analytics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { label: "Pipeline Value", value: "$42.5k", icon: TrendingUp, color: "text-emerald-400" },
-              { label: "Active Leads", value: "1,284", icon: Users, color: "text-primary" },
-              { label: "Conversion", value: "12.4%", icon: Zap, color: "text-amber-400" },
-              { label: "Response Time", value: "1.2m", icon: Clock, color: "text-blue-400" }
-            ].map((stat, i) => (
+            {loading ? (
+              Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
+            ) : stats.map((stat, i) => (
               <Card key={i} className="glass glass-hover border-border/40 p-6 flex flex-col justify-between h-32 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
@@ -135,7 +154,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-end justify-between">
                   <h3 className="text-2xl font-bold font-headline">{stat.value}</h3>
-                  <Badge variant="outline" className="text-[9px] bg-white/5 border-white/10">+4.2%</Badge>
+                  <Badge variant="outline" className="text-[9px] bg-white/5 border-white/10">Live</Badge>
                 </div>
               </Card>
             ))}
@@ -153,7 +172,7 @@ export default function DashboardPage() {
                       </CardTitle>
                       <CardDescription className="text-muted-foreground/80 mt-1">Real-time interaction stream from LeadConnector</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{appts.length} Live Threads</Badge>
+                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{appts.length} Active Events</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="px-8 pb-8 space-y-4">
@@ -302,7 +321,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-12 text-xs border-primary/20 bg-primary/5 hover:bg-primary/20 hover:text-white transition-all group rounded-2xl font-bold" asChild>
-                    <a href="https://app.gohighlevel.com/" target="_blank">
+                    <a href="https://app.gohighlevel.com/" target="_blank" rel="noopener noreferrer">
                       Launch GHL Dashboard <ExternalLink className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </a>
                   </Button>
