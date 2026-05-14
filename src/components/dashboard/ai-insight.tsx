@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { generateContactSummaryAndNotes } from "@/ai/flows/generate-contact-summary-and-notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, Loader2, RefreshCcw, AlertCircle } from "lucide-react";
@@ -18,7 +18,7 @@ export function AIContactInsight({ contactName, history }: { contactName: string
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     if (history.length === 0) return;
     
     setIsLoading(true);
@@ -29,24 +29,34 @@ export function AIContactInsight({ contactName, history }: { contactName: string
         appointmentHistory: history
       });
       setData(result);
+      setError(null);
     } catch (e: any) {
       console.error("AI Insight Error:", e);
-      // Handle the 429 Resource Exhausted error specifically
-      if (e.message?.includes("429") || e.message?.includes("RESOURCE_EXHAUSTED")) {
-        setError("AI quota exceeded. Please wait a minute before retrying.");
+      
+      // Convert error to string to check for quota/rate limit messages
+      const errorString = JSON.stringify(e) + (e.message || "") + (e.name || "");
+      
+      if (
+        errorString.includes("429") || 
+        errorString.includes("RESOURCE_EXHAUSTED") || 
+        errorString.includes("quota") ||
+        errorString.includes("Too Many Requests")
+      ) {
+        setError("AI quota exceeded. Please wait about 60 seconds before retrying.");
       } else {
         setError("Intelligence generation failed. Please try again later.");
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [contactName, history]);
 
   useEffect(() => {
-    if (history.length > 0 && !data && !isLoading) {
+    // Only auto-generate if we have history and haven't tried yet
+    if (history.length > 0 && !data && !isLoading && !error) {
       generate();
     }
-  }, [history.length]);
+  }, [history.length, data, isLoading, error, generate]);
 
   return (
     <Card className="overflow-hidden border-primary/20 bg-primary/5">
@@ -58,7 +68,10 @@ export function AIContactInsight({ contactName, history }: { contactName: string
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={generate} 
+          onClick={() => {
+            setError(null);
+            generate();
+          }} 
           disabled={isLoading}
           className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
         >
@@ -73,12 +86,25 @@ export function AIContactInsight({ contactName, history }: { contactName: string
             <div className="h-3 bg-muted animate-pulse rounded w-5/6" />
           </div>
         ) : error ? (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive text-[11px] py-2">
-            <AlertCircle className="h-3 w-3" />
-            <AlertDescription className="ml-1">
-              {error}
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-3">
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive py-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-[11px] leading-tight ml-1">
+                {error}
+              </AlertDescription>
+            </Alert>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setError(null);
+                generate();
+              }} 
+              className="w-full h-8 text-[10px] font-semibold"
+            >
+              Manual Retry
+            </Button>
+          </div>
         ) : data ? (
           <div className="space-y-4 animate-in fade-in duration-700">
             <div>
