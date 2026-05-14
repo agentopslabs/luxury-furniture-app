@@ -34,6 +34,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
+    // Silent catch for network errors to prevent blocking the UI
     return Promise.reject(error);
   }
 );

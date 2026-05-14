@@ -116,7 +116,7 @@ class GHLService {
 
     try {
       const now = new Date();
-      // V2 expects ISO 8601 strings for startTime and endTime
+      // V2 expects ISO 8601 strings
       const startTime = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
       const endTime = new Date(now.getTime() + (120 * 24 * 60 * 60 * 1000)).toISOString();
 
