@@ -20,7 +20,8 @@ import {
   MoreVertical,
   CheckCircle2,
   CalendarDays,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,22 +36,23 @@ export default function CalendarPage() {
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
-  const fetchData = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    else setRefreshing(true);
+  const fetchData = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
+    else setLoading(true);
 
     try {
       const [apptsData, calsData] = await Promise.all([
         ghl.getAllAppointments(),
         ghl.getCalendars()
       ]);
+      
       setAppointments(apptsData);
       setCalendars(calsData);
       
-      if (isSilent) {
+      if (isManualRefresh) {
         toast({
-          title: "Calendar Synchronized",
-          description: "All upcoming events and schedules have been updated.",
+          title: "Calendar Updated",
+          description: `Successfully synchronized ${apptsData.length} appointments.`,
         });
       }
     } catch (error) {
@@ -58,7 +60,7 @@ export default function CalendarPage() {
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "Could not retrieve the latest calendar data.",
+        description: "The GHL API could not be reached. Please check your token.",
       });
     } finally {
       setLoading(false);
@@ -82,7 +84,7 @@ export default function CalendarPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-              <p className="text-muted-foreground">Schedule and manage your location appointments.</p>
+              <p className="text-muted-foreground">Manage sub-account appointments via GHL V2 API.</p>
             </div>
             <div className="flex gap-2">
               <Button 
@@ -90,16 +92,16 @@ export default function CalendarPage() {
                 size="sm" 
                 onClick={handleRefresh} 
                 disabled={loading || refreshing}
-                className="transition-all active:scale-95"
+                className="transition-all active:scale-95 bg-card"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Updating..." : "Refresh"}
+                {refreshing ? "Syncing..." : "Refresh Sync"}
               </Button>
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
               <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" /> Book Appointment
+                <Plus className="mr-2 h-4 w-4" /> Book
               </Button>
             </div>
           </header>
@@ -108,7 +110,7 @@ export default function CalendarPage() {
             <div className="lg:col-span-1 space-y-6">
               <Card className="glass border-border/40">
                 <CardHeader>
-                  <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">My Calendars</CardTitle>
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available Calendars</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {loading ? (
@@ -116,33 +118,35 @@ export default function CalendarPage() {
                   ) : calendars.length > 0 ? (
                     calendars.map(cal => (
                       <div key={cal.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        <span className="text-sm font-medium truncate">{cal.name}</span>
+                        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+                        <span className="text-xs font-medium truncate">{cal.name}</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">No calendars found.</p>
+                    <p className="text-xs text-muted-foreground italic flex items-center gap-2">
+                      <AlertCircle size={12} /> No calendars found.
+                    </p>
                   )}
                 </CardContent>
               </Card>
             </div>
 
             <div className="lg:col-span-3 space-y-6">
-              <Card className="glass border-border/40">
+              <Card className="glass border-border/40 min-h-[400px]">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                      <CardDescription>Appointments synced from GHL V2</CardDescription>
+                      <CardDescription>Real-time data from services.leadconnectorhq.com</CardDescription>
                     </div>
-                    <Badge variant="outline" className="font-mono text-[10px]">
+                    <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 border-primary/20">
                       {appointments.length} Total
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {loading ? (
-                    Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+                    Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
                   ) : appointments.length > 0 ? (
                     appointments.map((appt) => (
                       <div 
@@ -151,25 +155,27 @@ export default function CalendarPage() {
                       >
                         <div className="flex items-center gap-4">
                           <div className={cn(
-                            "w-12 h-12 rounded-xl flex flex-col items-center justify-center border transition-all group-hover:border-primary/30",
-                            appt.status === 'confirmed' ? "bg-primary/5 text-primary border-primary/10" : "bg-muted text-muted-foreground border-border"
+                            "w-14 h-14 rounded-xl flex flex-col items-center justify-center border transition-all group-hover:border-primary/30",
+                            appt.status === 'confirmed' || appt.status === 'booked' 
+                              ? "bg-primary/5 text-primary border-primary/10 shadow-inner" 
+                              : "bg-muted text-muted-foreground border-border"
                           )}>
-                            <span className="text-[10px] font-bold uppercase">
+                            <span className="text-[10px] font-bold uppercase opacity-70">
                               {new Date(appt.startTime).toLocaleString('default', { month: 'short' })}
                             </span>
-                            <span className="text-lg font-bold leading-none">
+                            <span className="text-xl font-bold leading-none">
                               {new Date(appt.startTime).getDate()}
                             </span>
                           </div>
-                          <div>
+                          <div className="space-y-1">
                             <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                              <span className="flex items-center gap-1">
-                                <Clock size={12} />
-                                {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1.5">
+                                <Clock size={12} className="text-primary/60" />
+                                {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(appt.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {appt.status === 'completed' && (
-                                <span className="flex items-center gap-1 text-emerald-500">
+                                <span className="flex items-center gap-1 text-emerald-500 font-medium">
                                   <CheckCircle2 size={12} /> Finished
                                 </span>
                               )}
@@ -177,7 +183,7 @@ export default function CalendarPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <Badge variant={appt.status === 'confirmed' ? 'default' : 'secondary'} className="capitalize text-[10px] font-medium px-2 py-0">
+                          <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] font-bold px-2.5 py-0.5">
                             {appt.status}
                           </Badge>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
@@ -187,11 +193,11 @@ export default function CalendarPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="py-24 text-center space-y-4 border rounded-xl border-dashed">
+                    <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
                       <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
                       <div className="space-y-1">
-                        <p className="font-medium text-muted-foreground">No upcoming appointments</p>
-                        <p className="text-xs text-muted-foreground opacity-70">Schedule a new event to see it here.</p>
+                        <p className="font-medium text-muted-foreground">No appointments found</p>
+                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Try clicking refresh or check your GHL sub-account for upcoming events.</p>
                       </div>
                     </div>
                   )}

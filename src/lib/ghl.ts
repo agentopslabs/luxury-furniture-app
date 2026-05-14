@@ -21,7 +21,7 @@ export interface GHLAppointment {
   title: string;
   startTime: string;
   endTime: string;
-  status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed';
+  status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed' | 'booked';
 }
 
 export interface GHLCalendar {
@@ -70,7 +70,7 @@ class GHLService {
    */
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-    return !token || token === '';
+    return !token || token === 'pit-fde7a892-d292-4304-8a9d-a9ffe205ec78' ? false : !token;
   }
 
   /**
@@ -78,15 +78,16 @@ class GHLService {
    */
   async getContacts(limit: number = 20): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return this.getMockContacts("");
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/contacts/', {
-        params: { locationId, limit }
+        params: { locationId, limit, _t: Date.now() }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      return this.getMockContacts("");
+      if (this.isMockMode()) return this.getMockContacts("");
+      return [];
     }
   }
 
@@ -95,15 +96,16 @@ class GHLService {
    */
   async searchContacts(email: string): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return this.getMockContacts(email);
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get(`/contacts/`, {
-        params: { locationId, query: email }
+        params: { locationId, query: email, _t: Date.now() }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      return this.getMockContacts(email);
+      if (this.isMockMode()) return this.getMockContacts(email);
+      return [];
     }
   }
 
@@ -111,13 +113,14 @@ class GHLService {
    * Fetches a specific contact's details via V2 endpoint.
    */
   async getContact(id: string): Promise<GHLContact> {
-    if (id === 'mock_id' || this.isMockMode()) return this.getMockContact();
-
     try {
-      const response = await apiClient.get(`/contacts/${id}`);
+      const response = await apiClient.get(`/contacts/${id}`, {
+        params: { _t: Date.now() }
+      });
       return response.data.contact;
     } catch (error) {
-      return this.getMockContact();
+      if (this.isMockMode() || id === 'mock_id') return this.getMockContact();
+      throw error;
     }
   }
 
@@ -126,43 +129,60 @@ class GHLService {
    */
   async getAllAppointments(): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return this.getMockAppointments();
+    if (!locationId) return [];
 
     try {
       const now = new Date();
-      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).getTime();
-      const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).getTime();
+      // Range: 90 days back, 120 days forward to capture all relevant events
+      const startDate = now.getTime() - (90 * 24 * 60 * 60 * 1000);
+      const endDate = now.getTime() + (120 * 24 * 60 * 60 * 1000);
 
       const response = await apiClient.get('/appointments/', {
-        params: { locationId, startDate, endDate }
+        params: { 
+          locationId, 
+          startDate, 
+          endDate,
+          includeNotes: true,
+          _t: Date.now() // Cache buster
+        }
       });
-      return response.data.appointments || [];
+      
+      const appointments = response.data.appointments || [];
+      // Sort by start time descending
+      return appointments.sort((a: any, b: any) => 
+        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      );
     } catch (error) {
-      return this.getMockAppointments();
+      if (this.isMockMode()) return this.getMockAppointments();
+      console.error("GHL V2 getAllAppointments Error:", error);
+      return [];
     }
   }
 
   async getAppointments(contactId: string): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || contactId === 'mock_id' || this.isMockMode()) return this.getMockAppointments();
+    if (!locationId || contactId === 'mock_id') {
+      if (this.isMockMode()) return this.getMockAppointments();
+      return [];
+    }
     
     try {
       const response = await apiClient.get(`/appointments/`, {
-        params: { contactId, locationId }
+        params: { contactId, locationId, _t: Date.now() }
       });
       return response.data.appointments || [];
     } catch (error) {
-      return this.getMockAppointments();
+      return [];
     }
   }
 
   async getCalendars(): Promise<GHLCalendar[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return [];
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/calendars/', {
-        params: { locationId }
+        params: { locationId, _t: Date.now() }
       });
       return response.data.calendars || [];
     } catch (error) {
@@ -175,15 +195,14 @@ class GHLService {
    */
   async getConversations(limit: number = 20): Promise<GHLConversation[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return [];
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/conversations/', {
-        params: { locationId, limit }
+        params: { locationId, limit, _t: Date.now() }
       });
       return response.data.conversations || [];
     } catch (error) {
-      console.error('GHL V2 getConversations failed');
       return [];
     }
   }
@@ -193,15 +212,14 @@ class GHLService {
    */
   async getPipelines(): Promise<GHLPipeline[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return [];
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get(`/opportunities/pipelines`, {
-        params: { locationId }
+        params: { locationId, _t: Date.now() }
       });
       return response.data.pipelines || [];
     } catch (error) {
-      console.error('GHL V2 getPipelines failed');
       return [];
     }
   }
@@ -211,15 +229,14 @@ class GHLService {
    */
   async getOpportunities(limit: number = 20): Promise<GHLOpportunity[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || this.isMockMode()) return [];
+    if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/opportunities/', {
-        params: { locationId, limit }
+        params: { locationId, limit, _t: Date.now() }
       });
       return response.data.opportunities || [];
     } catch (error) {
-      console.error('GHL V2 getOpportunities failed');
       return [];
     }
   }
