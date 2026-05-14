@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { ghl, GHLAppointment, GHLCalendar } from "@/lib/ghl";
+import { getAllAppointments, getCalendars } from "@/lib/ghl-actions";
+import { GHLAppointment, GHLCalendar } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
@@ -12,9 +12,7 @@ import {
   CardDescription
 } from "@/components/ui/card";
 import { 
-  Calendar as CalendarIcon, 
   Clock, 
-  ChevronRight, 
   Plus,
   Filter,
   MoreVertical,
@@ -41,10 +39,10 @@ export default function CalendarPage() {
     else setLoading(true);
 
     try {
-      // Parallel fetch for calendars and appointments from GHL V2
+      // Fetch data using server actions to avoid CORS
       const [apptsData, calsData] = await Promise.all([
-        ghl.getAllAppointments(),
-        ghl.getCalendars()
+        getAllAppointments(),
+        getCalendars()
       ]);
       
       setAppointments(apptsData);
@@ -60,7 +58,7 @@ export default function CalendarPage() {
       toast({
         variant: "destructive",
         title: "Synchronization Error",
-        description: "Could not fetch events from GHL. Please verify your connection.",
+        description: "Could not fetch events from GHL. Server connection issue.",
       });
     } finally {
       setLoading(false);
@@ -84,7 +82,7 @@ export default function CalendarPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-              <p className="text-muted-foreground">Real-time schedule management via LeadConnector V2.</p>
+              <p className="text-muted-foreground">Real-time schedule management via Server Actions.</p>
             </div>
             <div className="flex gap-2">
               <Button 
@@ -137,7 +135,7 @@ export default function CalendarPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl font-headline">Upcoming Events</CardTitle>
-                      <CardDescription>Live data stream from Location: {process.env.NEXT_PUBLIC_GHL_LOCATION_ID}</CardDescription>
+                      <CardDescription>Live data stream from Location: nBYJTjYbHTIsJGiqT0W4</CardDescription>
                     </div>
                     <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 border-primary/20">
                       {appointments.length} Total
@@ -148,56 +146,59 @@ export default function CalendarPage() {
                   {loading ? (
                     Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
                   ) : appointments.length > 0 ? (
-                    appointments.map((appt) => (
-                      <div 
-                        key={appt.id} 
-                        className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-14 h-14 rounded-xl flex flex-col items-center justify-center border transition-all group-hover:border-primary/30",
-                            appt.status === 'confirmed' || appt.status === 'booked' 
-                              ? "bg-primary/5 text-primary border-primary/10 shadow-inner" 
-                              : "bg-muted text-muted-foreground border-border"
-                          )}>
-                            <span className="text-[10px] font-bold uppercase opacity-70">
-                              {new Date(appt.startTime).toLocaleString('default', { month: 'short' })}
-                            </span>
-                            <span className="text-xl font-bold leading-none">
-                              {new Date(appt.startTime).getDate()}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
-                            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                              <span className="flex items-center gap-1.5">
-                                <Clock size={12} className="text-primary/60" />
-                                {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(appt.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    appointments.map((appt) => {
+                      const date = new Date(appt.startTime);
+                      return (
+                        <div 
+                          key={appt.id} 
+                          className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={cn(
+                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center border transition-all group-hover:border-primary/30",
+                              appt.status === 'confirmed' || appt.status === 'booked' 
+                                ? "bg-primary/5 text-primary border-primary/10 shadow-inner" 
+                                : "bg-muted text-muted-foreground border-border"
+                            )}>
+                              <span className="text-[10px] font-bold uppercase opacity-70">
+                                {date.toLocaleString('default', { month: 'short' })}
                               </span>
-                              {appt.status === 'completed' && (
-                                <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                  <CheckCircle2 size={12} /> Completed
+                              <span className="text-xl font-bold leading-none">
+                                {date.getDate()}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
+                              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock size={12} className="text-primary/60" />
+                                  {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                              )}
+                                {appt.status === 'completed' && (
+                                  <span className="flex items-center gap-1 text-emerald-500 font-medium">
+                                    <CheckCircle2 size={12} /> Completed
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-4">
+                            <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] font-bold px-2.5 py-0.5">
+                              {appt.status}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical size={16} />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] font-bold px-2.5 py-0.5">
-                            {appt.status}
-                          </Badge>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreVertical size={16} />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
                       <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
                       <div className="space-y-1">
                         <p className="font-medium text-muted-foreground">No upcoming events found</p>
-                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Click 'Refresh Events' or check your GHL sub-account for scheduled activities.</p>
+                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Click 'Refresh Events' to check your GHL sub-account for scheduled activities.</p>
                       </div>
                     </div>
                   )}

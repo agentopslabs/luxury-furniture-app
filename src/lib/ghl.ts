@@ -1,4 +1,8 @@
-import apiClient from './api-client';
+/**
+ * @fileOverview Types and interfaces for the LeadConnector GHL V2 API, and the ghl singleton.
+ */
+
+import * as actions from './ghl-actions';
 
 export interface GHLContact {
   id: string;
@@ -18,8 +22,8 @@ export interface GHLAppointment {
   contactId: string;
   calendarId?: string;
   title: string;
-  startTime: string | number;
-  endTime: string | number;
+  startTime: string;
+  endTime: string;
   status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed' | 'booked';
 }
 
@@ -59,209 +63,26 @@ export interface GHLOpportunity {
   };
 }
 
-class GHLService {
-  isMockMode(): boolean {
-    const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    return !token || token.includes('your_') || !locationId;
+/**
+ * The ghl singleton provides a unified interface for GHL V2 operations.
+ * It primarily wraps server actions to bypass CORS and secure credentials.
+ */
+export const ghl = {
+  ...actions,
+  isMockMode: () => false,
+  /**
+   * Helper to get a single contact by ID.
+   */
+  getContact: async (id: string): Promise<GHLContact | null> => {
+    const contacts = await actions.getContacts(100);
+    if (id === "mock_id" && contacts.length > 0) return contacts[0];
+    return contacts.find(c => c.id === id) || null;
+  },
+  /**
+   * Helper to get appointments for a specific contact.
+   */
+  getAppointments: async (contactId: string): Promise<GHLAppointment[]> => {
+    const all = await actions.getAllAppointments();
+    return all.filter(a => a.contactId === contactId);
   }
-
-  async getContacts(limit: number = 50): Promise<GHLContact[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/contacts', {
-        params: { locationId, limit }
-      });
-      return response.data.contacts || [];
-    } catch (error) {
-      return this.isMockMode() ? [this.getMockContact()] : [];
-    }
-  }
-
-  async searchContacts(query: string): Promise<GHLContact[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/contacts', {
-        params: { locationId, query, limit: 10 }
-      });
-      return response.data.contacts || [];
-    } catch (error) {
-      return this.isMockMode() ? [this.getMockContact()] : [];
-    }
-  }
-
-  async getContact(id: string): Promise<GHLContact> {
-    try {
-      const response = await apiClient.get(`/contacts/${id}`);
-      return response.data.contact;
-    } catch (error) {
-      if (id === 'mock_id' || this.isMockMode()) return this.getMockContact();
-      throw error;
-    }
-  }
-
-  async updateContact(id: string, data: Partial<GHLContact>): Promise<GHLContact> {
-    try {
-      const response = await apiClient.put(`/contacts/${id}`, data);
-      return response.data.contact;
-    } catch (error) {
-      console.error("GHL Update Contact Error:", error);
-      throw error;
-    }
-  }
-
-  async deleteContact(id: string): Promise<void> {
-    try {
-      await apiClient.delete(`/contacts/${id}`);
-    } catch (error) {
-      console.error("GHL Delete Contact Error:", error);
-      throw error;
-    }
-  }
-
-  async getAllAppointments(): Promise<GHLAppointment[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      // V2 Search Appointments requires timestamps in milliseconds
-      const now = Date.now();
-      const startTime = now - (30 * 24 * 60 * 60 * 1000);
-      const endTime = now + (90 * 24 * 60 * 60 * 1000);
-
-      const response = await apiClient.get('/appointments', {
-        params: { 
-          locationId, 
-          startTime, 
-          endTime,
-          limit: 100
-        }
-      });
-      
-      const appts = response.data.appointments || [];
-      return appts.sort((a: GHLAppointment, b: GHLAppointment) => 
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-      );
-    } catch (error) {
-      if (this.isMockMode()) return this.getMockAppointments();
-      return [];
-    }
-  }
-
-  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const now = Date.now();
-      const response = await apiClient.get('/appointments', {
-        params: { 
-          locationId, 
-          contactId,
-          startTime: now - (365 * 24 * 60 * 60 * 1000),
-          endTime: now + (365 * 24 * 60 * 60 * 1000)
-        }
-      });
-      return response.data.appointments || [];
-    } catch (error) {
-      return this.isMockMode() ? this.getMockAppointments() : [];
-    }
-  }
-
-  async getCalendars(): Promise<GHLCalendar[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/calendars', {
-        params: { locationId }
-      });
-      return response.data.calendars || [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  async getConversations(): Promise<GHLConversation[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/conversations/search', {
-        params: { locationId, limit: 50 }
-      });
-      return response.data.conversations || [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  async getPipelines(): Promise<GHLPipeline[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/opportunities/pipelines', {
-        params: { locationId }
-      });
-      return response.data.pipelines || [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  async getOpportunities(): Promise<GHLOpportunity[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/opportunities/search', {
-        params: { locationId, limit: 20 }
-      });
-      return response.data.opportunities || [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  private getMockContact(): GHLContact {
-    return {
-      id: 'mock_id',
-      locationId: 'mock_location',
-      firstName: 'Alex',
-      lastName: 'Sterling',
-      email: 'alex@sterling.io',
-      tags: ['v2-prototype', 'demo-mode']
-    };
-  }
-
-  private getMockAppointments(): GHLAppointment[] {
-    const now = Date.now();
-    return [
-      {
-        id: 'mock_appt_1',
-        locationId: 'mock_location',
-        contactId: 'mock_id',
-        title: 'Initial Enterprise Strategy Call',
-        startTime: now + 3600000,
-        endTime: now + 7200000,
-        status: 'confirmed'
-      },
-      {
-        id: 'mock_appt_2',
-        locationId: 'mock_location',
-        contactId: 'mock_id',
-        title: 'Security Compliance Review',
-        startTime: now + 86400000,
-        endTime: now + 90000000,
-        status: 'booked'
-      }
-    ];
-  }
-}
-
-export const ghl = new GHLService();
+};
