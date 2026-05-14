@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-auth",
+      "description": "Abstract technological background with gradients",
+      "imageUrl": "https://picsum.photos/seed/kore1/1200/800",
+      "imageHint": "abstract technology"
+    },
+    {
+      "id": "user-avatar",
+      "description": "Professional user avatar",
+      "imageUrl": "https://picsum.photos/seed/user42/200/200",
+      "imageHint": "portrait professional"
+    }
+  ]
+}
