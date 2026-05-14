@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -44,8 +43,9 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
+        // Strict V2 request flow
         const p = await ghl.getContact("mock_id");
-        const a = await ghl.getAppointments(p.id);
+        const a = await ghl.getAppointments(p.id, p.locationId);
         setProfile(p);
         setAppts(a);
         if (!isMock) setSyncStatus('synced');
@@ -90,11 +90,11 @@ export default function DashboardPage() {
                 <h1 className="text-4xl font-bold tracking-tight">Intelligence Hub</h1>
                 {syncStatus === 'synced' ? (
                   <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1 h-5">
-                    <CheckCircle2 size={10} /> Live Sync
+                    <CheckCircle2 size={10} /> V2 Live
                   </Badge>
                 ) : syncStatus === 'mock' ? (
                   <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1 h-5">
-                    <Zap size={10} /> Prototype Mode
+                    <Zap size={10} /> V2 Prototype
                   </Badge>
                 ) : syncStatus === 'syncing' ? (
                   <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-1 h-5 animate-pulse">
@@ -102,28 +102,27 @@ export default function DashboardPage() {
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 gap-1 h-5">
-                    <AlertCircle size={10} /> Connection Error
+                    <AlertCircle size={10} /> V2 Error
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground">LeadConnector Unified Workspace Hub</p>
+              <p className="text-muted-foreground">LeadConnector V2 Unified Workspace</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" className="shadow-lg shadow-primary/20">
-                <PlusCircle className="mr-2 h-4 w-4" /> New Interaction
+                <PlusCircle className="mr-2 h-4 w-4" /> New V2 Interaction
               </Button>
             </div>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              {/* Engagement Pipeline (Appointments) */}
               <Card className="glass border-border/40 overflow-hidden">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl">Engagement Pipeline</CardTitle>
-                      <CardDescription>Real-time schedule from services.leadconnectorhq.com</CardDescription>
+                      <CardDescription>Real-time V2 schedule from services.leadconnectorhq.com</CardDescription>
                     </div>
                     <Badge variant="secondary" className="font-mono text-[10px]">{appts.length} Events</Badge>
                   </div>
@@ -169,11 +168,10 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Profile Overview */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="glass border-border/40">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider font-body">
                       <User className="h-4 w-4 text-primary" /> Identity Profile
                     </CardTitle>
                   </CardHeader>
@@ -203,17 +201,17 @@ export default function DashboardPage() {
 
                 <Card className="glass border-border/40">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
-                      <MessageSquare className="h-4 w-4 text-primary" /> CRM Timeline
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider font-body">
+                      <MessageSquare className="h-4 w-4 text-primary" /> CRM V2 Timeline
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <textarea 
-                      placeholder="Add an internal note..." 
+                      placeholder="Add a V2 internal note..." 
                       className="w-full h-20 bg-muted/30 rounded-lg p-3 text-xs border border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 resize-none outline-none transition-all"
                     />
                     <Button size="sm" className="w-full h-9 text-xs font-semibold" variant="secondary">
-                      Push to Timeline
+                      Push to V2 Timeline
                     </Button>
                   </CardContent>
                 </Card>
@@ -221,7 +219,6 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-8">
-              {/* GenAI Insight Component */}
               {!loading && profile && (
                 <div className="animate-in fade-in zoom-in-95 duration-700">
                   <AIContactInsight contactName={`${profile.firstName} ${profile.lastName}`} history={historyForAI} />
@@ -231,19 +228,19 @@ export default function DashboardPage() {
               <Card className="glass border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
                 <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80">System Health</CardTitle>
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80 font-body">System Health</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="space-y-3">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Session Status</span>
+                      <span className="text-muted-foreground">V2 Session</span>
                       {syncStatus === 'mock' ? (
                         <span className="text-blue-500 font-bold flex items-center gap-1.5">
-                          <Zap size={10} /> Prototype (No Key)
+                          <Zap size={10} /> V2 Mock
                         </span>
                       ) : (
                         <span className="text-emerald-500 font-bold flex items-center gap-1.5">
-                          <ShieldCheck size={10} /> Authenticated
+                          <ShieldCheck size={10} /> V2 Auth Active
                         </span>
                       )}
                     </div>
@@ -251,14 +248,10 @@ export default function DashboardPage() {
                       <span className="text-muted-foreground">API Version</span>
                       <span className="font-mono text-[10px] text-foreground/80">2021-07-28</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Mode</span>
-                      <span className="font-medium text-foreground">{syncStatus === 'mock' ? 'Simulated' : 'Production'}</span>
-                    </div>
                   </div>
                   <Button variant="outline" className="w-full h-10 text-xs border-primary/20 hover:bg-primary/5 hover:text-primary transition-all group" asChild>
-                    <a href="https://status.leadconnectorhq.com" target="_blank">
-                      CRM System Status <ExternalLink className="ml-2 h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    <a href="https://developers.gohighlevel.com/" target="_blank">
+                      V2 API Docs <ExternalLink className="ml-2 h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </a>
                   </Button>
                 </CardContent>

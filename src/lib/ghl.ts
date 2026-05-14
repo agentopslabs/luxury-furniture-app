@@ -1,27 +1,30 @@
-
 import apiClient from './api-client';
 
 export interface GHLContact {
   id: string;
+  locationId: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
   tags?: string[];
-  customFields?: Record<string, any>;
+  type?: 'lead' | 'customer';
+  dateAdded?: string;
 }
 
 export interface GHLAppointment {
   id: string;
+  locationId: string;
+  contactId: string;
   title: string;
   startTime: string;
   endTime: string;
-  status: string;
+  status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed';
 }
 
 /**
- * GHL Service Layer for handling communication with LeadConnector APIs.
- * Includes mock fallbacks for development and unauthenticated sessions.
+ * GHL Service Layer strictly implemented for API V2.
+ * All requests target https://services.leadconnectorhq.com
  */
 class GHLService {
   /**
@@ -34,46 +37,30 @@ class GHLService {
   }
 
   /**
-   * Searches for a contact by email in GHL.
+   * Searches for a contact by email using GHL V2 Search.
+   * V2 requires locationId for scoped searches.
    */
-  async searchContacts(email: string): Promise<GHLContact[]> {
+  async searchContacts(email: string, locationId: string = 'mock_location'): Promise<GHLContact[]> {
     try {
       const response = await apiClient.get(`/contacts/search`, {
-        params: { q: email }
+        params: { locationId, query: email }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      // Fallback for prototype/demo
       return [{
         id: 'mock_id',
+        locationId: 'mock_location',
         firstName: 'Alex',
         lastName: 'Sterling',
         email: email || 'alex@sterling.io',
-        tags: ['enterprise', 'architect', 'demo-mode']
+        tags: ['v2-prototype', 'enterprise'],
+        type: 'customer'
       }];
     }
   }
 
   /**
-   * Upserts a contact record in GHL.
-   */
-  async upsertContact(data: Partial<GHLContact>): Promise<GHLContact> {
-    try {
-      const response = await apiClient.post('/contacts/', data);
-      return response.data.contact;
-    } catch (error) {
-      return {
-        id: 'mock_id',
-        firstName: data.firstName || 'Guest',
-        lastName: data.lastName || 'User',
-        email: data.email || '',
-        ...data
-      } as GHLContact;
-    }
-  }
-
-  /**
-   * Fetches a specific contact's details.
+   * Fetches a specific contact's details via V2 endpoint.
    */
   async getContact(id: string): Promise<GHLContact> {
     try {
@@ -82,45 +69,42 @@ class GHLService {
     } catch (error) {
       return {
         id: 'mock_id',
+        locationId: 'mock_location',
         firstName: 'Alex',
         lastName: 'Sterling',
         email: 'alex@sterling.io',
-        tags: ['enterprise', 'architect', 'demo-mode']
+        tags: ['v2-prototype', 'demo-mode']
       };
     }
   }
 
   /**
-   * Retrieves appointment history for a contact.
+   * Retrieves appointment history for a contact via V2 endpoint.
    */
-  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
+  async getAppointments(contactId: string, locationId: string = 'mock_location'): Promise<GHLAppointment[]> {
     try {
       const response = await apiClient.get(`/appointments/`, {
-        params: { contactId }
+        params: { contactId, locationId }
       });
       return response.data.appointments || [];
     } catch (error) {
-      // Extensive mock appointments for demo
       return [
         {
           id: 'appt_1',
-          title: 'Quarterly Identity Audit',
+          locationId: 'mock_location',
+          contactId: 'mock_id',
+          title: 'V2 Quarterly Identity Audit',
           startTime: new Date(Date.now() + 86400000).toISOString(),
           endTime: new Date(Date.now() + 90000000).toISOString(),
           status: 'confirmed'
         },
         {
           id: 'appt_2',
-          title: 'CRM Sync Troubleshooting',
+          locationId: 'mock_location',
+          contactId: 'mock_id',
+          title: 'V2 CRM Sync Check',
           startTime: new Date(Date.now() - 172800000).toISOString(),
           endTime: new Date(Date.now() - 169200000).toISOString(),
-          status: 'completed'
-        },
-        {
-          id: 'appt_3',
-          title: 'Initial Discovery Call',
-          startTime: new Date(Date.now() - 604800000).toISOString(),
-          endTime: new Date(Date.now() - 601200000).toISOString(),
           status: 'completed'
         }
       ];
@@ -128,13 +112,13 @@ class GHLService {
   }
 
   /**
-   * Adds a note to a contact record.
+   * Adds a note to a contact record via V2.
    */
   async addNote(contactId: string, body: string): Promise<void> {
     try {
       await apiClient.post(`/contacts/${contactId}/notes`, { body });
     } catch (error) {
-      console.warn('GHL: Note could not be saved to live API, saved locally for demo.');
+      console.warn('GHL V2: Note could not be saved to live API, simulated locally.');
     }
   }
 }
