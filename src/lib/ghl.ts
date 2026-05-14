@@ -72,12 +72,11 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts', {
+      const response = await apiClient.get('/contacts/', {
         params: { locationId, limit }
       });
       return response.data.contacts || [];
     } catch (error) {
-      if (this.isMockMode()) return this.getMockContacts("");
       return [];
     }
   }
@@ -87,12 +86,11 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts', {
+      const response = await apiClient.get('/contacts/', {
         params: { locationId, query, limit: 10 }
       });
       return response.data.contacts || [];
     } catch (error) {
-      if (this.isMockMode()) return this.getMockContacts(query);
       return [];
     }
   }
@@ -102,7 +100,7 @@ class GHLService {
       const response = await apiClient.get(`/contacts/${id}`);
       return response.data.contact;
     } catch (error) {
-      if (this.isMockMode() || id === 'mock_id') return this.getMockContact();
+      if (id === 'mock_id') return this.getMockContact();
       throw error;
     }
   }
@@ -113,11 +111,10 @@ class GHLService {
 
     try {
       const now = new Date();
-      // V2 expects ISO strings for filtering
-      const startTime = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString(); // 30 days ago
-      const endTime = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)).toISOString();   // 90 days ahead
+      const startTime = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+      const endTime = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)).toISOString();
 
-      const response = await apiClient.get('/appointments', {
+      const response = await apiClient.get('/appointments/', {
         params: { 
           locationId, 
           startTime, 
@@ -126,28 +123,10 @@ class GHLService {
         }
       });
       
-      const appointments = response.data.appointments || [];
-      // Sort upcoming first
-      return appointments.sort((a: GHLAppointment, b: GHLAppointment) => 
+      return (response.data.appointments || []).sort((a: GHLAppointment, b: GHLAppointment) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
     } catch (error) {
-      if (this.isMockMode()) return this.getMockAppointments();
-      return [];
-    }
-  }
-
-  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId) return [];
-
-    try {
-      const response = await apiClient.get('/appointments', {
-        params: { locationId, contactId }
-      });
-      return response.data.appointments || [];
-    } catch (error) {
-      if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
   }
@@ -157,7 +136,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/calendars', {
+      const response = await apiClient.get('/calendars/', {
         params: { locationId }
       });
       return response.data.calendars || [];
@@ -171,8 +150,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations', {
-        params: { locationId, limit: 20 }
+      const response = await apiClient.get('/conversations/', {
+        params: { locationId, limit: 50 }
       });
       return response.data.conversations || [];
     } catch (error) {
@@ -199,26 +178,13 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities', {
+      const response = await apiClient.get('/opportunities/', {
         params: { locationId, limit: 20 }
       });
       return response.data.opportunities || [];
     } catch (error) {
       return [];
     }
-  }
-
-  private getMockContacts(email: string): GHLContact[] {
-    return [{
-      id: 'mock_id',
-      locationId: 'mock_location',
-      firstName: 'Alex',
-      lastName: 'Sterling',
-      email: email || 'alex@sterling.io',
-      tags: ['v2-prototype'],
-      type: 'customer',
-      dateAdded: new Date().toISOString()
-    }];
   }
 
   private getMockContact(): GHLContact {
@@ -230,20 +196,6 @@ class GHLService {
       email: 'alex@sterling.io',
       tags: ['v2-prototype', 'demo-mode']
     };
-  }
-
-  private getMockAppointments(): GHLAppointment[] {
-    return [
-      {
-        id: 'appt_1',
-        locationId: 'mock_location',
-        contactId: 'mock_id',
-        title: 'V2 Strategic Planning (Mock)',
-        startTime: new Date(Date.now() + 86400000).toISOString(),
-        endTime: new Date(Date.now() + 90000000).toISOString(),
-        status: 'confirmed'
-      }
-    ];
   }
 }
 
