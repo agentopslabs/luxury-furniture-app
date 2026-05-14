@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -29,7 +30,6 @@ import {
   Pencil,
   Loader2,
   Filter,
-  ArrowUpDown,
   TrendingUp,
   Activity
 } from "lucide-react";
@@ -77,13 +77,14 @@ export default function OpportunitiesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [selectedOpp, setSelectedOpp] = useState<GHLOpportunity | null>(null);
+  
   const [formData, setFormData] = useState({
     name: "",
     monetaryValue: 0,
     pipelineId: "",
     pipelineStageId: "",
     contactId: "",
-    status: "open" as any
+    status: "open" as const
   });
 
   const { toast } = useToast();
@@ -105,14 +106,14 @@ export default function OpportunitiesPage() {
       if (isManual) {
         toast({
           title: "Registry Synchronized",
-          description: "V2 Intelligence reports updated deal flow records.",
+          description: "Live GHL V2 deal flow records refreshed.",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "Core communication with LeadConnector V2 was severed.",
+        description: "Failed to fetch records from LeadConnector V2.",
       });
     } finally {
       setLoading(false);
@@ -126,14 +127,27 @@ export default function OpportunitiesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name || !formData.pipelineId || !formData.pipelineStageId) {
+      toast({ variant: "destructive", title: "Missing Data", description: "Please complete all required identity fields." });
+      return;
+    }
+
     setIsActionLoading(true);
     try {
-      await createOpportunity(formData);
+      const result = await createOpportunity(formData);
       setIsCreateOpen(false);
-      toast({ title: "Deal Created", description: "Opportunity injected into GHL Cloud." });
+      setFormData({ name: "", monetaryValue: 0, pipelineId: "", pipelineStageId: "", contactId: "", status: "open" });
+      toast({ 
+        title: "Opportunity Created", 
+        description: `${result.name} has been synchronized with GHL Cloud.`,
+      });
       fetchData(true);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Operation Error", description: "Inbound record failed to synchronize." });
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Sync Failure", 
+        description: error.message || "Could not inject record into GHL backend." 
+      });
     } finally {
       setIsActionLoading(false);
     }
@@ -146,10 +160,10 @@ export default function OpportunitiesPage() {
     try {
       await updateOpportunity(selectedOpp.id, formData);
       setIsEditOpen(false);
-      toast({ title: "Registry Updated", description: "V2 Metadata successfully overwritten." });
+      toast({ title: "Record Overwritten", description: "V2 Metadata successfully synchronized." });
       fetchData(true);
     } catch (error) {
-      toast({ variant: "destructive", title: "Mutation Failed", description: "Cloud update command was rejected." });
+      toast({ variant: "destructive", title: "Mutation Failed", description: "GHL rejected the update command." });
     } finally {
       setIsActionLoading(false);
     }
@@ -159,7 +173,7 @@ export default function OpportunitiesPage() {
     try {
       await deleteOpportunity(id);
       setOpportunities(prev => prev.filter(o => o.id !== id));
-      toast({ title: "Record Purged", description: "Opportunity permanently removed from location repository." });
+      toast({ title: "Deal Purged", description: "Opportunity permanently removed from GHL cloud." });
     } catch (error) {
       toast({ variant: "destructive", title: "Erasure Error", description: "Could not execute DELETE on GHL server." });
     }
@@ -169,9 +183,9 @@ export default function OpportunitiesPage() {
     try {
       await updateOpportunityStatus(id, status);
       setOpportunities(prev => prev.map(o => o.id === id ? { ...o, status: status as any } : o));
-      toast({ title: "Status Injected", description: `Deal stage successfully transitioned to ${status}.` });
+      toast({ title: "Status Synchronized", description: `Deal transitioned to ${status.toUpperCase()}.` });
     } catch (error) {
-      toast({ variant: "destructive", title: "Transition Error", description: "Status override command failed." });
+      toast({ variant: "destructive", title: "Transition Failed", description: "Status override command rejected." });
     }
   };
 
@@ -184,17 +198,17 @@ export default function OpportunitiesPage() {
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
       <main className="flex-1 p-8 overflow-y-auto no-scrollbar relative">
-        <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="max-w-6xl mx-auto space-y-10 relative z-10">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in duration-500">
             <div className="space-y-2">
               <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40">
                 Opportunities
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 <Target size={16} className="text-primary" />
-                Live deal lifecycle management • V2 Sync
+                V2 Cloud Registry • Live Pipeline Sync
               </p>
             </div>
             <div className="flex gap-3">
@@ -206,11 +220,25 @@ export default function OpportunitiesPage() {
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                Sync Registry
+                {refreshing ? "Syncing..." : "Sync Registry"}
               </Button>
+              
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all" onClick={() => setFormData({ name: "", monetaryValue: 0, pipelineId: pipelines[0]?.id || "", pipelineStageId: pipelines[0]?.stages[0]?.id || "", contactId: "", status: "open" })}>
+                  <Button 
+                    size="lg" 
+                    className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all active:scale-95"
+                    onClick={() => {
+                      setFormData({ 
+                        name: "", 
+                        monetaryValue: 0, 
+                        pipelineId: pipelines[0]?.id || "", 
+                        pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
+                        contactId: "", 
+                        status: "open" 
+                      });
+                    }}
+                  >
                     <Plus className="mr-2 h-5 w-5" /> New Opportunity
                   </Button>
                 </DialogTrigger>
@@ -218,46 +246,96 @@ export default function OpportunitiesPage() {
                   <form onSubmit={handleCreate}>
                     <DialogHeader className="mb-8">
                       <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">Infect a new deal record into the GHL V2 cloud registry.</DialogDescription>
+                      <DialogDescription className="text-muted-foreground">Inbound deal injection for LeadConnector V2.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-6">
                       <div className="space-y-2">
-                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Identity</Label>
-                        <Input className="glass h-12 rounded-xl focus:ring-primary" placeholder="Enterprise Contract Alpha" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Name</Label>
+                        <Input 
+                          className="glass h-12 rounded-xl focus:ring-primary" 
+                          placeholder="e.g. Enterprise License Alpha" 
+                          value={formData.name} 
+                          onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                          required 
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Monetary Value ($)</Label>
-                          <Input className="glass h-12 rounded-xl" type="number" placeholder="5000" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
+                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Value ($)</Label>
+                          <Input 
+                            className="glass h-12 rounded-xl" 
+                            type="number" 
+                            placeholder="0" 
+                            value={formData.monetaryValue} 
+                            onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Target Contact</Label>
-                          <Select onValueChange={val => setFormData({ ...formData, contactId: val })}>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
+                          <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
                             <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                               <SelectValue placeholder="Select Contact" />
                             </SelectTrigger>
                             <SelectContent className="glass border-white/10 rounded-xl">
-                              {contacts.map(c => <SelectItem key={c.id} value={c.id} className="rounded-lg">{c.firstName} {c.lastName}</SelectItem>)}
+                              {contacts.map(c => (
+                                <SelectItem key={c.id} value={c.id} className="rounded-lg">
+                                  {c.firstName} {c.lastName}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Pipeline</Label>
-                        <Select value={formData.pipelineId} onValueChange={val => setFormData({ ...formData, pipelineId: val, pipelineStageId: pipelines.find(p => p.id === val)?.stages[0]?.id || "" })}>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Active Pipeline</Label>
+                        <Select 
+                          value={formData.pipelineId} 
+                          onValueChange={val => {
+                            const pipe = pipelines.find(p => p.id === val);
+                            setFormData({ 
+                              ...formData, 
+                              pipelineId: val, 
+                              pipelineStageId: pipe?.stages[0]?.id || "" 
+                            });
+                          }}
+                        >
                           <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                             <SelectValue placeholder="Select Pipeline" />
                           </SelectTrigger>
                           <SelectContent className="glass border-white/10 rounded-xl">
-                            {pipelines.map(p => <SelectItem key={p.id} value={p.id} className="rounded-lg">{p.name}</SelectItem>)}
+                            {pipelines.map(p => (
+                              <SelectItem key={p.id} value={p.id} className="rounded-lg">
+                                {p.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
+                      {formData.pipelineId && (
+                        <div className="space-y-2">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
+                          <Select 
+                            value={formData.pipelineStageId} 
+                            onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
+                          >
+                            <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                              <SelectValue placeholder="Select Stage" />
+                            </SelectTrigger>
+                            <SelectContent className="glass border-white/10 rounded-xl">
+                              {pipelines.find(p => p.id === formData.pipelineId)?.stages.map(s => (
+                                <SelectItem key={s.id} value={s.id} className="rounded-lg">
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                     <DialogFooter className="mt-10">
                       <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
                         {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-5 w-5" />}
-                        Initialize Record
+                        Commit Record
                       </Button>
                     </DialogFooter>
                   </form>
@@ -266,27 +344,25 @@ export default function OpportunitiesPage() {
             </div>
           </header>
 
-          <Card className="glass border-border/40 overflow-hidden">
+          <Card className="glass border-border/40 overflow-hidden group">
+            <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
             <CardHeader className="p-8 border-b border-white/5">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                   <CardTitle className="text-2xl font-bold flex items-center gap-3">
                     <Activity className="h-6 w-6 text-primary" /> 
-                    Live Deal Inventory
+                    Live Deal Flow
                   </CardTitle>
-                  <CardDescription>Managed Registry ({filtered.length} Active Records)</CardDescription>
+                  <CardDescription>Records detected ({filtered.length} Active)</CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <div className="relative w-full md:w-80">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-                    <Input 
-                      placeholder="Search deal registry..." 
-                      className="glass pl-11 h-11 rounded-xl text-sm border-white/5 focus:ring-primary transition-all"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <Button variant="outline" size="icon" className="glass h-11 w-11 rounded-xl border-white/5"><Filter size={18} /></Button>
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                  <Input 
+                    placeholder="Search deal registry..." 
+                    className="glass pl-11 h-11 rounded-xl text-sm border-white/5 focus:ring-primary transition-all"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
             </CardHeader>
@@ -313,7 +389,7 @@ export default function OpportunitiesPage() {
                         <div className="space-y-1">
                           <p className="font-bold text-lg group-hover:text-primary transition-colors">{opp.name}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
-                            <span className="flex items-center gap-1.5"><User size={14} className="opacity-50" /> {opp.contact?.name || 'Contact Missing'}</span>
+                            <span className="flex items-center gap-1.5"><User size={14} className="opacity-50" /> {opp.contact?.name || 'Lead Anonymous'}</span>
                             <span className="w-1 h-1 rounded-full bg-white/20" />
                             <span className="flex items-center gap-1 text-emerald-400 font-bold font-mono tracking-tighter">
                               <DollarSign size={14} />
@@ -338,7 +414,7 @@ export default function OpportunitiesPage() {
                             <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10"><MoreVertical size={20} /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56 glass border-white/10 rounded-2xl p-2 animate-in slide-in-from-right-2">
-                            <DropdownMenuLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest opacity-50">Operation Hub</DropdownMenuLabel>
+                            <DropdownMenuLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest opacity-50">Operations</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
                             <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-primary/10 cursor-pointer" onClick={() => {
                               setSelectedOpp(opp);
@@ -355,10 +431,10 @@ export default function OpportunitiesPage() {
                               <Pencil className="mr-3 h-4 w-4 text-primary" /> Modify record
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-emerald-500/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'won')}><CheckCircle className="mr-3 h-4 w-4 text-emerald-400" /> Mark Victory</DropdownMenuItem>
-                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-destructive/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'lost')}><XCircle className="mr-3 h-4 w-4 text-destructive" /> Mark Defeat</DropdownMenuItem>
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-emerald-500/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'won')}><CheckCircle className="mr-3 h-4 w-4 text-emerald-400" /> Mark Won</DropdownMenuItem>
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-destructive/10 cursor-pointer" onClick={() => handleStatusUpdate(opp.id, 'lost')}><XCircle className="mr-3 h-4 w-4 text-destructive" /> Mark Lost</DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5 mx-2" />
-                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 text-destructive focus:bg-destructive/10 cursor-pointer" onClick={() => handleDelete(opp.id)}><Trash2 className="mr-3 h-4 w-4" /> Purge deal</DropdownMenuItem>
+                            <DropdownMenuItem className="rounded-xl px-4 py-2.5 text-destructive focus:bg-destructive/10 cursor-pointer" onClick={() => handleDelete(opp.id)}><Trash2 className="mr-3 h-4 w-4" /> Purge from cloud</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -366,13 +442,13 @@ export default function OpportunitiesPage() {
                   ))}
                 </div>
               ) : (
-                <div className="py-40 text-center space-y-6 animate-in fade-in duration-1000">
-                  <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:glow-primary transition-all">
-                    <Target className="h-10 w-10 text-muted-foreground opacity-20" />
+                <div className="py-40 text-center space-y-6">
+                  <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4 opacity-20">
+                    <Target className="h-10 w-10" />
                   </div>
                   <div className="space-y-2">
-                    <p className="text-2xl font-bold text-muted-foreground">Deal Reservoir Empty</p>
-                    <p className="text-sm text-muted-foreground/60 max-w-[320px] mx-auto leading-relaxed font-medium">No opportunities were found in the current V2 synchronicity window. Initialize a new deal flow to start tracking.</p>
+                    <p className="text-2xl font-bold text-muted-foreground">Reservoir Empty</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-[320px] mx-auto leading-relaxed font-medium">No active opportunities were detected in the GHL sub-account.</p>
                   </div>
                 </div>
               )}
@@ -381,13 +457,12 @@ export default function OpportunitiesPage() {
         </div>
       </main>
 
-      {/* Futuristic Edit Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleUpdate}>
             <DialogHeader className="mb-8">
-              <DialogTitle className="text-2xl font-bold">Modify Opportunity</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Override deal metadata in the GHL V2 repository.</DialogDescription>
+              <DialogTitle className="text-2xl font-bold">Modify Metadata</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Override opportunity in the GHL V2 repository.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="space-y-2">
@@ -395,7 +470,7 @@ export default function OpportunitiesPage() {
                 <Input className="glass h-12 rounded-xl" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Value Alignment ($)</Label>
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Alignment ($)</Label>
                 <Input className="glass h-12 rounded-xl" type="number" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">
@@ -403,18 +478,18 @@ export default function OpportunitiesPage() {
                 <Select value={formData.status} onValueChange={val => setFormData({ ...formData, status: val as any })}>
                   <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary"><SelectValue /></SelectTrigger>
                   <SelectContent className="glass border-white/10 rounded-xl">
-                    <SelectItem value="open" className="rounded-lg">Open Deal</SelectItem>
-                    <SelectItem value="won" className="rounded-lg">Mark Won</SelectItem>
-                    <SelectItem value="lost" className="rounded-lg">Mark Lost</SelectItem>
+                    <SelectItem value="open" className="rounded-lg">Open</SelectItem>
+                    <SelectItem value="won" className="rounded-lg">Won</SelectItem>
+                    <SelectItem value="lost" className="rounded-lg">Lost</SelectItem>
                     <SelectItem value="abandoned" className="rounded-lg">Abandoned</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter className="mt-10">
-              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold transition-all active:scale-95" disabled={isActionLoading}>
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
                 {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TrendingUp className="mr-2 h-5 w-5" />}
-                Commit Synchronization
+                Sync Overwrite
               </Button>
             </DialogFooter>
           </form>
