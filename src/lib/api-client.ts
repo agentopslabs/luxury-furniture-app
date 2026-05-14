@@ -5,6 +5,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 
 /**
  * Production-ready Axios client strictly for LeadConnector API V2.
+ * Configured for client-side requests to services.leadconnectorhq.com.
  */
 const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_GHL_API_BASE_URL || 'https://services.leadconnectorhq.com',
@@ -17,7 +18,10 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
+    // Priority: Explicit token > localStorage > env
+    const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
+    const storageToken = typeof window !== 'undefined' ? localStorage.getItem('ghl_access_token') : null;
+    const token = storageToken || envToken;
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;

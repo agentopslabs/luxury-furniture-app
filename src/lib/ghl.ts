@@ -62,6 +62,7 @@ export interface GHLOpportunity {
 
 /**
  * GHL Service Layer strictly implemented for API V2.
+ * Endpoints optimized for services.leadconnectorhq.com.
  */
 class GHLService {
   isMockMode(): boolean {
@@ -74,8 +75,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts/', {
-        params: { locationId, limit, _t: Date.now() }
+      const response = await apiClient.get('/contacts', {
+        params: { locationId, limit }
       });
       return response.data.contacts || [];
     } catch (error: any) {
@@ -89,8 +90,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts/', {
-        params: { locationId, query, _t: Date.now() }
+      const response = await apiClient.get('/contacts', {
+        params: { locationId, query }
       });
       return response.data.contacts || [];
     } catch (error: any) {
@@ -101,9 +102,7 @@ class GHLService {
 
   async getContact(id: string): Promise<GHLContact> {
     try {
-      const response = await apiClient.get(`/contacts/${id}`, {
-        params: { _t: Date.now() }
-      });
+      const response = await apiClient.get(`/contacts/${id}`);
       return response.data.contact;
     } catch (error) {
       if (this.isMockMode() || id === 'mock_id') return this.getMockContact();
@@ -121,13 +120,12 @@ class GHLService {
       const startTime = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
       const endTime = new Date(now.getTime() + (120 * 24 * 60 * 60 * 1000)).toISOString();
 
-      const response = await apiClient.get('/appointments/', {
+      const response = await apiClient.get('/appointments', {
         params: { 
           locationId, 
           startTime, 
           endTime,
-          limit: 100,
-          _t: Date.now()
+          limit: 100
         }
       });
       
@@ -136,7 +134,6 @@ class GHLService {
         new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       );
     } catch (error: any) {
-      // Return mock data if in mock mode or error occurs
       if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
@@ -150,8 +147,8 @@ class GHLService {
     }
     
     try {
-      const response = await apiClient.get('/appointments/', {
-        params: { contactId, locationId, _t: Date.now() }
+      const response = await apiClient.get('/appointments', {
+        params: { contactId, locationId }
       });
       return response.data.appointments || [];
     } catch (error) {
@@ -164,8 +161,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/calendars/', {
-        params: { locationId, _t: Date.now() }
+      const response = await apiClient.get('/calendars', {
+        params: { locationId }
       });
       return response.data.calendars || [];
     } catch (error) {
@@ -178,8 +175,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations/', {
-        params: { locationId, limit, _t: Date.now() }
+      const response = await apiClient.get('/conversations', {
+        params: { locationId, limit }
       });
       return response.data.conversations || [];
     } catch (error) {
@@ -193,7 +190,7 @@ class GHLService {
 
     try {
       const response = await apiClient.get('/opportunities/pipelines', {
-        params: { locationId, _t: Date.now() }
+        params: { locationId }
       });
       return response.data.pipelines || [];
     } catch (error) {
@@ -206,8 +203,8 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities/', {
-        params: { locationId, limit, _t: Date.now() }
+      const response = await apiClient.get('/opportunities', {
+        params: { locationId, limit }
       });
       return response.data.opportunities || [];
     } catch (error) {
