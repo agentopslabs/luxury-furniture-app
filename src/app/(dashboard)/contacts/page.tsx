@@ -51,10 +51,12 @@ export default function ContactsPage() {
     fetchContacts();
   }, []);
 
-  const filteredContacts = contacts.filter(c => 
-    `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = contacts.filter(c => {
+    const fullName = `${c.firstName || ""} ${c.lastName || ""}`.toLowerCase();
+    const email = (c.email || "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return fullName.includes(query) || email.includes(query);
+  });
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -112,10 +114,10 @@ export default function ContactsPage() {
                       <TableRow key={contact.id} className="group cursor-pointer">
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                              {contact.firstName[0]}{contact.lastName[0]}
+                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold uppercase">
+                              {contact.firstName?.[0] || contact.email?.[0] || '?'}{contact.lastName?.[0] || ''}
                             </div>
-                            <span>{contact.firstName} {contact.lastName}</span>
+                            <span>{contact.firstName || ''} {contact.lastName || ''}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">

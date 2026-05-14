@@ -44,8 +44,6 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
-        // In V2 Live, we might search for the user by email first or use a known ID
-        // For the demo, we search for the default contact associated with this location/token
         const contacts = await ghl.searchContacts("");
         const p = contacts.length > 0 ? contacts[0] : await ghl.getContact("mock_id");
         
@@ -191,11 +189,11 @@ export default function DashboardPage() {
                     ) : (
                       <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold text-xl border border-primary/10">
-                            {profile?.firstName?.[0] || 'U'}{profile?.lastName?.[0] || 'S'}
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary/20 to-accent/20 flex items-center justify-center text-primary font-bold text-xl border border-primary/10 uppercase">
+                            {profile?.firstName?.[0] || profile?.email?.[0] || '?'}{profile?.lastName?.[0] || ''}
                           </div>
                           <div>
-                            <p className="font-bold text-lg">{profile?.firstName} {profile?.lastName}</p>
+                            <p className="font-bold text-lg">{profile?.firstName || ''} {profile?.lastName || ''}</p>
                             <p className="text-xs text-muted-foreground font-mono">{profile?.email}</p>
                           </div>
                         </div>
@@ -231,7 +229,7 @@ export default function DashboardPage() {
             <div className="space-y-8">
               {!loading && profile && (
                 <div className="animate-in fade-in zoom-in-95 duration-700">
-                  <AIContactInsight contactName={`${profile.firstName} ${profile.lastName}`} history={historyForAI} />
+                  <AIContactInsight contactName={`${profile.firstName || ''} ${profile.lastName || ''}`} history={historyForAI} />
                 </div>
               )}
               
