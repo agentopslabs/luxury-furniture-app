@@ -70,7 +70,9 @@ class GHLService {
    */
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-    return !token || token === 'pit-fde7a892-d292-4304-8a9d-a9ffe205ec78' ? false : !token;
+    // If no token is provided or it's a known placeholder, we might be in mock mode
+    // However, if a Location ID is provided, we should prefer live.
+    return !token || token.includes('your_') || token.includes('mock');
   }
 
   /**
@@ -126,6 +128,7 @@ class GHLService {
 
   /**
    * Retrieves all appointments for the location.
+   * Uses GHL V2 startTime/endTime parameters (Unix timestamps in ms).
    */
   async getAllAppointments(): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
@@ -133,28 +136,26 @@ class GHLService {
 
     try {
       const now = new Date();
-      // Range: 90 days back, 120 days forward to capture all relevant events
-      const startDate = now.getTime() - (90 * 24 * 60 * 60 * 1000);
-      const endDate = now.getTime() + (120 * 24 * 60 * 60 * 1000);
+      // Range: 90 days back, 120 days forward
+      const startTimestamp = now.getTime() - (90 * 24 * 60 * 60 * 1000);
+      const endTimestamp = now.getTime() + (120 * 24 * 60 * 60 * 1000);
 
       const response = await apiClient.get('/appointments/', {
         params: { 
           locationId, 
-          startDate, 
-          endDate,
-          includeNotes: true,
-          _t: Date.now() // Cache buster
+          startTime: startTimestamp, 
+          endTime: endTimestamp,
+          limit: 100,
+          _t: Date.now()
         }
       });
       
       const appointments = response.data.appointments || [];
-      // Sort by start time descending
       return appointments.sort((a: any, b: any) => 
         new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       );
     } catch (error) {
       if (this.isMockMode()) return this.getMockAppointments();
-      console.error("GHL V2 getAllAppointments Error:", error);
       return [];
     }
   }

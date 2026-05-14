@@ -41,6 +41,7 @@ export default function CalendarPage() {
     else setLoading(true);
 
     try {
+      // Parallel fetch for calendars and appointments
       const [apptsData, calsData] = await Promise.all([
         ghl.getAllAppointments(),
         ghl.getCalendars()
@@ -56,11 +57,10 @@ export default function CalendarPage() {
         });
       }
     } catch (error) {
-      console.error("Failed to fetch calendar data:", error);
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "The GHL API could not be reached. Please check your token.",
+        description: "The GHL API could not be reached. Please check your credentials.",
       });
     } finally {
       setLoading(false);
@@ -137,7 +137,7 @@ export default function CalendarPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                      <CardDescription>Real-time data from services.leadconnectorhq.com</CardDescription>
+                      <CardDescription>Real-time data from GHL V2 API</CardDescription>
                     </div>
                     <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 border-primary/20">
                       {appointments.length} Total
