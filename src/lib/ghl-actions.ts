@@ -66,10 +66,9 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
-    // GHL V2 requires numeric timestamps (ms) for filters
     const now = new Date();
-    const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); // Past 30 days
-    const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  // Next 90 days
+    const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
+    const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  
     
     url.searchParams.append('startTime', startTime.toString());
     url.searchParams.append('endTime', endTime.toString());
@@ -162,14 +161,44 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', '50');
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) {
-      const errorText = await response.text();
-      return [];
-    }
+    if (!response.ok) return [];
     const data = await response.json();
     return data.opportunities || [];
   } catch (error) {
     return [];
+  }
+}
+
+export async function createOpportunity(oppData: any): Promise<GHLOpportunity> {
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/opportunities`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...oppData,
+        locationId: GHL_LOCATION_ID,
+      }),
+    });
+    if (!response.ok) throw new Error('Failed to create opportunity');
+    const data = await response.json();
+    return data.opportunity;
+  } catch (error) {
+    throw new Error('Could not create opportunity in GHL');
+  }
+}
+
+export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(oppData),
+    });
+    if (!response.ok) throw new Error('Failed to update opportunity');
+    const data = await response.json();
+    return data.opportunity;
+  } catch (error) {
+    throw new Error('Could not update opportunity in GHL');
   }
 }
 
@@ -182,5 +211,17 @@ export async function updateOpportunityStatus(id: string, status: string): Promi
     });
   } catch (error) {
     throw new Error('Failed to update opportunity status in GHL');
+  }
+}
+
+export async function deleteOpportunity(id: string): Promise<void> {
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) throw new Error('Failed to delete opportunity');
+  } catch (error) {
+    throw new Error('Could not delete opportunity from GHL');
   }
 }
