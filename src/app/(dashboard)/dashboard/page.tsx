@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { AIContactInsight } from "@/components/dashboard/ai-insight";
 import { ghl, GHLContact, GHLAppointment } from "@/lib/ghl";
@@ -29,22 +29,46 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<GHLContact | null>(null);
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     async function fetchData() {
-      const p = await ghl.getContact("mock_id");
-      const a = await ghl.getAppointments(p.id);
-      setProfile(p);
-      setAppts(a);
-      setLoading(false);
+      try {
+        const p = await ghl.getContact("mock_id");
+        const a = await ghl.getAppointments(p.id);
+        setProfile(p);
+        setAppts(a);
+      } catch (error) {
+        console.error("Dashboard data fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchData();
   }, []);
 
-  const historyForAI = appts.map(a => ({
-    date: new Date(a.startTime).toLocaleDateString(),
-    summary: a.title
-  }));
+  const historyForAI = useMemo(() => {
+    return appts.map(a => ({
+      date: isMounted ? new Date(a.startTime).toLocaleDateString() : "",
+      summary: a.title
+    }));
+  }, [appts, isMounted]);
+
+  // Prevent hydration mismatch for components that rely on browser-specific time/locale
+  if (!isMounted) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <DashboardNav />
+        <main className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-6xl mx-auto space-y-8">
+            <Skeleton className="h-12 w-1/3" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -123,7 +147,7 @@ export default function DashboardPage() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-                            {profile?.firstName[0]}{profile?.lastName[0]}
+                            {profile?.firstName[0] || 'U'}{profile?.lastName[0] || 'S'}
                           </div>
                           <div>
                             <p className="font-bold">{profile?.firstName} {profile?.lastName}</p>
@@ -180,10 +204,12 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Last Auth</span>
-                    <span className="font-medium text-foreground">6 mins ago</span>
+                    <span className="font-medium text-foreground">Recently</span>
                   </div>
-                  <Button variant="outline" className="w-full mt-2 h-9 text-xs">
-                    System Health <ExternalLink className="ml-2 h-3 w-3" />
+                  <Button variant="outline" className="w-full mt-2 h-9 text-xs" asChild>
+                    <a href="#" target="_blank">
+                      System Health <ExternalLink className="ml-2 h-3 w-3" />
+                    </a>
                   </Button>
                 </CardContent>
               </Card>

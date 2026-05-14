@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/auth-context";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -38,11 +39,7 @@ const navItems = [
 export function DashboardNav() {
   const pathname = usePathname();
   const router = useRouter();
-
-  const handleLogout = () => {
-    document.cookie = "koreauth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    router.push("/login");
-  };
+  const { logout } = useAuth();
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card/30 glass">
@@ -108,7 +105,7 @@ export function DashboardNav() {
               <Settings className="mr-2 h-4 w-4" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10">
+            <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10">
               <LogOut className="mr-2 h-4 w-4" /> Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
