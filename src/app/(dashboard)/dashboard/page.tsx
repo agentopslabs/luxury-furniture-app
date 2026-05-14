@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { AIContactInsight } from "@/components/dashboard/ai-insight";
-import { ghl, GHLContact, GHLAppointment, GHLOpportunity } from "@/lib/ghl";
+import { ghl, GHLContact, GHLAppointment, GHLOpportunity, GHLPipeline } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { 
   Clock, 
-  ChevronRight, 
   ExternalLink,
   PlusCircle,
   User,
@@ -25,11 +24,15 @@ import {
   ArrowUpRight,
   TrendingUp,
   Users,
-  Calendar
+  Calendar,
+  Layers,
+  MoreVertical,
+  DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<GHLContact | null>(null);
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
+  const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
   const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -49,14 +53,16 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
-        const [contactsData, oppsData, allAppts] = await Promise.all([
+        const [contactsData, oppsData, allAppts, pipeData] = await Promise.all([
           ghl.getContacts(100),
           ghl.getOpportunities(),
-          ghl.getAllAppointments()
+          ghl.getAllAppointments(),
+          ghl.getPipelines()
         ]);
         
         setContactCount(contactsData.length);
         setOpportunities(oppsData);
+        setPipelines(pipeData);
         
         const firstContact = contactsData.length > 0 ? contactsData[0] : null;
         if (firstContact) {
@@ -99,6 +105,16 @@ export default function DashboardPage() {
     }));
   }, [appts, isMounted]);
 
+  // Group opportunities by stage for the Kanban preview
+  const kanbanData = useMemo(() => {
+    if (pipelines.length === 0) return [];
+    const mainPipe = pipelines[0];
+    return mainPipe.stages.map(stage => ({
+      ...stage,
+      opps: opportunities.filter(o => o.pipelineStageId === stage.id)
+    }));
+  }, [pipelines, opportunities]);
+
   if (!isMounted) return null;
 
   return (
@@ -106,8 +122,7 @@ export default function DashboardPage() {
       <DashboardNav />
       <main className="flex-1 p-4 md:p-8 overflow-y-auto no-scrollbar relative">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
-
+        
         <div className="max-w-6xl mx-auto space-y-8 relative z-10">
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2">
@@ -160,71 +175,91 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {/* Kanban Section */}
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Sales Pipeline
+                </h2>
+                <p className="text-sm text-muted-foreground">Visual deal flow synchronization</p>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="text-xs font-bold text-primary">
+                <Link href="/pipeline">
+                  View Full Board <ArrowUpRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+
+            <ScrollArea className="w-full whitespace-nowrap rounded-3xl border border-white/5 bg-white/[0.01] p-1">
+              <div className="flex w-max gap-4 p-4">
+                {loading ? (
+                  Array(4).fill(0).map((_, i) => (
+                    <div key={i} className="w-72 space-y-4">
+                      <Skeleton className="h-8 w-1/2 rounded-lg" />
+                      <Skeleton className="h-40 w-full rounded-2xl" />
+                    </div>
+                  ))
+                ) : kanbanData.length > 0 ? (
+                  kanbanData.map((stage) => (
+                    <div key={stage.id} className="w-72 shrink-0 space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stage.name}</span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 h-4 bg-white/5 border-white/5">{stage.opps.length}</Badge>
+                        </div>
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                          ${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {stage.opps.map((opp) => (
+                          <Card key={opp.id} className="glass glass-hover border-white/5 p-4 rounded-2xl group transition-all cursor-pointer">
+                            <div className="flex justify-between items-start mb-3">
+                              <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors whitespace-normal leading-tight">
+                                {opp.name}
+                              </p>
+                              <MoreVertical size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
+                                  {opp.contact?.name?.[0] || 'L'}
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground truncate w-24">
+                                  {opp.contact?.name || 'Lead Anonymous'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-bold text-emerald-400 flex items-center">
+                                <DollarSign size={10} />
+                                {opp.monetaryValue?.toLocaleString() || 0}
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                        {stage.opps.length === 0 && (
+                          <div className="h-24 border border-dashed border-white/5 rounded-2xl flex items-center justify-center opacity-20">
+                            <Layers size={20} className="text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="w-full py-12 text-center">
+                    <p className="text-sm text-muted-foreground">No pipelines detected in GHL.</p>
+                  </div>
+                )}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </section>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <Card className="glass border-border/40 overflow-hidden group">
-                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-30 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="p-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        Engagement Pipeline
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground/80 mt-1">Real-time interaction stream from LeadConnector</CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{appts.length} Active Events</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-8 pb-8 space-y-4">
-                  {loading ? (
-                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
-                  ) : appts.length > 0 ? (
-                    appts.map((appt, i) => (
-                      <div 
-                        key={appt.id} 
-                        className={cn(
-                          "flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group animate-in fade-in slide-in-from-bottom-2 duration-500 cursor-pointer",
-                          i === 0 && "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
-                        )}
-                        style={{ animationDelay: `${i * 100}ms` }}
-                      >
-                        <div className="flex items-center gap-5">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:glow-primary",
-                            appt.status === 'confirmed' || appt.status === 'booked' ? "bg-primary/20 text-primary shadow-lg shadow-primary/10" : "bg-white/5 text-muted-foreground"
-                          )}>
-                            <Clock size={20} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1 font-medium">
-                              <Calendar size={12} className="opacity-60" />
-                              {new Date(appt.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] h-6 px-3 rounded-lg font-bold">
-                            {appt.status}
-                          </Badge>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-20 text-center space-y-6 border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
-                      <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Activity className="h-8 w-8 text-muted-foreground opacity-20" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-bold text-muted-foreground">Awaiting Live Signals</p>
-                        <p className="text-xs text-muted-foreground/60 max-w-[200px] mx-auto">Active interactions from GHL will populate here automatically.</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
+              {/* Identity Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="glass glass-hover border-border/40 p-8">
                   <div className="flex items-center justify-between mb-8">
@@ -285,8 +320,65 @@ export default function DashboardPage() {
                   </div>
                 </Card>
               </div>
+
+              {/* Engagement Feed */}
+              <Card className="glass border-border/40 overflow-hidden group">
+                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-30 group-hover:opacity-100 transition-opacity" />
+                <CardHeader className="p-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                        Engagement Stream
+                      </CardTitle>
+                      <CardDescription className="text-muted-foreground/80 mt-1">Real-time interaction log</CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{appts.length} Events</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-8 pb-8 space-y-4">
+                  {loading ? (
+                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
+                  ) : appts.length > 0 ? (
+                    appts.map((appt, i) => (
+                      <div 
+                        key={appt.id} 
+                        className={cn(
+                          "flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group animate-in fade-in slide-in-from-bottom-2 duration-500 cursor-pointer",
+                          i === 0 && "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
+                        )}
+                        style={{ animationDelay: `${i * 100}ms` }}
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:glow-primary",
+                            appt.status === 'confirmed' || appt.status === 'booked' ? "bg-primary/20 text-primary shadow-lg shadow-primary/10" : "bg-white/5 text-muted-foreground"
+                          )}>
+                            <Clock size={20} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1 font-medium">
+                              <Calendar size={12} className="opacity-60" />
+                              {new Date(appt.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] h-6 px-3 rounded-lg font-bold">
+                          {appt.status}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
+                      <Activity className="h-8 w-8 text-muted-foreground opacity-20 mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground/60">No recent interactions.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
+            {/* Sidebar widgets */}
             <div className="space-y-8">
               {!loading && profile && (
                 <div className="animate-in fade-in zoom-in-95 duration-700">
@@ -313,16 +405,10 @@ export default function DashboardPage() {
                       <span className="text-[11px] text-muted-foreground font-medium">V2 Proxy</span>
                       <span className="text-[11px] font-mono text-foreground/80">SECURE_TUNNEL</span>
                     </div>
-                    <div className="pt-4">
-                      <div className="p-4 rounded-xl bg-black/40 border border-white/5 font-mono text-[9px] text-muted-foreground leading-relaxed break-all opacity-70 group-hover:opacity-100 transition-opacity">
-                        LOC_ID: nBYJT...T0W4<br/>
-                        TIMESTAMP: {new Date().getTime()}
-                      </div>
-                    </div>
                   </div>
                   <Button variant="outline" className="w-full h-12 text-xs border-primary/20 bg-primary/5 hover:bg-primary/20 hover:text-white transition-all group rounded-2xl font-bold" asChild>
                     <a href="https://app.gohighlevel.com/" target="_blank" rel="noopener noreferrer">
-                      Launch GHL Dashboard <ExternalLink className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      Launch GHL <ExternalLink className="ml-2 h-4 w-4" />
                     </a>
                   </Button>
                 </CardContent>

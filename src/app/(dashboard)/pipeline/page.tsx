@@ -1,15 +1,30 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { ghl, GHLPipeline, GHLOpportunity, GHLContact } from "@/lib/ghl";
 import { createOpportunity, getPipelines, getContacts, getOpportunities } from "@/lib/ghl-actions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Layers, Plus, TrendingUp, DollarSign, Target, RefreshCw, MoreVertical, LayoutGrid, Kanban, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
+import { 
+  Layers, 
+  Plus, 
+  TrendingUp, 
+  DollarSign, 
+  Target, 
+  RefreshCw, 
+  MoreVertical, 
+  LayoutGrid, 
+  Kanban, 
+  Sparkles, 
+  Loader2, 
+  CheckCircle2,
+  ArrowRight
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -118,23 +133,32 @@ export default function PipelinePage() {
     }
   };
 
+  const kanbanData = useMemo(() => {
+    if (pipelines.length === 0) return [];
+    const activePipe = pipelines[0]; // For MVP, we use the first pipeline
+    return activePipe.stages.map(stage => ({
+      ...stage,
+      opps: opportunities.filter(o => o.pipelineStageId === stage.id)
+    }));
+  }, [pipelines, opportunities]);
+
   const totalValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
-      <main className="flex-1 p-8 overflow-y-auto no-scrollbar relative">
+      <main className="flex-1 p-8 overflow-y-auto no-scrollbar relative flex flex-col">
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         
-        <div className="max-w-6xl mx-auto space-y-10 relative z-10">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="max-w-[1400px] mx-auto w-full space-y-10 relative z-10 flex-1 flex flex-col">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500 shrink-0">
             <div className="space-y-2">
               <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40">
                 Sales Pipeline
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 <Kanban size={16} className="text-primary" />
-                Multi-stage visual deal flow tracking
+                Live visual deal flow tracking
               </p>
             </div>
             <div className="flex gap-3">
@@ -158,7 +182,7 @@ export default function PipelinePage() {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-700">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-700 shrink-0">
             {[
               { label: "Pipeline Value", value: `$${totalValue.toLocaleString()}`, icon: TrendingUp, color: "text-emerald-400" },
               { label: "Active Deals", value: opportunities.length, icon: Target, color: "text-primary" },
@@ -179,83 +203,91 @@ export default function PipelinePage() {
             ))}
           </div>
 
-          <Card className="glass border-border/40 overflow-hidden group">
-            <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
-            <CardHeader className="p-8 border-b border-white/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl font-bold">Opportunity Feed</CardTitle>
-                  <CardDescription className="text-muted-foreground/80 mt-1">Direct synchronization with Sub-Account</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary"><LayoutGrid size={20} /></Button>
-                   <Button variant="ghost" size="icon" className="text-primary bg-primary/10"><Kanban size={20} /></Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="p-8 space-y-4">
-                  {Array(4).fill(0).map((_, i) => (
-                    <Skeleton key={i} className="h-20 w-full rounded-2xl" />
-                  ))}
-                </div>
-              ) : opportunities.length > 0 ? (
-                <div className="divide-y divide-white/5">
-                  {opportunities.map((opp, i) => (
-                    <div 
-                      key={opp.id} 
-                      className="flex items-center justify-between p-6 hover:bg-white/[0.02] transition-all group cursor-pointer animate-in fade-in duration-500"
-                      style={{ animationDelay: `${i * 50}ms` }}
-                    >
-                      <div className="flex items-center gap-6">
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-primary/10 blur-md rounded-full group-hover:bg-primary/30 transition-all" />
-                          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 text-primary flex items-center justify-center font-bold text-xl uppercase relative z-10 transition-transform group-hover:scale-105">
-                            {opp.name?.[0] || 'O'}
-                          </div>
+          <div className="flex-1 min-h-0 relative">
+            <ScrollArea className="h-full w-full rounded-3xl border border-white/5 bg-white/[0.01]">
+              <div className="flex gap-6 p-6 min-w-full">
+                {loading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="w-80 shrink-0 space-y-6">
+                      <Skeleton className="h-10 w-3/4 rounded-xl" />
+                      <Skeleton className="h-[400px] w-full rounded-3xl" />
+                    </div>
+                  ))
+                ) : kanbanData.length > 0 ? (
+                  kanbanData.map((stage) => (
+                    <div key={stage.id} className="w-80 shrink-0 flex flex-col space-y-6">
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{stage.name}</h3>
+                          <Badge variant="secondary" className="text-[10px] h-5 px-2 bg-white/5 border-white/5">{stage.opps.length}</Badge>
                         </div>
-                        <div className="space-y-1">
-                          <p className="font-bold text-lg group-hover:text-primary transition-colors">{opp.name}</p>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium opacity-80">
-                            <span className="capitalize bg-white/5 px-2 py-0.5 rounded-md border border-white/5">{opp.contact?.name || 'Lead Anonymous'}</span>
-                            <span className="flex items-center gap-1 text-emerald-400 font-bold font-mono">
-                              <DollarSign size={12} />
-                              {opp.monetaryValue?.toLocaleString() || 0}
-                            </span>
-                          </div>
-                        </div>
+                        <span className="text-[11px] font-mono text-emerald-400 font-bold bg-emerald-500/5 px-2 py-0.5 rounded-lg border border-emerald-500/10">
+                          ${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-6">
-                        <Badge variant={opp.status === 'open' ? 'default' : 'secondary'} className={cn(
-                          "capitalize text-[10px] h-7 px-4 rounded-xl font-bold tracking-widest",
-                          opp.status === 'open' ? "bg-primary text-white glow-primary" : "bg-white/5 text-muted-foreground"
-                        )}>
-                          {opp.status}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all">
-                          <MoreVertical size={20} />
+                      
+                      <div className="flex-1 space-y-4 min-h-[500px] p-2 rounded-3xl bg-white/[0.01] border border-white/5">
+                        {stage.opps.map((opp) => (
+                          <Card key={opp.id} className="glass glass-hover border-white/5 p-5 rounded-2xl group transition-all cursor-move active:scale-95">
+                            <div className="flex justify-between items-start mb-4">
+                              <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-tighter opacity-50">
+                                {opp.id.slice(0, 8)}
+                              </Badge>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreVertical size={14} />
+                              </Button>
+                            </div>
+                            
+                            <h4 className="font-bold text-base group-hover:text-primary transition-colors mb-4 line-clamp-2 leading-tight">
+                              {opp.name}
+                            </h4>
+                            
+                            <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold border border-primary/20">
+                                  {opp.contact?.name?.[0] || 'L'}
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="text-[10px] font-bold text-foreground truncate w-24">{opp.contact?.name || 'Lead Anonymous'}</p>
+                                  <p className="text-[9px] text-muted-foreground opacity-50 uppercase tracking-widest">Client</p>
+                                </div>
+                              </div>
+                              <div className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                                <DollarSign size={12} />
+                                {opp.monetaryValue?.toLocaleString() || 0}
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                        
+                        {stage.opps.length === 0 && (
+                          <div className="h-32 border border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center opacity-10 gap-2">
+                            <Layers size={24} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Empty Stage</span>
+                          </div>
+                        )}
+                        
+                        <Button variant="ghost" className="w-full h-12 rounded-2xl border border-dashed border-white/5 text-muted-foreground hover:text-primary hover:border-primary/20 hover:bg-primary/5 group transition-all">
+                          <Plus size={16} className="mr-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">New Deal</span>
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-32 text-center space-y-6 animate-in fade-in duration-1000">
-                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/5 group-hover:glow-primary transition-all">
-                    <Layers className="h-10 w-10 text-muted-foreground opacity-20" />
+                  ))
+                ) : (
+                  <div className="w-full h-[400px] flex flex-col items-center justify-center space-y-4">
+                    <Layers className="h-16 w-16 text-muted-foreground opacity-10" />
+                    <p className="text-muted-foreground font-medium">No active deal flows detected.</p>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-xl font-bold text-muted-foreground">Empty Pipeline Registry</p>
-                    <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed">System is online but no active opportunities were detected.</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </div>
+              <ScrollBar orientation="horizontal" className="bg-white/5" />
+            </ScrollArea>
+          </div>
         </div>
       </main>
 
+      {/* Creation Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleCreate}>
