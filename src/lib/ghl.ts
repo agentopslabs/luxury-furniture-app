@@ -62,28 +62,19 @@ export interface GHLOpportunity {
 
 /**
  * GHL Service Layer strictly implemented for API V2.
- * All requests target https://services.leadconnectorhq.com
  */
 class GHLService {
-  /**
-   * Checks if we are running in mock mode.
-   */
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-    // If no token is provided or it's a known placeholder, we might be in mock mode
-    // However, if a Location ID is provided, we should prefer live.
     return !token || token.includes('your_') || token.includes('mock');
   }
 
-  /**
-   * Fetches all contacts for the configured location.
-   */
   async getContacts(limit: number = 20): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts/', {
+      const response = await apiClient.get('/contacts', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.contacts || [];
@@ -93,15 +84,12 @@ class GHLService {
     }
   }
 
-  /**
-   * Searches for a contact by email using GHL V2.
-   */
   async searchContacts(email: string): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get(`/contacts/`, {
+      const response = await apiClient.get('/contacts', {
         params: { locationId, query: email, _t: Date.now() }
       });
       return response.data.contacts || [];
@@ -111,9 +99,6 @@ class GHLService {
     }
   }
 
-  /**
-   * Fetches a specific contact's details via V2 endpoint.
-   */
   async getContact(id: string): Promise<GHLContact> {
     try {
       const response = await apiClient.get(`/contacts/${id}`, {
@@ -126,21 +111,16 @@ class GHLService {
     }
   }
 
-  /**
-   * Retrieves all appointments for the location.
-   * Uses GHL V2 startTime/endTime parameters (Unix timestamps in ms).
-   */
   async getAllAppointments(): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
       const now = new Date();
-      // Range: 90 days back, 120 days forward
       const startTimestamp = now.getTime() - (90 * 24 * 60 * 60 * 1000);
       const endTimestamp = now.getTime() + (120 * 24 * 60 * 60 * 1000);
 
-      const response = await apiClient.get('/appointments/', {
+      const response = await apiClient.get('/appointments', {
         params: { 
           locationId, 
           startTime: startTimestamp, 
@@ -168,7 +148,7 @@ class GHLService {
     }
     
     try {
-      const response = await apiClient.get(`/appointments/`, {
+      const response = await apiClient.get('/appointments', {
         params: { contactId, locationId, _t: Date.now() }
       });
       return response.data.appointments || [];
@@ -182,7 +162,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/calendars/', {
+      const response = await apiClient.get('/calendars', {
         params: { locationId, _t: Date.now() }
       });
       return response.data.calendars || [];
@@ -191,15 +171,12 @@ class GHLService {
     }
   }
 
-  /**
-   * Fetches V2 Conversations.
-   */
   async getConversations(limit: number = 20): Promise<GHLConversation[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations/', {
+      const response = await apiClient.get('/conversations', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.conversations || [];
@@ -208,15 +185,12 @@ class GHLService {
     }
   }
 
-  /**
-   * Fetches V2 Pipelines.
-   */
   async getPipelines(): Promise<GHLPipeline[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get(`/opportunities/pipelines`, {
+      const response = await apiClient.get('/opportunities/pipelines', {
         params: { locationId, _t: Date.now() }
       });
       return response.data.pipelines || [];
@@ -225,15 +199,12 @@ class GHLService {
     }
   }
 
-  /**
-   * Fetches V2 Opportunities for a location.
-   */
   async getOpportunities(limit: number = 20): Promise<GHLOpportunity[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities/', {
+      const response = await apiClient.get('/opportunities', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.opportunities || [];

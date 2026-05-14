@@ -5,22 +5,19 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 
 /**
  * Production-ready Axios client strictly for LeadConnector API V2.
- * Documentation: https://developers.gohighlevel.com/
  */
 const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_GHL_API_BASE_URL || 'https://services.leadconnectorhq.com',
   headers: {
     'Content-Type': 'application/json',
-    'Version': '2021-07-28', // GHL API V2 Version Header
+    'Version': '2021-07-28',
   },
   timeout: 15000,
 });
 
-// Request Interceptor: Attach OAuth2 Bearer Token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      // Prioritize environment variable token for this integration, then fallback to localStorage
       const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
       const storedToken = localStorage.getItem('ghl_access_token');
       const token = envToken || storedToken;
@@ -34,18 +31,12 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Global Error Handling for V2 Auth
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // Handle 401 Unauthorized (OAuth Token Expiration)
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      console.warn('GHL V2: Unauthorized. Token may be expired or invalid.');
+    if (error.response?.status === 401) {
+      console.warn('GHL V2: Authentication error. Access token may be invalid.');
     }
-
     return Promise.reject(error);
   }
 );
