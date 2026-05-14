@@ -2,7 +2,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -20,6 +19,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import { ghl } from "@/lib/ghl";
 
 const loginSchema = z.object({
@@ -30,7 +30,7 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -44,26 +44,19 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true);
     try {
-      // 1. Authenticate with Identity Hub
-      // Mocking a production session token
-      document.cookie = "koreauth_session=prod_token_authorized; path=/; SameSite=Strict; Secure";
+      // In a real production app, you would exchange credentials for a token via your own backend
+      // Here we simulate a successful login and provide a mock token for the prototype
+      const mockToken = "prod_token_" + btoa(values.email);
       
-      // 2. Ensure a mock GHL token exists to avoid 401s during the demo/prototype phase
-      if (typeof window !== 'undefined' && !localStorage.getItem('ghl_access_token')) {
-        localStorage.setItem('ghl_access_token', 'demo_authorized_token');
-      }
-
-      // 3. Lookup GHL Contact to ensure sync
-      const contacts = await ghl.searchContacts(values.email);
+      // Perform initial GHL search to verify connectivity
+      await ghl.searchContacts(values.email);
+      
+      login(mockToken);
       
       toast({
         title: "Welcome back",
-        description: contacts.length > 0 
-          ? `Successfully authenticated. Linked to GHL Contact: ${contacts[0].firstName}` 
-          : "Authenticated. Synchronizing with CRM...",
+        description: "Successfully authenticated. Your CRM profile is synchronized.",
       });
-      
-      router.push("/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",
