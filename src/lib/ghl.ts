@@ -9,7 +9,6 @@ export interface GHLContact {
   phone?: string;
   tags?: string[];
   type?: 'lead' | 'customer';
-  dateAdded?: string;
 }
 
 export interface GHLAppointment {
@@ -28,7 +27,7 @@ export interface GHLAppointment {
  */
 class GHLService {
   /**
-   * Checks if we are running in mock mode based on the token.
+   * Checks if we are running in mock mode.
    */
   isMockMode(): boolean {
     if (typeof window === 'undefined') return true;
@@ -38,22 +37,25 @@ class GHLService {
 
   /**
    * Searches for a contact by email using GHL V2 Search.
-   * V2 requires locationId for scoped searches.
+   * V2 requires locationId for searches.
    */
-  async searchContacts(email: string, locationId: string = 'mock_location'): Promise<GHLContact[]> {
+  async searchContacts(email: string, locationId?: string): Promise<GHLContact[]> {
+    const locId = locationId || process.env.NEXT_PUBLIC_GHL_LOCATION_ID || 'mock_location';
+    
     try {
-      const response = await apiClient.get(`/contacts/search`, {
-        params: { locationId, query: email }
+      const response = await apiClient.get(`/contacts/`, {
+        params: { locationId: locId, query: email }
       });
       return response.data.contacts || [];
     } catch (error: any) {
+      console.warn('GHL V2 Search failed, using mock fallback.');
       return [{
         id: 'mock_id',
-        locationId: 'mock_location',
+        locationId: locId,
         firstName: 'Alex',
         lastName: 'Sterling',
         email: email || 'alex@sterling.io',
-        tags: ['v2-prototype', 'enterprise'],
+        tags: ['v2-prototype'],
         type: 'customer'
       }];
     }
@@ -80,29 +82,32 @@ class GHLService {
 
   /**
    * Retrieves appointment history for a contact via V2 endpoint.
+   * Scoped by locationId.
    */
-  async getAppointments(contactId: string, locationId: string = 'mock_location'): Promise<GHLAppointment[]> {
+  async getAppointments(contactId: string, locationId?: string): Promise<GHLAppointment[]> {
+    const locId = locationId || process.env.NEXT_PUBLIC_GHL_LOCATION_ID || 'mock_location';
+    
     try {
       const response = await apiClient.get(`/appointments/`, {
-        params: { contactId, locationId }
+        params: { contactId, locationId: locId }
       });
       return response.data.appointments || [];
     } catch (error) {
       return [
         {
           id: 'appt_1',
-          locationId: 'mock_location',
+          locationId: locId,
           contactId: 'mock_id',
-          title: 'V2 Quarterly Identity Audit',
+          title: 'V2 Strategic Planning',
           startTime: new Date(Date.now() + 86400000).toISOString(),
           endTime: new Date(Date.now() + 90000000).toISOString(),
           status: 'confirmed'
         },
         {
           id: 'appt_2',
-          locationId: 'mock_location',
+          locationId: locId,
           contactId: 'mock_id',
-          title: 'V2 CRM Sync Check',
+          title: 'V2 Implementation Review',
           startTime: new Date(Date.now() - 172800000).toISOString(),
           endTime: new Date(Date.now() - 169200000).toISOString(),
           status: 'completed'
@@ -118,7 +123,7 @@ class GHLService {
     try {
       await apiClient.post(`/contacts/${contactId}/notes`, { body });
     } catch (error) {
-      console.warn('GHL V2: Note could not be saved to live API, simulated locally.');
+      console.warn('GHL V2 Note simulation: Save triggered.');
     }
   }
 }

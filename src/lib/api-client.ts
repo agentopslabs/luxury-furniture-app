@@ -12,7 +12,7 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     'Version': '2021-07-28', // GHL API V2 Version Header
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 // Request Interceptor: Attach OAuth2 Bearer Token
@@ -38,18 +38,8 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized (OAuth Token Expiration)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      try {
-        if (typeof window !== 'undefined') {
-          // In V2, we would typically trigger a refresh token flow here
-          localStorage.removeItem('ghl_access_token');
-          document.cookie = "koreauth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-          window.location.href = '/login';
-        }
-      } catch (refreshError) {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
-      }
+      // In a real V2 app, we would refresh the token here using a refresh_token
+      console.warn('GHL V2: Unauthorized. Token may be expired.');
     }
 
     return Promise.reject(error);
