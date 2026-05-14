@@ -25,6 +25,15 @@ export interface GHLAppointment {
  */
 class GHLService {
   /**
+   * Checks if we are running in mock mode based on the token.
+   */
+  isMockMode(): boolean {
+    if (typeof window === 'undefined') return true;
+    const token = localStorage.getItem('ghl_access_token');
+    return !token || token.startsWith('prod_token_');
+  }
+
+  /**
    * Searches for a contact by email in GHL.
    */
   async searchContacts(email: string): Promise<GHLContact[]> {
@@ -34,17 +43,14 @@ class GHLService {
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      // Fallback for prototype/demo if API is unreachable or 401
-      if (email.toLowerCase().includes('alex')) {
-        return [{
-          id: 'mock_id',
-          firstName: 'Alex',
-          lastName: 'Sterling',
-          email: 'alex@sterling.io',
-          tags: ['enterprise', 'architect']
-        }];
-      }
-      return [];
+      // Fallback for prototype/demo
+      return [{
+        id: 'mock_id',
+        firstName: 'Alex',
+        lastName: 'Sterling',
+        email: email || 'alex@sterling.io',
+        tags: ['enterprise', 'architect', 'demo-mode']
+      }];
     }
   }
 
@@ -71,15 +77,6 @@ class GHLService {
    */
   async getContact(id: string): Promise<GHLContact> {
     try {
-      if (id === 'mock_id') {
-        return {
-          id: 'mock_id',
-          firstName: 'Alex',
-          lastName: 'Sterling',
-          email: 'alex@sterling.io',
-          tags: ['enterprise', 'architect']
-        };
-      }
       const response = await apiClient.get(`/contacts/${id}`);
       return response.data.contact;
     } catch (error) {
@@ -88,7 +85,7 @@ class GHLService {
         firstName: 'Alex',
         lastName: 'Sterling',
         email: 'alex@sterling.io',
-        tags: ['enterprise', 'architect']
+        tags: ['enterprise', 'architect', 'demo-mode']
       };
     }
   }
@@ -103,7 +100,7 @@ class GHLService {
       });
       return response.data.appointments || [];
     } catch (error) {
-      // Mock appointments for demo
+      // Extensive mock appointments for demo
       return [
         {
           id: 'appt_1',
@@ -117,6 +114,13 @@ class GHLService {
           title: 'CRM Sync Troubleshooting',
           startTime: new Date(Date.now() - 172800000).toISOString(),
           endTime: new Date(Date.now() - 169200000).toISOString(),
+          status: 'completed'
+        },
+        {
+          id: 'appt_3',
+          title: 'Initial Discovery Call',
+          startTime: new Date(Date.now() - 604800000).toISOString(),
+          endTime: new Date(Date.now() - 601200000).toISOString(),
           status: 'completed'
         }
       ];

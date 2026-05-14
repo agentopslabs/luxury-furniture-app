@@ -21,7 +21,9 @@ import {
   User,
   Activity,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,21 +35,21 @@ export default function DashboardPage() {
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'mock'>('syncing');
 
   useEffect(() => {
     setIsMounted(true);
     async function fetchData() {
-      setSyncStatus('syncing');
+      const isMock = ghl.isMockMode();
+      setSyncStatus(isMock ? 'mock' : 'syncing');
+      
       try {
-        // Attempt to fetch real data from LeadConnector
         const p = await ghl.getContact("mock_id");
         const a = await ghl.getAppointments(p.id);
         setProfile(p);
         setAppts(a);
-        setSyncStatus('synced');
+        if (!isMock) setSyncStatus('synced');
       } catch (error) {
-        console.error("Dashboard data fetch error:", error);
         setSyncStatus('error');
       } finally {
         setLoading(false);
@@ -90,17 +92,21 @@ export default function DashboardPage() {
                   <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1 h-5">
                     <CheckCircle2 size={10} /> Live Sync
                   </Badge>
+                ) : syncStatus === 'mock' ? (
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1 h-5">
+                    <Zap size={10} /> Prototype Mode
+                  </Badge>
                 ) : syncStatus === 'syncing' ? (
                   <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-1 h-5 animate-pulse">
                     <Activity size={10} /> Syncing
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 gap-1 h-5">
-                    <AlertCircle size={10} /> Sync Error
+                    <AlertCircle size={10} /> Connection Error
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground">Connected to LeadConnector workspace Enterprise_ID_99</p>
+              <p className="text-muted-foreground">LeadConnector Unified Workspace Hub</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" className="shadow-lg shadow-primary/20">
@@ -198,16 +204,16 @@ export default function DashboardPage() {
                 <Card className="glass border-border/40">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
-                      <MessageSquare className="h-4 w-4 text-primary" /> Rapid Entry
+                      <MessageSquare className="h-4 w-4 text-primary" /> CRM Timeline
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <textarea 
-                      placeholder="Note for LeadConnector timeline..." 
+                      placeholder="Add an internal note..." 
                       className="w-full h-20 bg-muted/30 rounded-lg p-3 text-xs border border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 resize-none outline-none transition-all"
                     />
                     <Button size="sm" className="w-full h-9 text-xs font-semibold" variant="secondary">
-                      Push to CRM Timeline
+                      Push to Timeline
                     </Button>
                   </CardContent>
                 </Card>
@@ -225,27 +231,29 @@ export default function DashboardPage() {
               <Card className="glass border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
                 <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80">Account Health</CardTitle>
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80">System Health</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="space-y-3">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">GHL API Connectivity</span>
-                      <span className="text-emerald-500 font-bold flex items-center gap-1.5">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      <span className="text-muted-foreground">Session Status</span>
+                      {syncStatus === 'mock' ? (
+                        <span className="text-blue-500 font-bold flex items-center gap-1.5">
+                          <Zap size={10} /> Prototype (No Key)
                         </span>
-                        Authenticated
-                      </span>
+                      ) : (
+                        <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                          <ShieldCheck size={10} /> Authenticated
+                        </span>
+                      )}
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Endpoint</span>
-                      <span className="font-mono text-[10px] text-foreground/80">services.leadconnectorhq.com</span>
+                      <span className="text-muted-foreground">API Version</span>
+                      <span className="font-mono text-[10px] text-foreground/80">2021-07-28</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Data Latency</span>
-                      <span className="font-medium text-foreground">12ms (Optimized)</span>
+                      <span className="text-muted-foreground">Mode</span>
+                      <span className="font-medium text-foreground">{syncStatus === 'mock' ? 'Simulated' : 'Production'}</span>
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-10 text-xs border-primary/20 hover:bg-primary/5 hover:text-primary transition-all group" asChild>
