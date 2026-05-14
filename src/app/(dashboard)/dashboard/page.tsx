@@ -13,7 +13,6 @@ import {
   CardDescription
 } from "@/components/ui/card";
 import { 
-  Calendar as CalendarIcon, 
   Clock, 
   ChevronRight, 
   ExternalLink,
@@ -58,9 +57,6 @@ export default function DashboardPage() {
               <p className="text-muted-foreground">Welcome back, Alex. Your CRM is synchronized.</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <CalendarIcon className="mr-2 h-4 w-4" /> Calendar
-              </Button>
               <Button size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" /> New Interaction
               </Button>

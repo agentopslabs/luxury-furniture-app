@@ -8,9 +8,9 @@ import {
   User, 
   Settings, 
   LogOut, 
-  Search,
-  Bell,
-  Command
+  Calendar,
+  Users,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ import {
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Conversations", href: "/conversations", icon: MessageSquare },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Contacts", href: "/contacts", icon: Users },
   { name: "Profile", href: "/profile", icon: User },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -50,7 +53,7 @@ export function DashboardNav() {
         </Link>
       </div>
 
-      <div className="flex-1 px-4 py-6 space-y-8">
+      <div className="flex-1 px-4 py-6 space-y-8 overflow-y-auto">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-2">
             Main Navigation
