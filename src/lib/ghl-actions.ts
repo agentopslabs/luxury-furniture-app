@@ -80,20 +80,15 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
-    // GHL V2 Appointments API requires Unix timestamps in milliseconds (numbers)
     const now = new Date();
-    const startTime = now.getTime() - (90 * 24 * 60 * 60 * 1000); // 90 days back
-    const endTime = now.getTime() + (120 * 24 * 60 * 60 * 1000);  // 120 days forward
+    const startTime = now.getTime() - (90 * 24 * 60 * 60 * 1000); 
+    const endTime = now.getTime() + (120 * 24 * 60 * 60 * 1000);  
     
     url.searchParams.append('startTime', startTime.toString());
     url.searchParams.append('endTime', endTime.toString());
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error('GHL Appointments API Error:', errorData);
-        return [];
-    }
+    if (!response.ok) return [];
     const data = await response.json();
     return (data.appointments || []).sort((a: any, b: any) => 
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
@@ -143,6 +138,7 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
     const data = await response.json();
     return data.pipelines || [];
   } catch (error) {
+    console.error('Error fetching pipelines:', error);
     return [];
   }
 }
@@ -151,13 +147,14 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('limit', '20');
+    url.searchParams.append('limit', '50');
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     if (!response.ok) return [];
     const data = await response.json();
     return data.opportunities || [];
   } catch (error) {
+    console.error('Error fetching opportunities:', error);
     return [];
   }
 }
