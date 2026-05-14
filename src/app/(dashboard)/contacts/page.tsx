@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
