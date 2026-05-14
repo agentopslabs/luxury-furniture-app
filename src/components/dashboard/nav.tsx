@@ -10,7 +10,8 @@ import {
   LogOut, 
   Calendar,
   Users,
-  MessageSquare
+  MessageSquare,
+  Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Conversations", href: "/conversations", icon: MessageSquare },
+  { name: "Pipeline", href: "/pipeline", icon: Layers },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Contacts", href: "/contacts", icon: Users },
   { name: "Profile", href: "/profile", icon: User },

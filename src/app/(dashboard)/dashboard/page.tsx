@@ -105,9 +105,6 @@ export default function DashboardPage() {
                       </div>
                     ))
                   )}
-                  <Button variant="ghost" className="w-full text-sm text-primary">
-                    View full schedule <ChevronRight className="ml-1 h-3 w-3" />
-                  </Button>
                 </CardContent>
               </Card>
 
