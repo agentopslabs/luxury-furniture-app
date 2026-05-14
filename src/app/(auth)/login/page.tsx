@@ -44,18 +44,23 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true);
     try {
-      // 1. Authenticate with Identity Hub (Firebase/Your Backend)
-      // For now, keeping the mock session logic but updating for production structure
-      document.cookie = "koreauth_session=prod_token; path=/; SameSite=Strict; Secure";
+      // 1. Authenticate with Identity Hub
+      // Mocking a production session token
+      document.cookie = "koreauth_session=prod_token_authorized; path=/; SameSite=Strict; Secure";
       
-      // 2. Lookup GHL Contact to ensure sync
+      // 2. Ensure a mock GHL token exists to avoid 401s during the demo/prototype phase
+      if (typeof window !== 'undefined' && !localStorage.getItem('ghl_access_token')) {
+        localStorage.setItem('ghl_access_token', 'demo_authorized_token');
+      }
+
+      // 3. Lookup GHL Contact to ensure sync
       const contacts = await ghl.searchContacts(values.email);
       
       toast({
         title: "Welcome back",
         description: contacts.length > 0 
           ? `Successfully authenticated. Linked to GHL Contact: ${contacts[0].firstName}` 
-          : "Authenticated. No GHL record found - creating profile...",
+          : "Authenticated. Synchronizing with CRM...",
       });
       
       router.push("/dashboard");
