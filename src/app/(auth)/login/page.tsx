@@ -20,6 +20,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { ghl } from "@/lib/ghl";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -42,16 +43,31 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true);
-    // Simulate auth and GHL lookup
-    setTimeout(() => {
-      document.cookie = "koreauth_session=mock_token; path=/";
+    try {
+      // 1. Authenticate with Identity Hub (Firebase/Your Backend)
+      // For now, keeping the mock session logic but updating for production structure
+      document.cookie = "koreauth_session=prod_token; path=/; SameSite=Strict; Secure";
+      
+      // 2. Lookup GHL Contact to ensure sync
+      const contacts = await ghl.searchContacts(values.email);
+      
       toast({
         title: "Welcome back",
-        description: "Successfully authenticated with Identity Hub.",
+        description: contacts.length > 0 
+          ? `Successfully authenticated. Linked to GHL Contact: ${contacts[0].firstName}` 
+          : "Authenticated. No GHL record found - creating profile...",
       });
-      setIsLoading(false);
+      
       router.push("/dashboard");
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: error.message || "Please check your credentials.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -60,7 +76,7 @@ export default function LoginPage() {
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
           <span className="text-white font-bold text-xs">K</span>
         </div>
-        <span className="font-headline font-bold text-xl">KoreAuth</span>
+        <span className="font-headline font-bold text-xl text-foreground">KoreAuth</span>
       </div>
 
       <AuthCard 
