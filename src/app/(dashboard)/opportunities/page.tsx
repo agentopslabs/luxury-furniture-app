@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -49,15 +48,15 @@ export default function OpportunitiesPage() {
       setOpportunities(data);
       if (isManual) {
         toast({
-          title: "Opportunities Synced",
-          description: `Fetched ${data.length} records from LeadConnector.`,
+          title: "Opportunities Synchronized",
+          description: `Successfully updated ${data.length} records from your GHL location.`,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Sync Error",
-        description: "Failed to connect to GHL V2 API.",
+        description: "Could not connect to the LeadConnector V2 server.",
       });
     } finally {
       setLoading(false);
@@ -81,7 +80,7 @@ export default function OpportunitiesPage() {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "Could not sync status change to GHL.",
+        description: "Check your GHL permissions for updating deals.",
       });
     }
   };
@@ -99,7 +98,7 @@ export default function OpportunitiesPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Opportunities</h1>
-              <p className="text-muted-foreground">Manage deal status and monetary value from GHL V2.</p>
+              <p className="text-muted-foreground">Real-time sales pipeline data from GHL V2.</p>
             </div>
             <div className="flex gap-2">
               <Button 
@@ -109,7 +108,7 @@ export default function OpportunitiesPage() {
                 disabled={loading || refreshing}
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                Sync Opportunities
+                {refreshing ? "Syncing..." : "Sync All Data"}
               </Button>
             </div>
           </header>
@@ -119,12 +118,12 @@ export default function OpportunitiesPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" /> 
-                  Deal Flow ({filtered.length})
+                  Live Deal Flow ({filtered.length})
                 </CardTitle>
                 <div className="relative w-full md:w-72">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search deals or contacts..." 
+                    placeholder="Search deals or leads..." 
                     className="pl-9 h-9 text-xs"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -144,7 +143,7 @@ export default function OpportunitiesPage() {
                   {filtered.map((opp) => (
                     <div 
                       key={opp.id} 
-                      className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group"
+                      className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
@@ -155,7 +154,7 @@ export default function OpportunitiesPage() {
                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <User size={12} className="opacity-50" />
-                              {opp.contact?.name || 'Unknown Lead'}
+                              {opp.contact?.name || 'Unknown Contact'}
                             </span>
                             <span className="flex items-center gap-1 font-mono">
                               <DollarSign size={12} className="opacity-50 text-emerald-500" />
@@ -184,7 +183,7 @@ export default function OpportunitiesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Update Status</DropdownMenuLabel>
+                            <DropdownMenuLabel>Update GHL Status</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleStatusUpdate(opp.id, 'won')}>
                               <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark as Won
@@ -196,7 +195,7 @@ export default function OpportunitiesPage() {
                               <AlertCircle className="mr-2 h-4 w-4 text-amber-500" /> Mark as Abandoned
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusUpdate(opp.id, 'open')}>
-                              <Target className="mr-2 h-4 w-4" /> Set to Open
+                              <Target className="mr-2 h-4 w-4" /> Reset to Open
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -207,7 +206,10 @@ export default function OpportunitiesPage() {
               ) : (
                 <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
                   <Target className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                  <p className="text-sm text-muted-foreground italic">No opportunities found.</p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">No opportunities found in this sub-account</p>
+                    <p className="text-xs text-muted-foreground opacity-70 italic">Click "Sync All Data" to double-check LeadConnector V2.</p>
+                  </div>
                 </div>
               )}
             </CardContent>

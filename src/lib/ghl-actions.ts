@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -163,7 +162,10 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', '50');
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      const errorText = await response.text();
+      return [];
+    }
     const data = await response.json();
     return data.opportunities || [];
   } catch (error) {

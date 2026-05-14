@@ -58,7 +58,8 @@ export interface GHLOpportunity {
   status: 'open' | 'won' | 'lost' | 'abandoned';
   monetaryValue?: number;
   contact?: {
-    name: string;
+    id?: string;
+    name?: string;
     email?: string;
   };
 }
