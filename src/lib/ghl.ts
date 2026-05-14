@@ -19,8 +19,8 @@ export interface GHLAppointment {
   contactId: string;
   calendarId?: string;
   title: string;
-  startTime: string;
-  endTime: string;
+  startTime: string | number;
+  endTime: string | number;
   status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed' | 'booked';
 }
 
@@ -72,7 +72,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts/', {
+      const response = await apiClient.get('/contacts', {
         params: { locationId, limit }
       });
       return response.data.contacts || [];
@@ -86,7 +86,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts/', {
+      const response = await apiClient.get('/contacts', {
         params: { locationId, query, limit: 10 }
       });
       return response.data.contacts || [];
@@ -110,11 +110,12 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const now = new Date();
-      const startTime = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
-      const endTime = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)).toISOString();
+      // GHL V2 Appointments expect Unix Milliseconds for startTime/endTime
+      const now = Date.now();
+      const startTime = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
+      const endTime = now + (180 * 24 * 60 * 60 * 1000); // 180 days in future
 
-      const response = await apiClient.get('/appointments/', {
+      const response = await apiClient.get('/appointments', {
         params: { 
           locationId, 
           startTime, 
@@ -123,9 +124,32 @@ class GHLService {
         }
       });
       
-      return (response.data.appointments || []).sort((a: GHLAppointment, b: GHLAppointment) => 
+      const appts = response.data.appointments || [];
+      return appts.sort((a: GHLAppointment, b: GHLAppointment) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
+    } catch (error: any) {
+      // In a real environment, browser CORS might block this. 
+      // Ensure your GHL app has the correct redirect URIs and scopes.
+      return [];
+    }
+  }
+
+  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    if (!locationId) return [];
+
+    try {
+      const now = Date.now();
+      const response = await apiClient.get('/appointments', {
+        params: { 
+          locationId, 
+          contactId,
+          startTime: now - (365 * 24 * 60 * 60 * 1000),
+          endTime: now + (365 * 24 * 60 * 60 * 1000)
+        }
+      });
+      return response.data.appointments || [];
     } catch (error) {
       return [];
     }
@@ -136,7 +160,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/calendars/', {
+      const response = await apiClient.get('/calendars', {
         params: { locationId }
       });
       return response.data.calendars || [];
@@ -150,7 +174,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations/', {
+      const response = await apiClient.get('/conversations', {
         params: { locationId, limit: 50 }
       });
       return response.data.conversations || [];
@@ -178,7 +202,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities/', {
+      const response = await apiClient.get('/opportunities', {
         params: { locationId, limit: 20 }
       });
       return response.data.opportunities || [];
