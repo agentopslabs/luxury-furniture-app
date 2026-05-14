@@ -1,3 +1,4 @@
+
 'use client';
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
@@ -19,7 +20,11 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('ghl_access_token');
+      // Prioritize environment variable token for this integration, then fallback to localStorage
+      const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
+      const storedToken = localStorage.getItem('ghl_access_token');
+      const token = envToken || storedToken;
+
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -38,8 +43,7 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized (OAuth Token Expiration)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      // In a real V2 app, we would refresh the token here using a refresh_token
-      console.warn('GHL V2: Unauthorized. Token may be expired.');
+      console.warn('GHL V2: Unauthorized. Token may be expired or invalid.');
     }
 
     return Promise.reject(error);

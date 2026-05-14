@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -43,13 +44,18 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
-        // Strict V2 request flow
-        const p = await ghl.getContact("mock_id");
-        const a = await ghl.getAppointments(p.id, p.locationId);
+        // In V2 Live, we might search for the user by email first or use a known ID
+        // For the demo, we search for the default contact associated with this location/token
+        const contacts = await ghl.searchContacts("");
+        const p = contacts.length > 0 ? contacts[0] : await ghl.getContact("mock_id");
+        
+        const a = await ghl.getAppointments(p.id);
         setProfile(p);
         setAppts(a);
+        
         if (!isMock) setSyncStatus('synced');
       } catch (error) {
+        console.error("Dashboard sync error:", error);
         setSyncStatus('error');
       } finally {
         setLoading(false);
@@ -90,27 +96,27 @@ export default function DashboardPage() {
                 <h1 className="text-4xl font-bold tracking-tight">Intelligence Hub</h1>
                 {syncStatus === 'synced' ? (
                   <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1 h-5">
-                    <CheckCircle2 size={10} /> V2 Live
+                    <CheckCircle2 size={10} /> V2 Live Connection
                   </Badge>
                 ) : syncStatus === 'mock' ? (
                   <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1 h-5">
-                    <Zap size={10} /> V2 Prototype
+                    <Zap size={10} /> V2 Prototype Mode
                   </Badge>
                 ) : syncStatus === 'syncing' ? (
                   <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-1 h-5 animate-pulse">
-                    <Activity size={10} /> Syncing
+                    <Activity size={10} /> Syncing V2 Data...
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 gap-1 h-5">
-                    <AlertCircle size={10} /> V2 Error
+                    <AlertCircle size={10} /> Connection Error
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground">LeadConnector V2 Unified Workspace</p>
+              <p className="text-muted-foreground">LeadConnector V2 • {process.env.NEXT_PUBLIC_GHL_LOCATION_ID || 'No Location'}</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" className="shadow-lg shadow-primary/20">
-                <PlusCircle className="mr-2 h-4 w-4" /> New V2 Interaction
+                <PlusCircle className="mr-2 h-4 w-4" /> New Interaction
               </Button>
             </div>
           </header>
@@ -122,7 +128,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl">Engagement Pipeline</CardTitle>
-                      <CardDescription>Real-time V2 schedule from services.leadconnectorhq.com</CardDescription>
+                      <CardDescription>Real-time data from GHL V2 API</CardDescription>
                     </div>
                     <Badge variant="secondary" className="font-mono text-[10px]">{appts.length} Events</Badge>
                   </div>
@@ -132,7 +138,7 @@ export default function DashboardPage() {
                     Array(3).fill(0).map((_, i) => (
                       <Skeleton key={i} className="h-16 w-full rounded-lg" />
                     ))
-                  ) : (
+                  ) : appts.length > 0 ? (
                     appts.map((appt, i) => (
                       <div 
                         key={appt.id} 
@@ -164,6 +170,10 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ))
+                  ) : (
+                    <div className="py-12 text-center text-muted-foreground italic border rounded-lg border-dashed">
+                      No recent appointments found for this contact.
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -202,7 +212,7 @@ export default function DashboardPage() {
                 <Card className="glass border-border/40">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider font-body">
-                      <MessageSquare className="h-4 w-4 text-primary" /> CRM V2 Timeline
+                      <MessageSquare className="h-4 w-4 text-primary" /> CRM Timeline
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -211,7 +221,7 @@ export default function DashboardPage() {
                       className="w-full h-20 bg-muted/30 rounded-lg p-3 text-xs border border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 resize-none outline-none transition-all"
                     />
                     <Button size="sm" className="w-full h-9 text-xs font-semibold" variant="secondary">
-                      Push to V2 Timeline
+                      Push to Timeline
                     </Button>
                   </CardContent>
                 </Card>
@@ -228,25 +238,28 @@ export default function DashboardPage() {
               <Card className="glass border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
                 <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80 font-body">System Health</CardTitle>
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80 font-body">System Connection</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="space-y-3">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">V2 Session</span>
-                      {syncStatus === 'mock' ? (
-                        <span className="text-blue-500 font-bold flex items-center gap-1.5">
-                          <Zap size={10} /> V2 Mock
+                      <span className="text-muted-foreground">V2 Auth Status</span>
+                      {syncStatus === 'synced' ? (
+                        <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                          <ShieldCheck size={10} /> Active
                         </span>
                       ) : (
-                        <span className="text-emerald-500 font-bold flex items-center gap-1.5">
-                          <ShieldCheck size={10} /> V2 Auth Active
+                        <span className="text-blue-500 font-bold flex items-center gap-1.5">
+                          <Zap size={10} /> {syncStatus}
                         </span>
                       )}
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">API Version</span>
                       <span className="font-mono text-[10px] text-foreground/80">2021-07-28</span>
+                    </div>
+                    <div className="pt-2">
+                      <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter">Token: {process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN?.substring(0, 10)}...</p>
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-10 text-xs border-primary/20 hover:bg-primary/5 hover:text-primary transition-all group" asChild>
