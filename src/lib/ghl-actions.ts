@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -142,7 +143,7 @@ export async function sendMessage(conversationId: string, body: string, type: 'e
   }
 }
 
-// --- PIPELINES ---
+// --- PIPELINES & OPPORTUNITIES ---
 
 export async function getPipelines(): Promise<GHLPipeline[]> {
   try {
@@ -161,10 +162,23 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', '50');
-    const response = await fetch(url.toString(), { headers });
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    if (!response.ok) return [];
     const data = await response.json();
     return data.opportunities || [];
   } catch (error) {
     return [];
+  }
+}
+
+export async function updateOpportunityStatus(id: string, status: string): Promise<void> {
+  try {
+    await fetch(`${GHL_API_BASE_URL}/opportunities/${id}/status`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ status }),
+    });
+  } catch (error) {
+    throw new Error('Failed to update opportunity status in GHL');
   }
 }
