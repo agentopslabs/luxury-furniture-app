@@ -40,7 +40,6 @@ export async function searchContacts(query: string = ""): Promise<GHLContact[]> 
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
     if (query) {
-      // Use the V2 search endpoint if a query is provided
       const searchUrl = new URL(`${GHL_API_BASE_URL}/contacts/search`);
       searchUrl.searchParams.append('locationId', GHL_LOCATION_ID);
       searchUrl.searchParams.append('query', query);
@@ -51,10 +50,30 @@ export async function searchContacts(query: string = ""): Promise<GHLContact[]> 
       }
     }
     
-    // Fallback to standard list if no query or search fails
     return getContacts(20);
   } catch (error) {
     return [];
+  }
+}
+
+export async function createContact(contactData: Partial<GHLContact>): Promise<GHLContact> {
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/contacts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...contactData,
+        locationId: GHL_LOCATION_ID,
+      }),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || 'Failed to create contact');
+    }
+    const data = await response.json();
+    return data.contact;
+  } catch (error: any) {
+    throw new Error(error.message || 'Could not create contact in GHL');
   }
 }
 
@@ -91,7 +110,6 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
     const now = new Date();
-    // Search window: 30 days past to 90 days future
     const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
     const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  
     
@@ -112,7 +130,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 export async function createAppointment(apptData: {
   calendarId: string;
   contactId: string;
-  startTime: string; // ISO 8601 string for POST
+  startTime: string; 
   title: string;
 }): Promise<GHLAppointment> {
   try {
