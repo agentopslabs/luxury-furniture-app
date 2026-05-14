@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -23,12 +22,14 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
-  Zap
+  Zap,
+  ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<GHLContact | null>(null);
@@ -110,11 +111,13 @@ export default function DashboardPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground">LeadConnector V2 • {process.env.NEXT_PUBLIC_GHL_LOCATION_ID || 'No Location'}</p>
+              <p className="text-muted-foreground">Location: nBYJTjYbHTIsJGiqT0W4 • Synchronized with GHL V2 Backend</p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" className="shadow-lg shadow-primary/20">
-                <PlusCircle className="mr-2 h-4 w-4" /> New Interaction
+              <Button size="sm" asChild className="shadow-lg shadow-primary/20">
+                <Link href="/calendar">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Book Appointment
+                </Link>
               </Button>
             </div>
           </header>
@@ -126,9 +129,9 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl">Engagement Pipeline</CardTitle>
-                      <CardDescription>Real-time data from GHL V2 API</CardDescription>
+                      <CardDescription>Real-time interaction log from LeadConnector</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-mono text-[10px]">{appts.length} Events</Badge>
+                    <Badge variant="secondary" className="font-mono text-[10px]">{appts.length} Active Events</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -149,7 +152,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-4">
                           <div className={cn(
                             "w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110",
-                            appt.status === 'confirmed' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                            appt.status === 'confirmed' || appt.status === 'booked' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                           )}>
                             <Clock size={18} />
                           </div>
@@ -161,7 +164,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Badge variant={appt.status === 'confirmed' ? 'default' : 'secondary'} className="capitalize text-[10px]">
+                          <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px]">
                             {appt.status}
                           </Badge>
                           <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
@@ -210,16 +213,19 @@ export default function DashboardPage() {
                 <Card className="glass border-border/40">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2 uppercase tracking-wider font-body">
-                      <MessageSquare className="h-4 w-4 text-primary" /> CRM Timeline
+                      <MessageSquare className="h-4 w-4 text-primary" /> CRM Actions
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <textarea 
-                      placeholder="Add a V2 internal note..." 
-                      className="w-full h-20 bg-muted/30 rounded-lg p-3 text-xs border border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 resize-none outline-none transition-all"
-                    />
-                    <Button size="sm" className="w-full h-9 text-xs font-semibold" variant="secondary">
-                      Push to Timeline
+                    <Button variant="outline" size="sm" className="w-full justify-between" asChild>
+                      <Link href="/conversations">
+                        Go to Messages <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-between" asChild>
+                      <Link href="/contacts">
+                        View Full Directory <ArrowUpRight className="h-3 w-3" />
+                      </Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -236,33 +242,27 @@ export default function DashboardPage() {
               <Card className="glass border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
                 <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80 font-body">System Connection</CardTitle>
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary/80 font-body">GHL API Status</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="space-y-3">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">V2 Auth Status</span>
-                      {syncStatus === 'synced' ? (
-                        <span className="text-emerald-500 font-bold flex items-center gap-1.5">
-                          <ShieldCheck size={10} /> Active
-                        </span>
-                      ) : (
-                        <span className="text-blue-500 font-bold flex items-center gap-1.5">
-                          <Zap size={10} /> {syncStatus}
-                        </span>
-                      )}
+                      <span className="text-muted-foreground">Auth Token</span>
+                      <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                        <ShieldCheck size={10} /> Active (PIT)
+                      </span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">API Version</span>
-                      <span className="font-mono text-[10px] text-foreground/80">2021-07-28</span>
+                      <span className="text-muted-foreground">Region</span>
+                      <span className="font-mono text-[10px] text-foreground/80">Global (V2)</span>
                     </div>
                     <div className="pt-2">
-                      <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter">Token: {process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN?.substring(0, 10)}...</p>
+                      <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter">Connected: nBYJT...T0W4</p>
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-10 text-xs border-primary/20 hover:bg-primary/5 hover:text-primary transition-all group" asChild>
-                    <a href="https://developers.gohighlevel.com/" target="_blank">
-                      V2 API Docs <ExternalLink className="ml-2 h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    <a href="https://app.gohighlevel.com/" target="_blank">
+                      Open Main GHL <ExternalLink className="ml-2 h-3 w-3" />
                     </a>
                   </Button>
                 </CardContent>

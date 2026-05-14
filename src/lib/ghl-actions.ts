@@ -67,6 +67,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
     const now = new Date();
+    // Search window: 30 days past to 90 days future
     const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
     const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  
     
@@ -87,10 +88,11 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 export async function createAppointment(apptData: {
   calendarId: string;
   contactId: string;
-  startTime: string;
+  startTime: string; // ISO 8601 string for POST
   title: string;
 }): Promise<GHLAppointment> {
   try {
+    // V2 POST expects locationId inside the body and ISO strings for times
     const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
       method: 'POST',
       headers,
@@ -99,14 +101,16 @@ export async function createAppointment(apptData: {
         locationId: GHL_LOCATION_ID,
       }),
     });
+    
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to book appointment');
+      throw new Error(errorData.message || 'Failed to book appointment in GHL');
     }
+    
     const data = await response.json();
     return data.appointment;
   } catch (error: any) {
-    throw new Error(error.message || 'Could not sync appointment with GHL');
+    throw new Error(error.message || 'Could not sync appointment with GHL backend');
   }
 }
 
