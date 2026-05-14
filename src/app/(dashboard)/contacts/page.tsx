@@ -83,7 +83,7 @@ export default function ContactsPage() {
       setContacts(data);
       if (isManual) {
         toast({
-          title: "Directory Synchronized",
+          title: "Contacts Synchronized",
           description: "Live GHL V2 contact records refreshed.",
         });
       }
@@ -190,7 +190,7 @@ export default function ContactsPage() {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in duration-500">
             <div className="space-y-2">
               <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40">
-                Directory
+                Contacts
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 <Users size={16} className="text-primary" />
@@ -206,7 +206,7 @@ export default function ContactsPage() {
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Sync Directory"}
+                {refreshing ? "Syncing..." : "Sync Contacts"}
               </Button>
               <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all" onClick={() => setIsCreateOpen(true)}>
                 <UserPlus className="mr-2 h-5 w-5" /> Add Contact
@@ -225,7 +225,7 @@ export default function ContactsPage() {
                 <div className="relative w-full md:w-80">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
                   <Input 
-                    placeholder="Search directory..." 
+                    placeholder="Search contacts..." 
                     className="glass pl-11 h-11 rounded-xl text-sm border-white/5 focus:ring-primary transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
