@@ -105,15 +105,33 @@ class GHLService {
     }
   }
 
+  async updateContact(id: string, data: Partial<GHLContact>): Promise<GHLContact> {
+    try {
+      const response = await apiClient.put(`/contacts/${id}`, data);
+      return response.data.contact;
+    } catch (error) {
+      console.error("GHL Update Contact Error:", error);
+      throw error;
+    }
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    try {
+      await apiClient.delete(`/contacts/${id}`);
+    } catch (error) {
+      console.error("GHL Delete Contact Error:", error);
+      throw error;
+    }
+  }
+
   async getAllAppointments(): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
-      // GHL V2 Appointments expect Unix Milliseconds for startTime/endTime
       const now = Date.now();
-      const startTime = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
-      const endTime = now + (180 * 24 * 60 * 60 * 1000); // 180 days in future
+      const startTime = now - (30 * 24 * 60 * 60 * 1000);
+      const endTime = now + (90 * 24 * 60 * 60 * 1000);
 
       const response = await apiClient.get('/appointments', {
         params: { 
@@ -129,8 +147,6 @@ class GHLService {
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
     } catch (error: any) {
-      // In a real environment, browser CORS might block this. 
-      // Ensure your GHL app has the correct redirect URIs and scopes.
       return [];
     }
   }
