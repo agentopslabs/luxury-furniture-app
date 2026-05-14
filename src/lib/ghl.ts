@@ -67,7 +67,8 @@ export interface GHLOpportunity {
 class GHLService {
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-    return !token || token.includes('your_') || token.includes('mock');
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    return !token || token.includes('your_') || !locationId;
   }
 
   async getContacts(limit: number = 20): Promise<GHLContact[]> {
@@ -135,23 +136,6 @@ class GHLService {
       );
     } catch (error: any) {
       if (this.isMockMode()) return this.getMockAppointments();
-      return [];
-    }
-  }
-
-  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
-    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    if (!locationId || contactId === 'mock_id') {
-      if (this.isMockMode()) return this.getMockAppointments();
-      return [];
-    }
-    
-    try {
-      const response = await apiClient.get('/appointments', {
-        params: { contactId, locationId }
-      });
-      return response.data.appointments || [];
-    } catch (error) {
       return [];
     }
   }
@@ -242,19 +226,10 @@ class GHLService {
         id: 'appt_1',
         locationId: 'mock_location',
         contactId: 'mock_id',
-        title: 'V2 Strategic Planning',
+        title: 'V2 Strategic Planning (Mock)',
         startTime: new Date(Date.now() + 86400000).toISOString(),
         endTime: new Date(Date.now() + 90000000).toISOString(),
         status: 'confirmed'
-      },
-      {
-        id: 'appt_2',
-        locationId: 'mock_location',
-        contactId: 'mock_id',
-        title: 'V2 Implementation Review',
-        startTime: new Date(Date.now() - 172800000).toISOString(),
-        endTime: new Date(Date.now() - 169200000).toISOString(),
-        status: 'completed'
       }
     ];
   }

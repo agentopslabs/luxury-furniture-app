@@ -18,10 +18,10 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Priority: Explicit token > localStorage > env
+    // Priority: Env token > localStorage
     const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
     const storageToken = typeof window !== 'undefined' ? localStorage.getItem('ghl_access_token') : null;
-    const token = storageToken || envToken;
+    const token = envToken || storageToken;
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -34,7 +34,6 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    // Silent catch for network errors to prevent blocking the UI
     return Promise.reject(error);
   }
 );
