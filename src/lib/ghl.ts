@@ -74,12 +74,11 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts', {
+      const response = await apiClient.get('/contacts/', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      console.error("GHL getContacts error:", error.response?.data || error.message);
       if (this.isMockMode()) return this.getMockContacts("");
       return [];
     }
@@ -90,12 +89,11 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/contacts', {
+      const response = await apiClient.get('/contacts/', {
         params: { locationId, query, _t: Date.now() }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      console.error("GHL searchContacts error:", error.response?.data || error.message);
       if (this.isMockMode()) return this.getMockContacts(query);
       return [];
     }
@@ -119,15 +117,15 @@ class GHLService {
 
     try {
       const now = new Date();
-      // V2 expects Unix timestamps in milliseconds for startTime and endTime
-      const startTimestamp = now.getTime() - (90 * 24 * 60 * 60 * 1000);
-      const endTimestamp = now.getTime() + (120 * 24 * 60 * 60 * 1000);
+      // V2 expects ISO 8601 strings for startTime and endTime
+      const startTime = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
+      const endTime = new Date(now.getTime() + (120 * 24 * 60 * 60 * 1000)).toISOString();
 
-      const response = await apiClient.get('/appointments', {
+      const response = await apiClient.get('/appointments/', {
         params: { 
           locationId, 
-          startTime: startTimestamp, 
-          endTime: endTimestamp,
+          startTime, 
+          endTime,
           limit: 100,
           _t: Date.now()
         }
@@ -138,7 +136,7 @@ class GHLService {
         new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       );
     } catch (error: any) {
-      console.error("GHL getAllAppointments error:", error.response?.data || error.message);
+      // Return mock data if in mock mode or error occurs
       if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
@@ -152,7 +150,7 @@ class GHLService {
     }
     
     try {
-      const response = await apiClient.get('/appointments', {
+      const response = await apiClient.get('/appointments/', {
         params: { contactId, locationId, _t: Date.now() }
       });
       return response.data.appointments || [];
@@ -166,7 +164,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/calendars', {
+      const response = await apiClient.get('/calendars/', {
         params: { locationId, _t: Date.now() }
       });
       return response.data.calendars || [];
@@ -180,7 +178,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/conversations', {
+      const response = await apiClient.get('/conversations/', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.conversations || [];
@@ -208,7 +206,7 @@ class GHLService {
     if (!locationId) return [];
 
     try {
-      const response = await apiClient.get('/opportunities', {
+      const response = await apiClient.get('/opportunities/', {
         params: { locationId, limit, _t: Date.now() }
       });
       return response.data.opportunities || [];
