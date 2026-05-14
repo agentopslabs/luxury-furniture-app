@@ -17,14 +17,12 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== 'undefined') {
-      const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
-      const storedToken = localStorage.getItem('ghl_access_token');
-      const token = envToken || storedToken;
+    const envToken = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('ghl_access_token') : null;
+    const token = envToken || storedToken;
 
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -35,7 +33,7 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.warn('GHL V2: Authentication error. Access token may be invalid.');
+      console.warn('GHL V2: Authentication error. Access token may be invalid or expired.');
     }
     return Promise.reject(error);
   }

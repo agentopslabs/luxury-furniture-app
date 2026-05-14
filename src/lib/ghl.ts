@@ -79,22 +79,24 @@ class GHLService {
       });
       return response.data.contacts || [];
     } catch (error: any) {
+      console.error("GHL getContacts error:", error.response?.data || error.message);
       if (this.isMockMode()) return this.getMockContacts("");
       return [];
     }
   }
 
-  async searchContacts(email: string): Promise<GHLContact[]> {
+  async searchContacts(query: string): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/contacts', {
-        params: { locationId, query: email, _t: Date.now() }
+        params: { locationId, query, _t: Date.now() }
       });
       return response.data.contacts || [];
     } catch (error: any) {
-      if (this.isMockMode()) return this.getMockContacts(email);
+      console.error("GHL searchContacts error:", error.response?.data || error.message);
+      if (this.isMockMode()) return this.getMockContacts(query);
       return [];
     }
   }
@@ -117,6 +119,7 @@ class GHLService {
 
     try {
       const now = new Date();
+      // V2 expects Unix timestamps in milliseconds for startTime and endTime
       const startTimestamp = now.getTime() - (90 * 24 * 60 * 60 * 1000);
       const endTimestamp = now.getTime() + (120 * 24 * 60 * 60 * 1000);
 
@@ -134,7 +137,8 @@ class GHLService {
       return appointments.sort((a: any, b: any) => 
         new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       );
-    } catch (error) {
+    } catch (error: any) {
+      console.error("GHL getAllAppointments error:", error.response?.data || error.message);
       if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
