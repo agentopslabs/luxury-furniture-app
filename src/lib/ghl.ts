@@ -60,18 +60,14 @@ export interface GHLOpportunity {
   };
 }
 
-/**
- * GHL Service Layer strictly implemented for API V2.
- * Endpoints optimized for services.leadconnectorhq.com.
- */
 class GHLService {
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    return !token || token.includes('your_') || !locationId;
+    return !token || token === 'your_access_token' || !locationId;
   }
 
-  async getContacts(limit: number = 20): Promise<GHLContact[]> {
+  async getContacts(limit: number = 50): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
@@ -80,7 +76,7 @@ class GHLService {
         params: { locationId, limit }
       });
       return response.data.contacts || [];
-    } catch (error: any) {
+    } catch (error) {
       if (this.isMockMode()) return this.getMockContacts("");
       return [];
     }
@@ -92,10 +88,10 @@ class GHLService {
 
     try {
       const response = await apiClient.get('/contacts', {
-        params: { locationId, query }
+        params: { locationId, query, limit: 10 }
       });
       return response.data.contacts || [];
-    } catch (error: any) {
+    } catch (error) {
       if (this.isMockMode()) return this.getMockContacts(query);
       return [];
     }
@@ -117,9 +113,9 @@ class GHLService {
 
     try {
       const now = new Date();
-      // V2 expects ISO 8601 strings
-      const startTime = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
-      const endTime = new Date(now.getTime() + (120 * 24 * 60 * 60 * 1000)).toISOString();
+      // V2 expects ISO strings for filtering
+      const startTime = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString(); // 30 days ago
+      const endTime = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)).toISOString();   // 90 days ahead
 
       const response = await apiClient.get('/appointments', {
         params: { 
@@ -131,10 +127,26 @@ class GHLService {
       });
       
       const appointments = response.data.appointments || [];
-      return appointments.sort((a: any, b: any) => 
-        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      // Sort upcoming first
+      return appointments.sort((a: GHLAppointment, b: GHLAppointment) => 
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
-    } catch (error: any) {
+    } catch (error) {
+      if (this.isMockMode()) return this.getMockAppointments();
+      return [];
+    }
+  }
+
+  async getAppointments(contactId: string): Promise<GHLAppointment[]> {
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    if (!locationId) return [];
+
+    try {
+      const response = await apiClient.get('/appointments', {
+        params: { locationId, contactId }
+      });
+      return response.data.appointments || [];
+    } catch (error) {
       if (this.isMockMode()) return this.getMockAppointments();
       return [];
     }
@@ -154,13 +166,13 @@ class GHLService {
     }
   }
 
-  async getConversations(limit: number = 20): Promise<GHLConversation[]> {
+  async getConversations(): Promise<GHLConversation[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/conversations', {
-        params: { locationId, limit }
+        params: { locationId, limit: 20 }
       });
       return response.data.conversations || [];
     } catch (error) {
@@ -182,13 +194,13 @@ class GHLService {
     }
   }
 
-  async getOpportunities(limit: number = 20): Promise<GHLOpportunity[]> {
+  async getOpportunities(): Promise<GHLOpportunity[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
     if (!locationId) return [];
 
     try {
       const response = await apiClient.get('/opportunities', {
-        params: { locationId, limit }
+        params: { locationId, limit: 20 }
       });
       return response.data.opportunities || [];
     } catch (error) {

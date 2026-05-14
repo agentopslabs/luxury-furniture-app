@@ -41,7 +41,7 @@ export default function CalendarPage() {
     else setLoading(true);
 
     try {
-      // Parallel fetch for calendars and appointments
+      // Parallel fetch for calendars and appointments from GHL V2
       const [apptsData, calsData] = await Promise.all([
         ghl.getAllAppointments(),
         ghl.getCalendars()
@@ -52,15 +52,15 @@ export default function CalendarPage() {
       
       if (isManualRefresh) {
         toast({
-          title: "Calendar Updated",
-          description: `Successfully synchronized ${apptsData.length} appointments.`,
+          title: "Calendar Synchronized",
+          description: `Successfully updated ${apptsData.length} upcoming events from GHL.`,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Sync Error",
-        description: "The GHL API could not be reached. Please check your credentials.",
+        title: "Synchronization Error",
+        description: "Could not fetch events from GHL. Please verify your connection.",
       });
     } finally {
       setLoading(false);
@@ -77,14 +77,14 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background text-foreground">
       <DashboardNav />
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-              <p className="text-muted-foreground">Manage sub-account appointments via GHL V2 API.</p>
+              <p className="text-muted-foreground">Real-time schedule management via LeadConnector V2.</p>
             </div>
             <div className="flex gap-2">
               <Button 
@@ -95,13 +95,13 @@ export default function CalendarPage() {
                 className="transition-all active:scale-95 bg-card"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Refresh Sync"}
+                {refreshing ? "Syncing..." : "Refresh Events"}
               </Button>
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
               <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" /> Book
+                <Plus className="mr-2 h-4 w-4" /> Book Appointment
               </Button>
             </div>
           </header>
@@ -110,7 +110,7 @@ export default function CalendarPage() {
             <div className="lg:col-span-1 space-y-6">
               <Card className="glass border-border/40">
                 <CardHeader>
-                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available Calendars</CardTitle>
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Connected Calendars</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {loading ? (
@@ -136,8 +136,8 @@ export default function CalendarPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-xl">Upcoming Events</CardTitle>
-                      <CardDescription>Real-time data from GHL V2 API</CardDescription>
+                      <CardTitle className="text-xl font-headline">Upcoming Events</CardTitle>
+                      <CardDescription>Live data stream from Location: {process.env.NEXT_PUBLIC_GHL_LOCATION_ID}</CardDescription>
                     </div>
                     <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 border-primary/20">
                       {appointments.length} Total
@@ -176,7 +176,7 @@ export default function CalendarPage() {
                               </span>
                               {appt.status === 'completed' && (
                                 <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                  <CheckCircle2 size={12} /> Finished
+                                  <CheckCircle2 size={12} /> Completed
                                 </span>
                               )}
                             </div>
@@ -196,8 +196,8 @@ export default function CalendarPage() {
                     <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
                       <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
                       <div className="space-y-1">
-                        <p className="font-medium text-muted-foreground">No appointments found</p>
-                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Try clicking refresh or check your GHL sub-account for upcoming events.</p>
+                        <p className="font-medium text-muted-foreground">No upcoming events found</p>
+                        <p className="text-xs text-muted-foreground opacity-70 max-w-[200px] mx-auto">Click 'Refresh Events' or check your GHL sub-account for scheduled activities.</p>
                       </div>
                     </div>
                   )}
