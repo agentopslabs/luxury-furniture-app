@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { ghl, GHLAppointment, GHLCalendar } from "@/lib/ghl";
 import { 
@@ -19,35 +19,60 @@ import {
   Filter,
   MoreVertical,
   CheckCircle2,
-  CalendarDays
+  CalendarDays,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
+
+  const fetchData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    else setRefreshing(true);
+
+    try {
+      const [apptsData, calsData] = await Promise.all([
+        ghl.getAllAppointments(),
+        ghl.getCalendars()
+      ]);
+      setAppointments(apptsData);
+      setCalendars(calsData);
+      
+      if (isSilent) {
+        toast({
+          title: "Calendar Synchronized",
+          description: "All upcoming events and schedules have been updated.",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch calendar data:", error);
+      toast({
+        variant: "destructive",
+        title: "Sync Error",
+        description: "Could not retrieve the latest calendar data.",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [apptsData, calsData] = await Promise.all([
-          ghl.getAllAppointments(),
-          ghl.getCalendars()
-        ]);
-        setAppointments(apptsData);
-        setCalendars(calsData);
-      } catch (error) {
-        console.error("Failed to fetch calendar data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const handleRefresh = () => {
+    fetchData(true);
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -60,6 +85,16 @@ export default function CalendarPage() {
               <p className="text-muted-foreground">Schedule and manage your location appointments.</p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh} 
+                disabled={loading || refreshing}
+                className="transition-all active:scale-95"
+              >
+                <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
+                {refreshing ? "Updating..." : "Refresh"}
+              </Button>
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
