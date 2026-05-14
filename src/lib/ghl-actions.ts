@@ -34,6 +34,30 @@ export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
   }
 }
 
+export async function searchContacts(query: string = ""): Promise<GHLContact[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/contacts`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    
+    if (query) {
+      // Use the V2 search endpoint if a query is provided
+      const searchUrl = new URL(`${GHL_API_BASE_URL}/contacts/search`);
+      searchUrl.searchParams.append('locationId', GHL_LOCATION_ID);
+      searchUrl.searchParams.append('query', query);
+      const response = await fetch(searchUrl.toString(), { headers, next: { revalidate: 0 } });
+      if (response.ok) {
+        const data = await response.json();
+        return data.contacts || [];
+      }
+    }
+    
+    // Fallback to standard list if no query or search fails
+    return getContacts(20);
+  } catch (error) {
+    return [];
+  }
+}
+
 export async function updateContact(id: string, contactData: Partial<GHLContact>): Promise<GHLContact> {
   try {
     const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
@@ -92,7 +116,6 @@ export async function createAppointment(apptData: {
   title: string;
 }): Promise<GHLAppointment> {
   try {
-    // V2 POST expects locationId inside the body and ISO strings for times
     const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
       method: 'POST',
       headers,
