@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getAllAppointments, getCalendars, updateAppointmentStatus } from "@/lib/ghl-actions";
-import { GHLAppointment, GHLCalendar } from "@/lib/ghl";
+import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment } from "@/lib/ghl-actions";
+import { GHLAppointment, GHLCalendar, GHLContact } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
@@ -14,14 +14,14 @@ import {
 import { 
   Clock, 
   Plus,
-  Filter,
   MoreVertical,
-  CheckCircle2,
   CalendarDays,
   RefreshCw,
   AlertCircle,
   XCircle,
-  CheckCircle
+  CheckCircle,
+  Loader2,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,14 +34,42 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
+  const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [bookingForm, setBookingForm] = useState({
+    calendarId: "",
+    contactId: "",
+    title: "",
+    startTime: ""
+  });
+
   const { toast } = useToast();
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
@@ -49,13 +77,15 @@ export default function CalendarPage() {
     else setLoading(true);
 
     try {
-      const [apptsData, calsData] = await Promise.all([
+      const [apptsData, calsData, contsData] = await Promise.all([
         getAllAppointments(),
-        getCalendars()
+        getCalendars(),
+        getContacts(100)
       ]);
       
       setAppointments(apptsData);
       setCalendars(calsData);
+      setContacts(contsData);
       
       if (isManualRefresh) {
         toast({
@@ -96,6 +126,40 @@ export default function CalendarPage() {
     }
   };
 
+  const handleBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingForm.calendarId || !bookingForm.contactId || !bookingForm.startTime) {
+      toast({ variant: "destructive", title: "Missing Details", description: "Please fill in all required fields." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // GHL V2 expects ISO format for creation
+      const startTimeISO = new Date(bookingForm.startTime).toISOString();
+      await createAppointment({
+        ...bookingForm,
+        startTime: startTimeISO
+      });
+      
+      setIsBookingOpen(false);
+      setBookingForm({ calendarId: "", contactId: "", title: "", startTime: "" });
+      toast({
+        title: "Appointment Booked",
+        description: "Successfully added to GHL calendar.",
+      });
+      fetchData(true);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Booking Failed",
+        description: error.message || "Could not sync appointment.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <DashboardNav />
@@ -117,7 +181,7 @@ export default function CalendarPage() {
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
                 {refreshing ? "Syncing..." : "Sync Schedule"}
               </Button>
-              <Button size="sm">
+              <Button size="sm" onClick={() => setIsBookingOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Book Appointment
               </Button>
             </div>
@@ -240,6 +304,87 @@ export default function CalendarPage() {
           </div>
         </div>
       </main>
+
+      {/* Book Appointment Dialog */}
+      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleBookingSubmit}>
+            <DialogHeader>
+              <DialogTitle>Book Appointment</DialogTitle>
+              <DialogDescription>
+                Schedule a new meeting. This will be synced to GHL immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Appointment Title</Label>
+                <Input 
+                  id="title" 
+                  placeholder="e.g. Consultation Call"
+                  value={bookingForm.title} 
+                  onChange={(e) => setBookingForm({ ...bookingForm, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contact</Label>
+                <Select 
+                  value={bookingForm.contactId} 
+                  onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a contact" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.firstName} {c.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Calendar</Label>
+                <Select 
+                  value={bookingForm.calendarId} 
+                  onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a calendar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {calendars.map((cal) => (
+                      <SelectItem key={cal.id} value={cal.id}>
+                        {cal.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input 
+                  id="startTime" 
+                  type="datetime-local" 
+                  value={bookingForm.startTime}
+                  onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm Booking
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

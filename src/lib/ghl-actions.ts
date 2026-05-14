@@ -84,6 +84,32 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
   }
 }
 
+export async function createAppointment(apptData: {
+  calendarId: string;
+  contactId: string;
+  startTime: string;
+  title: string;
+}): Promise<GHLAppointment> {
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...apptData,
+        locationId: GHL_LOCATION_ID,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to book appointment');
+    }
+    const data = await response.json();
+    return data.appointment;
+  } catch (error: any) {
+    throw new Error(error.message || 'Could not sync appointment with GHL');
+  }
+}
+
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
   try {
     await fetch(`${GHL_API_BASE_URL}/appointments/${id}/status`, {
