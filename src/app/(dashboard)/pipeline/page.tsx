@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -145,7 +146,7 @@ export default function PipelinePage() {
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md transition-all font-bold"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Synchronizing..." : "Sync Deals"}
+                {refreshing ? "Refreshing..." : "Refresh Board"}
               </Button>
               <Button 
                 size="lg" 

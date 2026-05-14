@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -89,8 +90,8 @@ export default function CalendarPage() {
       
       if (isManualRefresh) {
         toast({
-          title: "Schedule Synchronized",
-          description: `Loaded ${apptsData.length} events from GHL.`,
+          title: "Schedule Refreshed",
+          description: `Loaded ${apptsData.length} events from GHL cloud.`,
         });
       }
     } catch (error) {
@@ -135,7 +136,6 @@ export default function CalendarPage() {
 
     setIsSubmitting(true);
     try {
-      // GHL V2 expects ISO format for creation
       const startTimeISO = new Date(bookingForm.startTime).toISOString();
       await createAppointment({
         ...bookingForm,
@@ -179,7 +179,7 @@ export default function CalendarPage() {
                 className="bg-card"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Sync Schedule"}
+                {refreshing ? "Refreshing..." : "Refresh Schedule"}
               </Button>
               <Button size="sm" onClick={() => setIsBookingOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Book Appointment

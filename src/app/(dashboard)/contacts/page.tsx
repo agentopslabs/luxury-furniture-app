@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -83,15 +84,15 @@ export default function ContactsPage() {
       setContacts(data);
       if (isManual) {
         toast({
-          title: "Contacts Synchronized",
-          description: "Live GHL V2 contact records refreshed.",
+          title: "Contacts Refreshed",
+          description: "Latest LeadConnector V2 contact records pulled.",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Sync Error",
-        description: "Failed to fetch records from LeadConnector V2.",
+        title: "Connection Error",
+        description: "Failed to reach LeadConnector V2 servers.",
       });
     } finally {
       setLoading(false);
@@ -206,7 +207,7 @@ export default function ContactsPage() {
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Sync Contacts"}
+                {refreshing ? "Refreshing..." : "Refresh Contacts"}
               </Button>
               <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all" onClick={() => setIsCreateOpen(true)}>
                 <UserPlus className="mr-2 h-5 w-5" /> Add Contact

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -33,8 +34,8 @@ export default function ConversationsPage() {
       setConversations(data);
       if (isManual) {
         toast({
-          title: "Inbox Updated",
-          description: `Loaded ${data.length} live threads.`,
+          title: "Inbox Refreshed",
+          description: `Loaded ${data.length} live threads from GHL.`,
         });
       }
     } catch (error) {
@@ -99,7 +100,7 @@ export default function ConversationsPage() {
                 disabled={loading || refreshing}
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                Sync Inbox
+                {refreshing ? "Refreshing..." : "Refresh Inbox"}
               </Button>
             </div>
           </header>
@@ -118,7 +119,7 @@ export default function ConversationsPage() {
                     />
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 p-0 overflow-y-auto">
+                <CardContent className="flex-1 p-0 overflow-y-auto no-scrollbar">
                   {loading ? (
                     Array(6).fill(0).map((_, i) => (
                       <div key={i} className="p-4 space-y-2 border-b">
@@ -175,7 +176,7 @@ export default function ConversationsPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-1 p-6 overflow-y-auto space-y-4">
+                  <CardContent className="flex-1 p-6 overflow-y-auto space-y-4 no-scrollbar">
                     <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border/20 self-start max-w-[80%]">
                       {selectedConvo.lastMessageBody}
                       <p className="text-[9px] mt-2 opacity-50 font-mono">Received via GHL</p>

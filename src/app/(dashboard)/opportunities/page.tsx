@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -102,8 +103,8 @@ export default function OpportunitiesPage() {
       
       if (isManual) {
         toast({
-          title: "Registry Synchronized",
-          description: "Live GHL V2 deal flow records refreshed.",
+          title: "Registry Refreshed",
+          description: "Live GHL V2 deal flow records updated.",
         });
       }
     } catch (error) {
@@ -228,7 +229,7 @@ export default function OpportunitiesPage() {
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Syncing..." : "Sync Registry"}
+                {refreshing ? "Refreshing..." : "Refresh List"}
               </Button>
               
               <Button 
