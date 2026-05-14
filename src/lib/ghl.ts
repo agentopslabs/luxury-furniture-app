@@ -10,16 +10,25 @@ export interface GHLContact {
   phone?: string;
   tags?: string[];
   type?: 'lead' | 'customer';
+  dateAdded?: string;
 }
 
 export interface GHLAppointment {
   id: string;
   locationId: string;
   contactId: string;
+  calendarId?: string;
   title: string;
   startTime: string;
   endTime: string;
   status: 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'completed';
+}
+
+export interface GHLCalendar {
+  id: string;
+  name: string;
+  description?: string;
+  locationId: string;
 }
 
 /**
@@ -29,7 +38,6 @@ export interface GHLAppointment {
 class GHLService {
   /**
    * Checks if we are running in mock mode.
-   * Now checks for the real provided token.
    */
   isMockMode(): boolean {
     const token = process.env.NEXT_PUBLIC_GHL_ACCESS_TOKEN;
@@ -37,15 +45,29 @@ class GHLService {
   }
 
   /**
+   * Fetches all contacts for the configured location.
+   */
+  async getContacts(limit: number = 20): Promise<GHLContact[]> {
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    if (!locationId || this.isMockMode()) return this.getMockContacts("");
+
+    try {
+      const response = await apiClient.get('/contacts/', {
+        params: { locationId, limit }
+      });
+      return response.data.contacts || [];
+    } catch (error: any) {
+      console.error('GHL V2 getContacts failed:', error.message);
+      return this.getMockContacts("");
+    }
+  }
+
+  /**
    * Searches for a contact by email using GHL V2.
-   * V2 requires locationId for searches.
    */
   async searchContacts(email: string): Promise<GHLContact[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-    
-    if (!locationId || this.isMockMode()) {
-      return this.getMockContacts(email);
-    }
+    if (!locationId || this.isMockMode()) return this.getMockContacts(email);
 
     try {
       const response = await apiClient.get(`/contacts/`, {
@@ -62,9 +84,7 @@ class GHLService {
    * Fetches a specific contact's details via V2 endpoint.
    */
   async getContact(id: string): Promise<GHLContact> {
-    if (id === 'mock_id' || this.isMockMode()) {
-      return this.getMockContact();
-    }
+    if (id === 'mock_id' || this.isMockMode()) return this.getMockContact();
 
     try {
       const response = await apiClient.get(`/contacts/${id}`);
@@ -75,14 +95,35 @@ class GHLService {
   }
 
   /**
-   * Retrieves appointment history for a contact via V2 endpoint.
+   * Retrieves all appointments for the location.
+   * Note: V2 usually requires a date range for global location fetches.
+   */
+  async getAllAppointments(): Promise<GHLAppointment[]> {
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    if (!locationId || this.isMockMode()) return this.getMockAppointments();
+
+    try {
+      // Fetching for a broad range (current month +/- 30 days)
+      const now = new Date();
+      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).getTime();
+      const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).getTime();
+
+      const response = await apiClient.get('/appointments/', {
+        params: { locationId, startDate, endDate }
+      });
+      return response.data.appointments || [];
+    } catch (error) {
+      console.error('GHL V2 getAllAppointments failed');
+      return this.getMockAppointments();
+    }
+  }
+
+  /**
+   * Retrieves appointment history for a specific contact.
    */
   async getAppointments(contactId: string): Promise<GHLAppointment[]> {
     const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
-
-    if (!locationId || contactId === 'mock_id' || this.isMockMode()) {
-      return this.getMockAppointments();
-    }
+    if (!locationId || contactId === 'mock_id' || this.isMockMode()) return this.getMockAppointments();
     
     try {
       const response = await apiClient.get(`/appointments/`, {
@@ -91,6 +132,23 @@ class GHLService {
       return response.data.appointments || [];
     } catch (error) {
       return this.getMockAppointments();
+    }
+  }
+
+  /**
+   * Fetches available calendars for the location.
+   */
+  async getCalendars(): Promise<GHLCalendar[]> {
+    const locationId = process.env.NEXT_PUBLIC_GHL_LOCATION_ID;
+    if (!locationId || this.isMockMode()) return [];
+
+    try {
+      const response = await apiClient.get('/calendars/', {
+        params: { locationId }
+      });
+      return response.data.calendars || [];
+    } catch (error) {
+      return [];
     }
   }
 
@@ -105,7 +163,8 @@ class GHLService {
       lastName: 'Sterling',
       email: email || 'alex@sterling.io',
       tags: ['v2-prototype'],
-      type: 'customer'
+      type: 'customer',
+      dateAdded: new Date().toISOString()
     }];
   }
 
