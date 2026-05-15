@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -293,7 +292,7 @@ export async function createOrder(orderData: {
   const timestamp = Date.now();
   const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
   
-  // Mandatory GHL V2 Payment tracking params
+  // Mandatory GHL V2 Payment tracking params - MUST BE QUERY PARAMS
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
   url.searchParams.append('fingerprint', `fp_${timestamp}`);
@@ -351,7 +350,7 @@ export async function createInvoice(invoiceData: {
   const timestamp = Date.now();
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   
-  // Adding mandatory tracking for consistency across GHL V2 financial modules
+  // Mandatory GHL V2 Invoice tracking params - MUST BE QUERY PARAMS
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
   url.searchParams.append('fingerprint', `fp_${timestamp}`);
