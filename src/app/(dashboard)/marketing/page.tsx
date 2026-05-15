@@ -81,6 +81,13 @@ const socialSubTabs = [
   { name: "Settings", value: "settings", icon: Settings },
 ];
 
+const availableChannels = [
+  { name: "Facebook", id: "facebook", icon: Facebook, color: "text-blue-500" },
+  { name: "Instagram", id: "instagram", icon: Instagram, color: "text-pink-500" },
+  { name: "LinkedIn", id: "linkedin", icon: Linkedin, color: "text-blue-700" },
+  { name: "Twitter", id: "twitter", icon: Twitter, color: "text-sky-400" },
+];
+
 export default function MarketingPage() {
   const [activeMainTab, setActiveMainTab] = useState("social");
   const [activeSocialTab, setActiveSocialTab] = useState("planner");
@@ -89,7 +96,13 @@ export default function MarketingPage() {
   const [isPostOpen, setIsPostOpen] = useState(false);
   const [isSocialsOpen, setIsSocialsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newPost, setNewPost] = useState({ caption: "", type: "Post", status: "Scheduled" });
+  
+  const [newPost, setNewPost] = useState({ 
+    caption: "", 
+    type: "Post", 
+    status: "Scheduled",
+    channels: [] as string[]
+  });
   
   const { toast } = useToast();
 
@@ -122,13 +135,17 @@ export default function MarketingPage() {
       toast({ variant: "destructive", title: "Missing Content", description: "Caption is required for social sync." });
       return;
     }
+    if (newPost.channels.length === 0) {
+      toast({ variant: "destructive", title: "No Channels", description: "Please select at least one channel for the post." });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await createSocialPost(newPost);
       toast({ title: "Post Synchronized", description: "Successfully pushed to GHL Social Planner." });
       setIsPostOpen(false);
-      setNewPost({ caption: "", type: "Post", status: "Scheduled" });
+      setNewPost({ caption: "", type: "Post", status: "Scheduled", channels: [] });
       fetchData();
     } catch (error: any) {
       toast({ variant: "destructive", title: "Sync Failure", description: error.message || "Could not push post to cloud." });
@@ -143,6 +160,16 @@ export default function MarketingPage() {
       description: `Initiating OAuth flow for ${platform}. Redirecting to GHL secure portal...`,
     });
     setIsSocialsOpen(false);
+  };
+
+  const toggleChannel = (channelId: string) => {
+    setNewPost(prev => {
+      const exists = prev.channels.includes(channelId);
+      if (exists) {
+        return { ...prev, channels: prev.channels.filter(id => id !== channelId) };
+      }
+      return { ...prev, channels: [...prev.channels, channelId] };
+    });
   };
 
   return (
@@ -334,15 +361,33 @@ export default function MarketingPage() {
                     <option value="Post">Standard Post</option>
                     <option value="Reel">Reel / Short</option>
                     <option value="Story">Story</option>
+                    <option value="Video">Video</option>
+                    <option value="Carousel">Carousel</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Channel Priority</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Channel Selection</Label>
                   <div className="flex gap-2 h-12 items-center">
-                    <Facebook size={18} className="text-blue-500 opacity-40" />
-                    <Instagram size={18} className="text-pink-500 opacity-40" />
-                    <Linkedin size={18} className="text-blue-700 opacity-40" />
-                    <Twitter size={18} className="text-sky-400 opacity-40" />
+                    {availableChannels.map(channel => {
+                      const Icon = channel.icon;
+                      const isActive = newPost.channels.includes(channel.id);
+                      return (
+                        <button
+                          key={channel.id}
+                          type="button"
+                          onClick={() => toggleChannel(channel.id)}
+                          className={cn(
+                            "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
+                            isActive 
+                              ? "bg-white/10 border-primary shadow-[0_0_10px_rgba(168,85,247,0.3)]" 
+                              : "border-white/5 opacity-40 hover:opacity-100"
+                          )}
+                          title={channel.name}
+                        >
+                          <Icon size={18} className={channel.color} />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

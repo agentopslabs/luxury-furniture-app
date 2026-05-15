@@ -215,7 +215,6 @@ export async function createOrder(orderData: {
   const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
   
-  // Mandatory tracking parameters for GHL V2 financial compliance
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
   url.searchParams.append('fingerprint', `fp_${timestamp}`);
@@ -320,6 +319,7 @@ export async function createSocialPost(postData: {
   caption: string;
   type: string;
   status: string;
+  channels?: string[];
 }): Promise<any> {
   const response = await fetch(`${GHL_API_BASE_URL}/social-planner/posts`, {
     method: 'POST',
