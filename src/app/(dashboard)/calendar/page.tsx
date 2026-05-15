@@ -94,6 +94,7 @@ export default function CalendarPage() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsFetched, setSlotsFetched] = useState(false);
+  const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
 
   const { toast } = useToast();
 
@@ -151,36 +152,36 @@ export default function CalendarPage() {
     }
   };
 
-  const generateHourlySlots = useCallback((date: string): string[] => {
-    if (!date) return [];
-    const slots: string[] = [];
-    for (let hour = 8; hour <= 20; hour++) {
-      const d = new Date(date);
-      d.setHours(hour, 0, 0, 0);
-      slots.push(d.toISOString());
-    }
-    return slots;
-  }, []);
-
   const fetchSlotsForDate = useCallback(async (calendarId: string, date: string) => {
-    if (!calendarId || !date) { setAvailableSlots([]); setSlotsFetched(false); return; }
+    if (!calendarId || !date) {
+      setAvailableSlots([]);
+      setSlotsFetched(false);
+      setNoSlotsOnDate(false);
+      return;
+    }
     setLoadingSlots(true);
     setAvailableSlots([]);
     setSlotsFetched(false);
+    setNoSlotsOnDate(false);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
-      const slots = apiSlots.length > 0 ? apiSlots : generateHourlySlots(date);
-      setAvailableSlots(slots);
+      if (apiSlots.length > 0) {
+        setAvailableSlots(apiSlots);
+        setNoSlotsOnDate(false);
+      } else {
+        setAvailableSlots([]);
+        setNoSlotsOnDate(true);
+      }
       setSlotsFetched(true);
     } catch (error: any) {
-      const fallbackSlots = generateHourlySlots(date);
-      setAvailableSlots(fallbackSlots);
+      setAvailableSlots([]);
+      setNoSlotsOnDate(true);
       setSlotsFetched(true);
     } finally {
       setLoadingSlots(false);
     }
-  }, [generateHourlySlots]);
+  }, []);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,13 +284,15 @@ export default function CalendarPage() {
   }, [appointments, manageCalendarFilter, manageStatusFilter]);
 
   const slotPlaceholder = loadingSlots
-    ? "Loading slots..."
+    ? "Checking availability..."
     : !bookingForm.calendarId
     ? "Select a calendar first"
     : !bookingForm.selectedDate
     ? "Pick a date first"
-    : slotsFetched && availableSlots.length === 0
-    ? "No slots available"
+    : noSlotsOnDate
+    ? "No slots on this date"
+    : slotsFetched && availableSlots.length > 0
+    ? "Select a time slot"
     : "Select a time slot";
 
   return (
@@ -597,6 +600,7 @@ export default function CalendarPage() {
           setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
           setAvailableSlots([]);
           setSlotsFetched(false);
+          setNoSlotsOnDate(false);
         }
       }}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
@@ -668,22 +672,29 @@ export default function CalendarPage() {
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">
                     Available Slot {loadingSlots && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                   </Label>
-                  <Select
-                    value={bookingForm.selectedSlot}
-                    onValueChange={(val) => setBookingForm({ ...bookingForm, selectedSlot: val })}
-                    disabled={loadingSlots || availableSlots.length === 0}
-                  >
-                    <SelectTrigger className="glass h-12 rounded-xl">
-                      <SelectValue placeholder={slotPlaceholder} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {availableSlots.map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          {new Date(slot).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {noSlotsOnDate ? (
+                    <div className="h-12 rounded-xl border border-destructive/30 bg-destructive/5 flex items-center px-3 gap-2">
+                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                      <span className="text-xs text-destructive font-medium">No availability — try a weekday</span>
+                    </div>
+                  ) : (
+                    <Select
+                      value={bookingForm.selectedSlot}
+                      onValueChange={(val) => setBookingForm({ ...bookingForm, selectedSlot: val })}
+                      disabled={loadingSlots || !slotsFetched || availableSlots.length === 0}
+                    >
+                      <SelectTrigger className="glass h-12 rounded-xl">
+                        <SelectValue placeholder={slotPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {availableSlots.map((slot) => (
+                          <SelectItem key={slot} value={slot}>
+                            {new Date(slot).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>
