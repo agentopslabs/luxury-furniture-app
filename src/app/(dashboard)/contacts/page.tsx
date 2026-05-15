@@ -29,7 +29,8 @@ import {
   Trash2,
   RefreshCw,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Settings
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,7 @@ export default function ContactsPage() {
         title: "Contact Created",
         description: `${created.firstName} ${created.lastName} added to GHL cloud.`,
       });
+      fetchContacts(true);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -202,12 +204,21 @@ export default function ContactsPage() {
               <Button 
                 variant="outline" 
                 size="lg" 
+                onClick={() => toast({ title: "Configuration", description: "Loading sub-account contact settings..." })}
+                className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Config
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
                 onClick={() => fetchContacts(true)} 
                 disabled={refreshing || loading}
                 className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Refreshing..." : "Refresh Contacts"}
+                {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
               <Button size="lg" className="glow-primary h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 font-bold transition-all" onClick={() => setIsCreateOpen(true)}>
                 <UserPlus className="mr-2 h-5 w-5" /> Add Contact

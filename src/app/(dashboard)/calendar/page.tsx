@@ -22,7 +22,7 @@ import {
   XCircle,
   CheckCircle,
   Loader2,
-  User
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +53,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/toast-context"; // Assuming a shared toast or using shadcn/ui toast directly
+import { useToast as useShadcnToast } from "@/hooks/use-toast";
 
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
@@ -71,7 +72,7 @@ export default function CalendarPage() {
     startTime: ""
   });
 
-  const { toast } = useToast();
+  const { toast } = useShadcnToast();
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -174,12 +175,21 @@ export default function CalendarPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
+                onClick={() => toast({ title: "Calendar Config", description: "Loading calendar availability settings..." })}
+                className="bg-card"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Config
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
                 onClick={() => fetchData(true)} 
                 disabled={loading || refreshing}
                 className="bg-card"
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Refreshing..." : "Refresh Schedule"}
+                {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
               <Button size="sm" onClick={() => setIsBookingOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Book Appointment

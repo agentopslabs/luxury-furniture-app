@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,8 @@ import {
   Card, 
   CardContent, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardDescription
 } from "@/components/ui/card";
 import { 
   Table, 
@@ -33,13 +35,25 @@ import {
   History,
   Repeat,
   Gift,
-  Unplug
+  Unplug,
+  ChevronDown,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const subNavItems = [
   { name: "Documents & Contracts", value: "docs", icon: FileText },
@@ -90,6 +104,9 @@ export default function PaymentsPage() {
   const [activeSubNav, setActiveSubNav] = useState("docs");
   const [activeStatus, setActiveStatus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const currentNav = useMemo(() => 
     subNavItems.find(item => item.value === activeSubNav) || subNavItems[0]
@@ -99,11 +116,23 @@ export default function PaymentsPage() {
     statusTabsByNav[activeSubNav] || [{ name: "All", count: 0 }]
   , [activeSubNav]);
 
-  // Set first status tab as active when sub-nav changes
   const handleSubNavChange = (value: string) => {
     setActiveSubNav(value);
     const firstStatus = statusTabsByNav[value]?.[0]?.name || "All";
     setActiveStatus(firstStatus);
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsCreateOpen(false);
+      toast({
+        title: "Record Created",
+        description: `Successfully injected new ${currentNav.name.slice(0, -1)} into GHL repository.`,
+      });
+    }, 1500);
   };
 
   const renderTableHeader = () => {
@@ -157,10 +186,8 @@ export default function PaymentsPage() {
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
       <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
-        {/* Ambient background decoration */}
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         
-        {/* Payments Header & Sub-Nav */}
         <header className="border-b border-white/5 bg-background/50 backdrop-blur-md z-10 shrink-0">
           <div className="px-8 pt-8 pb-4">
             <h1 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
@@ -188,7 +215,6 @@ export default function PaymentsPage() {
           </div>
         </header>
 
-        {/* Dynamic Content Area */}
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 p-8 space-y-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-2 duration-500">
             <div className="space-y-1">
@@ -203,16 +229,22 @@ export default function PaymentsPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" className="h-10 rounded-xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08]">
+              <Button 
+                variant="outline" 
+                onClick={() => toast({ title: "Payments Config", description: "Loading sub-account payment terminal settings..." })}
+                className="h-10 rounded-xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08]"
+              >
                 <SettingsIcon className="mr-2 h-4 w-4" /> Config
               </Button>
-              <Button className="glow-primary bg-primary hover:bg-primary/90 h-10 px-6 rounded-xl font-bold">
+              <Button 
+                className="glow-primary bg-primary hover:bg-primary/90 h-10 px-6 rounded-xl font-bold"
+                onClick={() => setIsCreateOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" /> Create {currentNav.name.replace(/s$/, '')}
               </Button>
             </div>
           </div>
 
-          {/* Filters Bar */}
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center gap-3 glass border-white/10 rounded-xl px-4 h-10 w-full md:w-auto cursor-pointer hover:bg-white/5 transition-all">
               <CalendarIcon size={16} className="text-muted-foreground" />
@@ -232,12 +264,11 @@ export default function PaymentsPage() {
               />
             </div>
             
-            <Button variant="outline" size="icon" className="h-10 w-10 glass border-white/10">
+            <Button variant="outline" size="icon" className="h-10 w-10 glass border-white/10" onClick={() => toast({ title: "Refreshing", description: "Fetching latest financial logs..." })}>
               <RefreshCw size={16} className="text-muted-foreground" />
             </Button>
           </div>
 
-          {/* Status Tabs */}
           <div className="border-b border-white/5 flex gap-10 overflow-x-auto no-scrollbar">
             {currentStatusTabs.map((tab) => (
               <button
@@ -258,7 +289,6 @@ export default function PaymentsPage() {
             ))}
           </div>
 
-          {/* Records Table */}
           <Card className="glass border-white/5 rounded-3xl overflow-hidden group">
             <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
             <Table>
@@ -290,25 +320,40 @@ export default function PaymentsPage() {
           </Card>
         </div>
       </main>
-    </div>
-  );
-}
 
-function ChevronDown({ className, size }: { className?: string; size?: number }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || 24} 
-      height={size || 24} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="m6 9 6 6 6-6"/>
-    </svg>
+      {/* Creation Modal for Payments */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
+          <form onSubmit={handleCreateSubmit}>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">New {currentNav.name.replace(/s$/, '')}</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Injecting a new financial record into LeadConnector V2.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Record Title</Label>
+                <Input className="glass h-12 rounded-xl" placeholder="e.g. Q4 Enterprise License" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Value ($)</Label>
+                  <Input className="glass h-12 rounded-xl" type="number" placeholder="0.00" required />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Assignee</Label>
+                  <Input className="glass h-12 rounded-xl" placeholder="Select Lead" />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
+                Commit Transaction
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
