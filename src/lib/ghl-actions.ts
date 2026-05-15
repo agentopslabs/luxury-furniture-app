@@ -126,6 +126,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 
 /**
  * Creates a new appointment using the specific GHL V2 calendar events endpoint.
+ * Optimized with mandatory locationId and timezone to resolve "slot no longer available" errors.
  */
 export async function createAppointment(apptData: {
   calendarId: string;
@@ -141,6 +142,7 @@ export async function createAppointment(apptData: {
     endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString(),
     title: apptData.title,
     locationId: GHL_LOCATION_ID,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {

@@ -29,12 +29,14 @@ export function AIContactInsight({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Exclusively using the 3 requested categories
   const [selectedTypes, setSelectedTypes] = useState<ActivityType[]>(['appointment_booked', 'new_lead', 'message_sent']);
 
   const generate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
+      // Filter history based on intelligence markers
       const activities: Activity[] = history.map(h => {
         const desc = h.summary.toLowerCase();
         let type: ActivityType = 'message_sent';
@@ -48,6 +50,7 @@ export function AIContactInsight({
         };
       }).filter(a => selectedTypes.includes(a.type as ActivityType));
 
+      // Fallback if no history matches the requested matrix
       if (activities.length === 0 && history.length > 0 && selectedTypes.length > 0) {
         activities.push({
           type: selectedTypes[0],

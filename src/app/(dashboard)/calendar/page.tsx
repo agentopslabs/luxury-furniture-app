@@ -148,10 +148,16 @@ export default function CalendarPage() {
       return;
     }
 
+    const start = new Date(bookingForm.startTime);
+    if (start < new Date()) {
+      toast({ variant: "destructive", title: "Invalid Time", description: "Cannot book appointments in the past." });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const startTimeISO = new Date(bookingForm.startTime).toISOString();
-      const endTimeISO = new Date(new Date(bookingForm.startTime).getTime() + 30 * 60000).toISOString();
+      const startTimeISO = start.toISOString();
+      const endTimeISO = new Date(start.getTime() + 30 * 60000).toISOString();
       
       await createAppointment({
         calendarId: bookingForm.calendarId,
