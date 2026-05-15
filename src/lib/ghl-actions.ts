@@ -103,7 +103,6 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
-    // Broad window for historical data sync: Past 1 year to Future 6 months
     const now = new Date();
     const startTime = now.getTime() - (365 * 24 * 60 * 60 * 1000); 
     const endTime = now.getTime() + (180 * 24 * 60 * 60 * 1000);  
@@ -428,7 +427,7 @@ export async function getProducts(limit: number = 50): Promise<any[]> {
 
 export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/social-planner/posts`);
+    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/posts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
@@ -446,7 +445,7 @@ export async function createSocialPost(postData: {
   status: string;
   channels?: string[];
 }): Promise<any> {
-  const response = await fetch(`${GHL_API_BASE_URL}/social-planner/posts`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
