@@ -534,20 +534,19 @@ export async function createSocialPost(postData: {
   status: string;
   channels?: string[];
 }): Promise<any> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        ...postData,
-        locationId: GHL_LOCATION_ID,
-        scheduledDate: new Date().toISOString()
-      }),
-    });
-    return handleResponse(response, 'creating social post');
-  } catch (error) {
-    throw new Error('Social Planner is not available on this GHL plan. Please create posts directly in GoHighLevel.');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      summary: postData.caption,
+      postType: postData.type,
+      status: postData.status,
+      channels: postData.channels || [],
+      locationId: GHL_LOCATION_ID,
+      scheduledDate: new Date(Date.now() + 5 * 60000).toISOString(),
+    }),
+  });
+  return await handleResponse(response, 'creating social post');
 }
 
 export async function getEmailTemplates(limit: number = 50): Promise<any[]> {

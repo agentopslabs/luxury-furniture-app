@@ -8,9 +8,6 @@ import { GHLAppointment, GHLCalendar, GHLContact } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
 } from "@/components/ui/card";
 import { 
   Clock, 
@@ -18,7 +15,6 @@ import {
   MoreVertical,
   CalendarDays,
   RefreshCw,
-  AlertCircle,
   XCircle,
   CheckCircle,
   Loader2,
@@ -26,7 +22,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Search,
   LayoutList,
   Calendar as CalendarIcon,
   X,
@@ -37,16 +32,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -67,6 +59,13 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export default function CalendarPage() {
   const [activeTab, setActiveTab] = useState("view");
   const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
@@ -77,7 +76,14 @@ export default function CalendarPage() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isManageViewOpen, setIsManageViewOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [calendarView, setCalendarView] = useState("week");
+
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getWeekStart(new Date()));
+
+  const [manageFilter, setManageFilter] = useState("all");
+  const [manageCalendarFilter, setManageCalendarFilter] = useState("all");
+  const [manageStatusFilter, setManageStatusFilter] = useState("all");
+
   const [bookingForm, setBookingForm] = useState({
     calendarId: "",
     contactId: "",
@@ -87,6 +93,7 @@ export default function CalendarPage() {
   });
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsFetched, setSlotsFetched] = useState(false);
 
   const { toast } = useToast();
 
@@ -145,18 +152,21 @@ export default function CalendarPage() {
   };
 
   const fetchSlotsForDate = useCallback(async (calendarId: string, date: string) => {
-    if (!calendarId || !date) { setAvailableSlots([]); return; }
+    if (!calendarId || !date) { setAvailableSlots([]); setSlotsFetched(false); return; }
     setLoadingSlots(true);
     setAvailableSlots([]);
+    setSlotsFetched(false);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const slots = await getCalendarFreeSlots(calendarId, date, tz);
       setAvailableSlots(slots);
+      setSlotsFetched(true);
       if (slots.length === 0) {
-        toast({ title: "No Slots Available", description: "No open slots on this date. Try a different day." });
+        toast({ title: "No Slots Available", description: "No open slots found for this date. Try a different day or calendar." });
       }
     } catch (error: any) {
       setAvailableSlots([]);
+      setSlotsFetched(true);
       toast({ variant: "destructive", title: "Calendar Error", description: error.message || "Could not load slots." });
     } finally {
       setLoadingSlots(false);
@@ -183,6 +193,7 @@ export default function CalendarPage() {
       setIsBookingOpen(false);
       setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
       setAvailableSlots([]);
+      setSlotsFetched(false);
       toast({ title: "Appointment Booked", description: "Successfully added to GHL calendar." });
       fetchData(true);
     } catch (error: any) {
@@ -192,8 +203,85 @@ export default function CalendarPage() {
     }
   };
 
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const currentWeek = [10, 11, 12, 13, 14, 15, 16]; 
+  const weekDates = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(currentWeekStart);
+      d.setDate(currentWeekStart.getDate() + i);
+      return d;
+    });
+  }, [currentWeekStart]);
+
+  const weekLabel = useMemo(() => {
+    const start = weekDates[0];
+    const end = weekDates[6];
+    const sameMonth = start.getMonth() === end.getMonth();
+    if (sameMonth) {
+      return `${start.toLocaleString('en-US', { month: 'short' })} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`;
+    }
+    return `${start.toLocaleString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }, [weekDates]);
+
+  const goToPrevWeek = () => {
+    setCurrentWeekStart(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 7);
+      return d;
+    });
+  };
+
+  const goToNextWeek = () => {
+    setCurrentWeekStart(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 7);
+      return d;
+    });
+  };
+
+  const goToToday = () => {
+    setCurrentWeekStart(getWeekStart(new Date()));
+  };
+
+  const today = new Date();
+  const isToday = (date: Date) =>
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+
+  const weekDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const hours = Array.from({ length: 24 }).map((_, i) => i);
+
+  const getAppointmentsForCell = (date: Date, hour: number) => {
+    return appointments.filter(appt => {
+      const apptDate = new Date(appt.startTime);
+      return (
+        apptDate.getDate() === date.getDate() &&
+        apptDate.getMonth() === date.getMonth() &&
+        apptDate.getFullYear() === date.getFullYear() &&
+        apptDate.getHours() === hour &&
+        (manageFilter === "all" || true) &&
+        (manageCalendarFilter === "all" || appt.calendarId === manageCalendarFilter) &&
+        (manageStatusFilter === "all" || appt.status === manageStatusFilter)
+      );
+    });
+  };
+
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(appt => {
+      const calOk = manageCalendarFilter === "all" || appt.calendarId === manageCalendarFilter;
+      const statusOk = manageStatusFilter === "all" || appt.status === manageStatusFilter;
+      return calOk && statusOk;
+    });
+  }, [appointments, manageCalendarFilter, manageStatusFilter]);
+
+  const slotPlaceholder = loadingSlots
+    ? "Loading slots..."
+    : !bookingForm.calendarId
+    ? "Select a calendar first"
+    : !bookingForm.selectedDate
+    ? "Pick a date first"
+    : slotsFetched && availableSlots.length === 0
+    ? "No slots available"
+    : "Select a time slot";
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
@@ -214,14 +302,14 @@ export default function CalendarPage() {
           <div className="flex-1 flex flex-col overflow-hidden bg-background">
             <div className="px-8 py-4 border-b flex items-center justify-between bg-card/5 shrink-0">
               <div className="flex items-center gap-4">
-                <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold">Today</Button>
+                <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold" onClick={goToToday}>Today</Button>
                 <div className="flex items-center border rounded-md">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-r"><ChevronLeft size={16} /></Button>
-                  <div className="px-4 py-1 text-sm font-bold min-w-[150px] text-center">May 10 – 16, 2026</div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-l"><ChevronRight size={16} /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-r" onClick={goToPrevWeek}><ChevronLeft size={16} /></Button>
+                  <div className="px-4 py-1 text-sm font-bold min-w-[180px] text-center">{weekLabel}</div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-l" onClick={goToNextWeek}><ChevronRight size={16} /></Button>
                 </div>
-                <Select defaultValue="week">
-                  <SelectTrigger className="w-[120px] h-9 rounded-md font-bold">
+                <Select value={calendarView} onValueChange={setCalendarView}>
+                  <SelectTrigger className="w-[130px] h-9 rounded-md font-bold">
                     <SelectValue placeholder="View" />
                   </SelectTrigger>
                   <SelectContent>
@@ -233,7 +321,7 @@ export default function CalendarPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold" onClick={() => setIsManageViewOpen(true)}>
+                <Button variant="outline" size="sm" className={cn("h-9 px-4 rounded-md font-bold", isManageViewOpen && "bg-primary/10 border-primary/40")} onClick={() => setIsManageViewOpen(v => !v)}>
                   <Filter size={16} className="mr-2" /> Manage View
                 </Button>
                 <Button size="sm" className="h-9 px-6 rounded-md bg-primary hover:bg-primary/90 font-bold shadow-lg" onClick={() => setIsBookingOpen(true)}>
@@ -248,29 +336,69 @@ export default function CalendarPage() {
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 overflow-y-auto no-scrollbar p-0 bg-white/[0.01]">
                 <TabsContent value="view" className="m-0 h-full flex flex-col">
-                  <div className="grid grid-cols-8 border-b bg-muted/30">
+                  <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
                     <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">
-                      GMT +05:30
+                      GMT {new Date().toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()?.replace(/[A-Z]+/, m => {
+                        const off = new Date().getTimezoneOffset();
+                        const h = Math.abs(Math.floor(off / 60));
+                        const sign = off <= 0 ? '+' : '-';
+                        return `${sign}${String(h).padStart(2, '0')}:00`;
+                      }) || '+00:00'}
                     </div>
-                    {weekDays.map((day, i) => (
-                      <div key={day} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
-                        <span className={cn("text-lg font-bold", i === 0 && "text-destructive")}>{currentWeek[i]} {day}</span>
+                    {weekDates.map((date, i) => (
+                      <div key={i} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
+                        <span className={cn(
+                          "text-lg font-bold",
+                          isToday(date) ? "text-primary" : i === 0 ? "text-destructive" : ""
+                        )}>
+                          {date.getDate()} {weekDayNames[i]}
+                        </span>
+                        {isToday(date) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </div>
                     ))}
                   </div>
-                  <div className="flex-1 grid grid-cols-8 relative h-[800px]">
+                  <div className="flex-1 grid grid-cols-8 relative">
                     <div className="border-r bg-muted/10">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <div key={i} className="h-20 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
-                          {i + 12} PM
+                      {hours.map((h) => (
+                        <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
+                          {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
                         </div>
                       ))}
                     </div>
-                    {Array.from({ length: 7 }).map((_, col) => (
+                    {weekDates.map((date, col) => (
                       <div key={col} className="border-r last:border-r-0 relative">
-                        {Array.from({ length: 12 }).map((_, row) => (
-                          <div key={row} className="h-20 border-b hover:bg-primary/5 transition-colors cursor-pointer" />
-                        ))}
+                        {hours.map((h) => {
+                          const cellAppts = getAppointmentsForCell(date, h);
+                          return (
+                            <div
+                              key={h}
+                              className={cn(
+                                "h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative",
+                                isToday(date) && "bg-primary/[0.02]"
+                              )}
+                              onClick={() => {
+                                const d = new Date(date);
+                                d.setHours(h);
+                                setBookingForm(f => ({
+                                  ...f,
+                                  selectedDate: d.toISOString().split('T')[0]
+                                }));
+                                setIsBookingOpen(true);
+                              }}
+                            >
+                              {cellAppts.map((appt) => (
+                                <div
+                                  key={appt.id}
+                                  className="absolute inset-x-0.5 top-0.5 rounded-md bg-primary/80 text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default"
+                                  onClick={e => e.stopPropagation()}
+                                  title={appt.title}
+                                >
+                                  {appt.title}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
@@ -285,9 +413,9 @@ export default function CalendarPage() {
                     
                     {loading ? (
                       Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
-                    ) : appointments.length > 0 ? (
+                    ) : filteredAppointments.length > 0 ? (
                       <div className="grid gap-4">
-                        {appointments.map((appt) => (
+                        {filteredAppointments.map((appt) => (
                           <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
                             <CardContent className="p-5 flex items-center justify-between">
                               <div className="flex items-center gap-5">
@@ -299,7 +427,7 @@ export default function CalendarPage() {
                                   <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</h4>
                                   <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-medium">
                                     <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary/60" /> {new Date(appt.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                                    <span className="flex items-center gap-1.5"><User size={12} className="text-accent/60" /> ID: {appt.contactId.slice(0, 8)}</span>
+                                    <span className="flex items-center gap-1.5"><User size={12} className="text-accent/60" /> ID: {appt.contactId?.slice(0, 8) || '—'}</span>
                                   </div>
                                 </div>
                               </div>
@@ -329,7 +457,9 @@ export default function CalendarPage() {
                     ) : (
                       <div className="py-40 text-center">
                         <LayoutList className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                        <p className="text-muted-foreground">Registry Empty</p>
+                        <p className="text-muted-foreground">
+                          {appointments.length > 0 ? "No appointments match current filters." : "Registry Empty"}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -350,7 +480,10 @@ export default function CalendarPage() {
                               <h3 className="font-bold">{cal.name}</h3>
                               <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
                             </div>
-                            <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold">View Availability</Button>
+                            <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold" onClick={() => {
+                              setManageCalendarFilter(cal.id);
+                              setActiveTab("list");
+                            }}>View Appointments</Button>
                           </Card>
                         ))}
                       </div>
@@ -372,21 +505,75 @@ export default function CalendarPage() {
               </div>
 
               {isManageViewOpen && (
-                <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300">
+                <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300 shrink-0 overflow-y-auto">
                   <div className="p-6 space-y-8">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-lg">Manage View</h3>
                       <Button variant="ghost" size="icon" onClick={() => setIsManageViewOpen(false)}><X size={18} /></Button>
                     </div>
+
                     <div className="space-y-4">
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">View by type</p>
-                      <RadioGroup defaultValue="all" className="space-y-3">
-                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer">
-                          <RadioGroupItem value="all" id="all" />
-                          <Label htmlFor="all" className="flex-1 cursor-pointer font-medium">All</Label>
-                        </div>
+                      <RadioGroup value={manageFilter} onValueChange={setManageFilter} className="space-y-2">
+                        {[
+                          { value: "all", label: "All Events" },
+                          { value: "appointments", label: "Appointments Only" },
+                          { value: "blocked", label: "Blocked Times" },
+                        ].map(opt => (
+                          <div key={opt.value} className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors">
+                            <RadioGroupItem value={opt.value} id={opt.value} />
+                            <Label htmlFor={opt.value} className="flex-1 cursor-pointer font-medium">{opt.label}</Label>
+                          </div>
+                        ))}
                       </RadioGroup>
                     </div>
+
+                    <div className="space-y-4">
+                      <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">Filter by Calendar</p>
+                      <RadioGroup value={manageCalendarFilter} onValueChange={setManageCalendarFilter} className="space-y-2">
+                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors">
+                          <RadioGroupItem value="all" id="cal-all" />
+                          <Label htmlFor="cal-all" className="flex-1 cursor-pointer font-medium">All Calendars</Label>
+                        </div>
+                        {calendars.map(cal => (
+                          <div key={cal.id} className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors">
+                            <RadioGroupItem value={cal.id} id={`cal-${cal.id}`} />
+                            <Label htmlFor={`cal-${cal.id}`} className="flex-1 cursor-pointer font-medium truncate">{cal.name}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">Filter by Status</p>
+                      <RadioGroup value={manageStatusFilter} onValueChange={setManageStatusFilter} className="space-y-2">
+                        {[
+                          { value: "all", label: "All Statuses" },
+                          { value: "confirmed", label: "Confirmed" },
+                          { value: "pending", label: "Pending" },
+                          { value: "completed", label: "Completed" },
+                          { value: "cancelled", label: "Cancelled" },
+                          { value: "noshow", label: "No Show" },
+                        ].map(opt => (
+                          <div key={opt.value} className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors">
+                            <RadioGroupItem value={opt.value} id={`st-${opt.value}`} />
+                            <Label htmlFor={`st-${opt.value}`} className="flex-1 cursor-pointer font-medium">{opt.label}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-xl"
+                      onClick={() => {
+                        setManageFilter("all");
+                        setManageCalendarFilter("all");
+                        setManageStatusFilter("all");
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
                   </div>
                 </div>
               )}
@@ -395,7 +582,14 @@ export default function CalendarPage() {
         </Tabs>
       </main>
 
-      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+      <Dialog open={isBookingOpen} onOpenChange={(open) => {
+        setIsBookingOpen(open);
+        if (!open) {
+          setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
+          setAvailableSlots([]);
+          setSlotsFetched(false);
+        }
+      }}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleBookingSubmit}>
             <DialogHeader className="mb-8">
@@ -415,9 +609,9 @@ export default function CalendarPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Contact</Label>
                   <Select value={bookingForm.contactId} onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}>
-                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Lead" /></SelectTrigger>
+                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Select Lead" /></SelectTrigger>
                     <SelectContent>
                       {contacts.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>
@@ -430,6 +624,7 @@ export default function CalendarPage() {
                   <Select value={bookingForm.calendarId} onValueChange={(val) => {
                     setBookingForm({ ...bookingForm, calendarId: val, selectedDate: "", selectedSlot: "" });
                     setAvailableSlots([]);
+                    setSlotsFetched(false);
                   }}>
                     <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Select Calendar" /></SelectTrigger>
                     <SelectContent>
@@ -451,7 +646,11 @@ export default function CalendarPage() {
                     onChange={(e) => {
                       const newDate = e.target.value;
                       setBookingForm({ ...bookingForm, selectedDate: newDate, selectedSlot: "" });
-                      fetchSlotsForDate(bookingForm.calendarId, newDate);
+                      if (bookingForm.calendarId) {
+                        fetchSlotsForDate(bookingForm.calendarId, newDate);
+                      } else {
+                        toast({ variant: "destructive", title: "Select Calendar First", description: "Please choose a calendar before picking a date." });
+                      }
                     }}
                     required
                   />
@@ -466,7 +665,7 @@ export default function CalendarPage() {
                     disabled={loadingSlots || availableSlots.length === 0}
                   >
                     <SelectTrigger className="glass h-12 rounded-xl">
-                      <SelectValue placeholder={loadingSlots ? "Loading..." : availableSlots.length === 0 ? "Pick a date first" : "Select slot"} />
+                      <SelectValue placeholder={slotPlaceholder} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
                       {availableSlots.map((slot) => (
