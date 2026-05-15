@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { ghl, GHLPipeline, GHLOpportunity, GHLContact } from "@/lib/ghl";
 import { createOpportunity, getPipelines, getContacts, getOpportunities } from "@/lib/ghl-actions";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Layers, 
   Plus, 
@@ -14,12 +13,10 @@ import {
   Target, 
   RefreshCw, 
   MoreVertical, 
-  LayoutGrid, 
-  Kanban, 
   Sparkles, 
   Loader2, 
   CheckCircle2,
-  ArrowRight
+  Kanban
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +48,7 @@ export default function PipelinePage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -79,6 +77,10 @@ export default function PipelinePage() {
       setOpportunities(oData);
       setContacts(cData);
       
+      if (pData.length > 0 && !selectedPipelineId) {
+        setSelectedPipelineId(pData[0].id);
+      }
+      
       if (isManual) {
         toast({
           title: "Synchronization Complete",
@@ -95,19 +97,26 @@ export default function PipelinePage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast]);
+  }, [toast, selectedPipelineId]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []); // Mount fetch
+
+  const activePipeline = useMemo(() => 
+    pipelines.find(p => p.id === selectedPipelineId) || pipelines[0]
+  , [pipelines, selectedPipelineId]);
 
   const handleOpenCreate = () => {
-    const defaultPipe = pipelines[0];
+    if (!activePipeline) {
+      toast({ variant: "destructive", title: "No Pipeline", description: "Wait for pipeline data to load." });
+      return;
+    }
     setFormData({ 
       name: "", 
       monetaryValue: 0, 
-      pipelineId: defaultPipe?.id || "", 
-      pipelineStageId: defaultPipe?.stages[0]?.id || "", 
+      pipelineId: activePipeline.id, 
+      pipelineStageId: activePipeline.stages[0]?.id || "", 
       contactId: "", 
       status: "open" 
     });
@@ -139,13 +148,12 @@ export default function PipelinePage() {
   };
 
   const kanbanData = useMemo(() => {
-    if (pipelines.length === 0) return [];
-    const activePipe = pipelines[0]; // For MVP, we use the first pipeline
-    return activePipe.stages.map(stage => ({
+    if (!activePipeline) return [];
+    return activePipeline.stages.map(stage => ({
       ...stage,
-      opps: opportunities.filter(o => o.pipelineStageId === stage.id)
+      opps: opportunities.filter(o => o.pipelineStageId === stage.id && o.pipelineId === activePipeline.id)
     }));
-  }, [pipelines, opportunities]);
+  }, [activePipeline, opportunities]);
 
   const totalValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
 
@@ -161,10 +169,23 @@ export default function PipelinePage() {
               <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40">
                 Sales Pipeline
               </h1>
-              <p className="text-muted-foreground font-medium flex items-center gap-2">
-                <Kanban size={16} className="text-primary" />
-                Live visual deal flow tracking
-              </p>
+              <div className="flex items-center gap-4">
+                 <p className="text-muted-foreground font-medium flex items-center gap-2">
+                  <Kanban size={16} className="text-primary" />
+                  Live visual deal flow tracking
+                </p>
+                <div className="h-4 w-px bg-white/10" />
+                <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+                  <SelectTrigger className="w-[240px] h-9 glass border-white/10 rounded-xl text-xs font-bold">
+                    <SelectValue placeholder="Switch Pipeline" />
+                  </SelectTrigger>
+                  <SelectContent className="glass border-white/10 rounded-2xl">
+                    {pipelines.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="rounded-lg text-xs">{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex gap-3">
               <Button 

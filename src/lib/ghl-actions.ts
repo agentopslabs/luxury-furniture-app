@@ -59,6 +59,7 @@ export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
     const data = await handleResponse(response, 'fetching contacts');
     return data?.contacts || [];
   } catch (error) {
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -112,6 +113,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
   } catch (error) {
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -151,6 +153,7 @@ export async function getCalendars(): Promise<GHLCalendar[]> {
     const data = await handleResponse(response, 'fetching calendars');
     return data?.calendars || [];
   } catch (error) {
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -167,6 +170,7 @@ export async function getConversations(): Promise<GHLConversation[]> {
     const data = await handleResponse(response, 'fetching conversations');
     return data?.conversations || [];
   } catch (error) {
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -190,10 +194,11 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/pipelines`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-    const response = await fetch(url.toString(), { headers });
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching pipelines');
     return data?.pipelines || [];
   } catch (error) {
+    console.error("GHL Pipelines Sync Error:", error);
     return [];
   }
 }
@@ -208,6 +213,7 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
     const data = await handleResponse(response, 'fetching opportunities');
     return data?.opportunities || [];
   } catch (error) {
+    console.error("GHL Opportunities Sync Error:", error);
     return [];
   }
 }
@@ -269,6 +275,7 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching orders');
     return data?.orders || [];
   } catch (error) {
+    console.error("GHL Orders Sync Error:", error);
     return [];
   }
 }
@@ -295,7 +302,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'manual', 
+      type: 'direct', 
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -332,6 +339,7 @@ export async function getInvoices(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching invoices');
     return data?.invoices || [];
   } catch (error) {
+    console.error("GHL Invoices Sync Error:", error);
     return [];
   }
 }
@@ -426,6 +434,7 @@ export async function getSocialPosts(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching social posts');
     return data?.posts || [];
   } catch (error) {
+    console.error("GHL Marketing Sync Error:", error);
     return [];
   }
 }

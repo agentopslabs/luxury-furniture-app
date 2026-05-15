@@ -14,26 +14,19 @@ import {
   Plus, 
   Search, 
   RefreshCw, 
-  Filter, 
-  ArrowUpDown, 
   MoreHorizontal, 
   LayoutGrid, 
   List, 
-  Download, 
   Phone, 
   MessageSquare, 
-  Tag, 
-  FileText, 
-  CheckSquare, 
-  Calendar,
-  Loader2,
-  ChevronDown,
-  UserPlus,
+  Loader2, 
+  Target,
+  Layout,
+  TrendingUp,
+  DollarSign,
   Trash2,
   Eye,
-  DollarSign,
-  TrendingUp,
-  Target
+  CheckSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,7 +120,7 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []); // Initial mount fetch
 
   const activePipeline = useMemo(() => 
     pipelines.find(p => p.id === selectedPipelineId) || pipelines[0]
@@ -158,13 +151,7 @@ export default function OpportunitiesPage() {
       lost: opportunities.filter(o => o.status === 'lost').length,
       abandoned: opportunities.filter(o => o.status === 'abandoned').length,
     };
-    const values = {
-      open: opportunities.filter(o => o.status === 'open').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
-      won: opportunities.filter(o => o.status === 'won').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
-      lost: opportunities.filter(o => o.status === 'lost').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
-      abandoned: opportunities.filter(o => o.status === 'abandoned').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
-    };
-    return { counts, values };
+    return { counts };
   }, [opportunities]);
 
   const handleDragStart = (e: React.DragEvent, oppId: string) => {
@@ -177,6 +164,7 @@ export default function OpportunitiesPage() {
     const opp = opportunities.find(o => o.id === oppId);
     
     if (opp && opp.pipelineStageId !== stageId) {
+      // Optimistic update
       setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, pipelineStageId: stageId } : o));
       
       try {
@@ -186,7 +174,7 @@ export default function OpportunitiesPage() {
         });
         toast({ title: "Deal Transitioned", description: `Opportunity moved to new stage.` });
       } catch (error) {
-        fetchData(); 
+        fetchData(true); 
         toast({ variant: "destructive", title: "Move Failed", description: "Could not sync stage change." });
       }
     }
@@ -217,7 +205,7 @@ export default function OpportunitiesPage() {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold font-headline tracking-tight">Opportunities</h1>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing} className="h-10 px-4 rounded-xl border-white/10 bg-white/5">
+              <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing || loading} className="h-10 px-4 rounded-xl border-white/10 bg-white/5">
                 <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
                 {refreshing ? "Refreshing..." : "Refresh Hub"}
               </Button>
@@ -246,9 +234,11 @@ export default function OpportunitiesPage() {
                     <SelectValue placeholder="Select Pipeline" />
                   </SelectTrigger>
                   <SelectContent className="glass border-white/10 rounded-2xl">
-                    {pipelines.map(p => (
+                    {pipelines.length > 0 ? pipelines.map(p => (
                       <SelectItem key={p.id} value={p.id} className="rounded-lg">{p.name}</SelectItem>
-                    ))}
+                    )) : (
+                      <div className="p-4 text-center text-xs text-muted-foreground">No pipelines detected</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -299,6 +289,8 @@ export default function OpportunitiesPage() {
                     status: "open"
                   });
                   setIsCreateOpen(true);
+                } else {
+                  toast({ variant: "destructive", title: "No Active Pipeline", description: "Please select a pipeline before adding opportunities." });
                 }
               }}>
                 <Plus size={18} className="mr-2" /> Inject Opportunity
@@ -405,8 +397,8 @@ export default function OpportunitiesPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 opacity-40">
-                                 <Calendar size={12} />
-                                 <span className="text-[9px] font-bold font-mono">2025-01</span>
+                                 <Layout size={12} />
+                                 <span className="text-[9px] font-bold font-mono">Synced</span>
                               </div>
                             </div>
                           </div>
@@ -423,14 +415,13 @@ export default function OpportunitiesPage() {
                   </div>
                 ))
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-8 py-40">
-                  <div className="w-24 h-24 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center opacity-20">
-                    <LayoutGrid size={48} />
-                  </div>
-                  <div className="text-center space-y-2">
-                    <p className="text-2xl font-bold text-muted-foreground/60">Registry Empty</p>
-                    <p className="text-sm text-muted-foreground/40 max-w-[300px] mx-auto font-medium">No opportunities match the current status or pipeline filters.</p>
-                  </div>
+                <div className="flex-1 flex flex-col items-center justify-center py-40">
+                   {loading ? <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" /> : (
+                     <div className="text-center space-y-4">
+                       <LayoutGrid size={48} className="mx-auto text-muted-foreground opacity-20" />
+                       <p className="text-sm font-bold uppercase tracking-widest opacity-40 italic">No deals found for this pipeline</p>
+                     </div>
+                   )}
                 </div>
               )}
             </div>
@@ -499,7 +490,7 @@ export default function OpportunitiesPage() {
                         <TableCell colSpan={6} className="h-80 text-center">
                           <div className="flex flex-col items-center justify-center opacity-30 space-y-4">
                             <Target size={48} />
-                            <p className="text-sm font-bold uppercase tracking-widest italic">No deal flow records detected</p>
+                            <p className="text-sm font-bold uppercase tracking-widest italic">No records in registry</p>
                           </div>
                         </TableCell>
                       </TableRow>
