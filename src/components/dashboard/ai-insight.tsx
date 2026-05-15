@@ -126,7 +126,7 @@ export function AIContactInsight({
                   isActive ? "bg-primary text-white" : "opacity-40 hover:opacity-100"
                 )}
               >
-                {isActive && <CheckCircle2 size={10} className="mr-1" />}
+                {isActive && <CheckCircle2 size(10) className="mr-1" />}
                 {type.label}
               </Badge>
             );

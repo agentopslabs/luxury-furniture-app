@@ -156,6 +156,7 @@ export default function CalendarPage() {
 
     setIsSubmitting(true);
     try {
+      // Ensure ISO format with timezone offset
       const startTimeISO = start.toISOString();
       const endTimeISO = new Date(start.getTime() + 30 * 60000).toISOString();
       

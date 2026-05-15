@@ -142,7 +142,7 @@ export async function createAppointment(apptData: {
     endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString(),
     title: apptData.title,
     locationId: GHL_LOCATION_ID,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {
@@ -293,7 +293,7 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching orders');
     return data?.orders || [];
   } catch (error) {
-    console.error("GHL Orders Sync Error:", error);
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -354,7 +354,6 @@ export async function getInvoices(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching invoices');
     return data?.invoices || [];
   } catch (error) {
-    console.error("GHL Invoices Sync Error:", error);
     return [];
   }
 }
@@ -449,7 +448,7 @@ export async function getSocialPosts(limit: number = 50): Promise<any[]> {
     const data = await handleResponse(response, 'fetching social posts');
     return data?.posts || [];
   } catch (error) {
-    console.error("GHL Marketing Sync Error:", error);
+    console.error("GHL Sync Error:", error);
     return [];
   }
 }
