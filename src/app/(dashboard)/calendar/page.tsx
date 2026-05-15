@@ -153,10 +153,11 @@ export default function CalendarPage() {
       const slots = await getCalendarFreeSlots(calendarId, date, tz);
       setAvailableSlots(slots);
       if (slots.length === 0) {
-        toast({ title: "No Available Slots", description: "This calendar has no open slots on the selected date. Try a different day." });
+        toast({ title: "No Slots Available", description: "No open slots on this date. Try a different day." });
       }
-    } catch {
+    } catch (error: any) {
       setAvailableSlots([]);
+      toast({ variant: "destructive", title: "Calendar Error", description: error.message || "Could not load slots." });
     } finally {
       setLoadingSlots(false);
     }
@@ -426,10 +427,13 @@ export default function CalendarPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Calendar</Label>
-                  <Select value={bookingForm.calendarId} onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}>
-                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Registry" /></SelectTrigger>
+                  <Select value={bookingForm.calendarId} onValueChange={(val) => {
+                    setBookingForm({ ...bookingForm, calendarId: val, selectedDate: "", selectedSlot: "" });
+                    setAvailableSlots([]);
+                  }}>
+                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Select Calendar" /></SelectTrigger>
                     <SelectContent>
-                      {calendars.map((cal) => (
+                      {calendars.filter(cal => cal.isActive !== false).map((cal) => (
                         <SelectItem key={cal.id} value={cal.id}>{cal.name}</SelectItem>
                       ))}
                     </SelectContent>

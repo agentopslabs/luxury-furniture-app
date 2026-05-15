@@ -32,6 +32,7 @@ export interface GHLCalendar {
   name: string;
   description?: string;
   locationId: string;
+  isActive?: boolean;
 }
 
 export interface GHLConversation {

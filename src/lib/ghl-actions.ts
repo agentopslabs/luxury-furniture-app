@@ -189,27 +189,30 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 }
 
 export async function getCalendarFreeSlots(calendarId: string, date: string, timezone: string): Promise<string[]> {
-  try {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
+  const start = new Date(date);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setUTCHours(23, 59, 59, 999);
 
-    const url = new URL(`${GHL_API_BASE_URL}/calendars/${calendarId}/free-slots`);
-    url.searchParams.append('startDate', start.getTime().toString());
-    url.searchParams.append('endDate', end.getTime().toString());
-    url.searchParams.append('timezone', timezone);
+  const url = new URL(`${GHL_API_BASE_URL}/calendars/${calendarId}/free-slots`);
+  url.searchParams.append('startDate', start.getTime().toString());
+  url.searchParams.append('endDate', end.getTime().toString());
+  url.searchParams.append('timezone', timezone);
 
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching free slots');
-    if (!data) return [];
+  const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
 
-    const dateKey = Object.keys(data).find(k => k !== 'traceId' && k.startsWith(date));
-    return dateKey ? (data[dateKey]?.slots || []) : [];
-  } catch (error) {
-    console.error("GHL Free Slots Error:", error);
-    return [];
+  if (!response.ok) {
+    let errMsg = '';
+    try { const e = await response.json(); errMsg = e.message || ''; } catch {}
+    if (errMsg.toLowerCase().includes('inactive')) throw new Error('This calendar is inactive and cannot accept bookings.');
+    throw new Error(errMsg || `Slots fetch failed (${response.status})`);
   }
+
+  const data = await response.json();
+  if (!data) return [];
+
+  const dateKey = Object.keys(data).find(k => k !== 'traceId' && k.startsWith(date));
+  return dateKey ? (data[dateKey]?.slots || []) : [];
 }
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
