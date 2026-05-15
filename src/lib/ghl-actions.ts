@@ -290,9 +290,15 @@ export async function createOrder(orderData: {
   contactId: string;
   status: string;
 }): Promise<any> {
-  const timestamp = Date.now().toString();
-  // Fixing "source id is required" by providing locationId as the source id
-  // and source.type as 'manual' which is compliant with LeadConnector V2.
+  const timestamp = Date.now();
+  const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
+  
+  // Mandatory GHL V2 Payment tracking params
+  url.searchParams.append('altId', GHL_LOCATION_ID);
+  url.searchParams.append('altType', 'location');
+  url.searchParams.append('fingerprint', `fp_${timestamp}`);
+  url.searchParams.append('trackingId', `tr_${timestamp}`);
+
   const payload = {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
@@ -313,7 +319,7 @@ export async function createOrder(orderData: {
     liveMode: false
   };
 
-  const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
+  const response = await fetch(url.toString(), {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -342,6 +348,15 @@ export async function createInvoice(invoiceData: {
   amount: number;
   contactId: string;
 }): Promise<any> {
+  const timestamp = Date.now();
+  const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
+  
+  // Adding mandatory tracking for consistency across GHL V2 financial modules
+  url.searchParams.append('altId', GHL_LOCATION_ID);
+  url.searchParams.append('altType', 'location');
+  url.searchParams.append('fingerprint', `fp_${timestamp}`);
+  url.searchParams.append('trackingId', `tr_${timestamp}`);
+
   const payload = {
     locationId: GHL_LOCATION_ID,
     contactId: invoiceData.contactId,
@@ -357,7 +372,7 @@ export async function createInvoice(invoiceData: {
     ]
   };
 
-  const response = await fetch(`${GHL_API_BASE_URL}/invoices/`, {
+  const response = await fetch(url.toString(), {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
