@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -101,9 +102,12 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
+    
+    // Broad window for historical data sync: Past 1 year to Future 6 months
     const now = new Date();
-    const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
-    const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  
+    const startTime = now.getTime() - (365 * 24 * 60 * 60 * 1000); 
+    const endTime = now.getTime() + (180 * 24 * 60 * 60 * 1000);  
+    
     url.searchParams.append('startTime', startTime.toString());
     url.searchParams.append('endTime', endTime.toString());
 
@@ -147,7 +151,6 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
-    // Note: GHL V2 often expects trailing slash on resource roots
     const url = new URL(`${GHL_API_BASE_URL}/calendars/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers });
@@ -302,10 +305,7 @@ export async function createOrder(orderData: {
     trackingId: `tr_${timestamp}`,
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
-    source: { 
-      type: 'direct', 
-      id: GHL_LOCATION_ID 
-    },
+    source: 'manual', 
     products: [
       {
         id: `prod_${timestamp}`,

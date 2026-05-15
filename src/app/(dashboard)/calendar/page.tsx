@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -29,7 +30,8 @@ import {
   LayoutList,
   Calendar as CalendarIcon,
   X,
-  Trello
+  Trello,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +175,7 @@ export default function CalendarPage() {
   };
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Mock current week dates for visualization
   const currentWeek = [10, 11, 12, 13, 14, 15, 16]; 
 
   return (
@@ -252,7 +255,8 @@ export default function CalendarPage() {
                         {Array.from({ length: 12 }).map((_, row) => (
                           <div key={row} className="h-20 border-b hover:bg-primary/5 transition-colors cursor-pointer" />
                         ))}
-                        {col === 2 && (
+                        {/* Mock Appointment on Wednesday at 2 PM */}
+                        {col === 3 && (
                           <div className="absolute top-[160px] left-1 right-1 h-[80px] bg-primary/20 border-l-4 border-l-primary rounded-r-md p-2 animate-in fade-in">
                             <p className="text-[10px] font-bold">Client Consultation</p>
                             <p className="text-[9px] opacity-70">2:00 PM - 3:00 PM</p>
@@ -264,42 +268,80 @@ export default function CalendarPage() {
                 </TabsContent>
 
                 <TabsContent value="list" className="m-0 p-8">
-                  <div className="max-w-4xl mx-auto space-y-4">
+                  <div className="max-w-4xl mx-auto space-y-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xl font-bold">Appointment Registry</h3>
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">V2 Live Sync</Badge>
+                    </div>
+                    
                     {loading ? (
                       Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                     ) : appointments.length > 0 ? (
-                      appointments.map((appt) => (
-                        <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
-                          <CardContent className="p-5 flex items-center justify-between">
-                            <div className="flex items-center gap-5">
-                              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center border border-primary/20">
-                                <span className="text-[8px] font-bold uppercase">{new Date(appt.startTime).toLocaleString('default', { month: 'short' })}</span>
-                                <span className="text-xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</h4>
-                                <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
-                                  <span className="flex items-center gap-1"><Clock size={12} /> {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                  <Badge variant="outline" className="text-[9px] py-0 h-4 uppercase">{appt.status}</Badge>
+                      <div className="grid gap-4">
+                        {appointments.map((appt) => (
+                          <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
+                            <CardContent className="p-5 flex items-center justify-between">
+                              <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center border border-primary/20 group-hover:glow-primary transition-all">
+                                  <span className="text-[9px] font-bold uppercase tracking-widest">{new Date(appt.startTime).toLocaleString('default', { month: 'short' })}</span>
+                                  <span className="text-2xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</h4>
+                                  <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-medium">
+                                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary/60" /> {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex items-center gap-1.5"><User size={12} className="text-accent/60" /> ID: {appt.contactId.slice(0, 8)}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreVertical size={16} /></Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'completed')}><CheckCircle className="mr-2 h-4 w-4" /> Complete</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'cancelled')} className="text-destructive"><XCircle className="mr-2 h-4 w-4" /> Cancel</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </CardContent>
-                        </Card>
-                      ))
+                              
+                              <div className="flex items-center gap-4">
+                                <Badge 
+                                  variant="outline" 
+                                  className={cn(
+                                    "text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2",
+                                    appt.status === 'confirmed' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                                    appt.status === 'cancelled' ? "bg-destructive/10 text-destructive border-destructive/20" :
+                                    "bg-white/5 text-muted-foreground border-white/10"
+                                  )}
+                                >
+                                  {appt.status}
+                                </Badge>
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
+                                      <MoreVertical size={16} />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="glass border-white/10 rounded-xl p-2">
+                                    <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-3">Update Status</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-white/5 mx-2" />
+                                    <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'completed')}>
+                                      <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'showed')}>
+                                      <CheckCircle className="mr-2 h-4 w-4 text-primary" /> Mark Attended
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="rounded-lg focus:bg-destructive/10 text-destructive cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'cancelled')}>
+                                      <XCircle className="mr-2 h-4 w-4" /> Cancel Slot
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     ) : (
-                      <div className="py-40 text-center opacity-30">
-                        <CalendarDays size={64} className="mx-auto mb-4" />
-                        <p className="text-xl font-bold">No appointments found</p>
+                      <div className="py-40 text-center space-y-6">
+                        <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4 opacity-20">
+                          <LayoutList className="h-10 w-10" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-2xl font-bold text-muted-foreground">Registry Empty</p>
+                          <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed font-medium">No appointment records were detected in the GHL synchronicity window.</p>
+                        </div>
                       </div>
                     )}
                   </div>
