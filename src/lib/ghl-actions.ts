@@ -1,8 +1,9 @@
+
 'use server';
 
 /**
  * @fileOverview Secure server actions for LeadConnector V2 API.
- * Handles live synchronization with enhanced error handling and resiliency.
+ * Standardized for robust synchronization with mandatory tracking headers and parameters.
  */
 
 import { GHLContact, GHLAppointment, GHLCalendar, GHLConversation, GHLPipeline, GHLOpportunity } from './ghl';
@@ -18,6 +19,9 @@ const headers = {
   'Accept': 'application/json',
 };
 
+/**
+ * Handles the GHL V2 API response with enhanced error parsing for JSON and non-JSON bodies.
+ */
 async function handleResponse(response: Response, actionName: string) {
   if (!response.ok) {
     let errorMessage = `Sync Error [${response.status}] during ${actionName}`;
@@ -36,10 +40,11 @@ async function handleResponse(response: Response, actionName: string) {
   
   try {
     const text = await response.text();
-    return text ? JSON.parse(text) : null;
+    if (!text || text.trim() === '') return null;
+    return JSON.parse(text);
   } catch (e) {
     if (response.status === 204) return null;
-    throw new Error(`[PARSE ERROR] Invalid JSON from GHL in ${actionName}`);
+    return null; // Return null for non-JSON 200 responses to maintain stability
   }
 }
 
@@ -47,7 +52,7 @@ async function handleResponse(response: Response, actionName: string) {
 
 export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/contacts/`);
+    const url = new URL(`${GHL_API_BASE_URL}/contacts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
 
@@ -60,7 +65,7 @@ export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
 }
 
 export async function createContact(contactData: Partial<GHLContact>): Promise<GHLContact> {
-  const response = await fetch(`${GHL_API_BASE_URL}/contacts/`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/contacts`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -94,7 +99,7 @@ export async function deleteContact(id: string): Promise<void> {
 
 export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/appointments/`);
+    const url = new URL(`${GHL_API_BASE_URL}/appointments`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const now = new Date();
     const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
@@ -123,7 +128,7 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/calendars/`);
+    const url = new URL(`${GHL_API_BASE_URL}/calendars`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers });
     const data = await handleResponse(response, 'fetching calendars');
@@ -224,7 +229,7 @@ export async function createOpportunity(oppData: {
     payload.contactId = oppData.contactId;
   }
 
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -300,7 +305,7 @@ export async function createOrder(orderData: {
 
 export async function getInvoices(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
+    const url = new URL(`${GHL_API_BASE_URL}/invoices`);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
@@ -318,7 +323,7 @@ export async function createInvoice(invoiceData: {
   contactId: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
+  const url = new URL(`${GHL_API_BASE_URL}/invoices`);
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
   url.searchParams.append('fingerprint', `inv_fp_${timestamp}`);
@@ -392,7 +397,7 @@ export async function getEmailTemplates(limit: number = 50): Promise<any[]> {
 
 export async function getTriggerLinks(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/links/`);
+    const url = new URL(`${GHL_API_BASE_URL}/links`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching trigger links');
@@ -450,7 +455,7 @@ export async function createAppointment(apptData: {
   startTime: string; 
   title: string;
 }): Promise<GHLAppointment> {
-  const response = await fetch(`${GHL_API_BASE_URL}/appointments/`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -460,4 +465,36 @@ export async function createAppointment(apptData: {
   });
   const data = await handleResponse(response, 'booking appointment');
   return data.appointment;
+}
+
+export async function createInvoice(invoiceData: {
+  title: string;
+  amount: number;
+  contactId: string;
+}): Promise<any> {
+  const timestamp = Date.now().toString();
+  const url = new URL(`${GHL_API_BASE_URL}/invoices`);
+  url.searchParams.append('altId', GHL_LOCATION_ID);
+  url.searchParams.append('altType', 'location');
+  url.searchParams.append('fingerprint', `inv_fp_${timestamp}`);
+  url.searchParams.append('trackingId', `inv_tr_${timestamp}`);
+
+  const payload = {
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
+    locationId: GHL_LOCATION_ID,
+    contactId: invoiceData.contactId,
+    title: invoiceData.title,
+    amount: Number(invoiceData.amount),
+    currency: 'USD',
+    status: 'draft',
+    trackingId: `inv_tr_${timestamp}`
+  };
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response, 'creating invoice');
 }

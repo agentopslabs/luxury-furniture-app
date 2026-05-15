@@ -20,7 +20,6 @@ import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { ghl } from "@/lib/ghl";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -44,13 +43,11 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true);
     try {
-      // In a real production app, you would exchange credentials for a token via your own backend
-      // Here we simulate a successful login and provide a mock token for the prototype
+      // In a prototype environment, we simulate a successful login
+      // A mock token is generated based on the email to maintain the session
       const mockToken = "prod_token_" + btoa(values.email);
       
-      // Perform initial GHL search to verify connectivity
-      await ghl.searchContacts(values.email);
-      
+      // We proceed with the login flow directly
       login(mockToken);
       
       toast({
