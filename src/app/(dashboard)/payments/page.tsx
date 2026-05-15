@@ -319,8 +319,8 @@ export default function PaymentsPage() {
                         <Badge variant="secondary" className="uppercase text-[9px]">{item.status || item.paymentStatus || 'Active'}</Badge>
                       </TableCell>
                       <TableCell className="text-xs text-left">{item.customerName || item.contactName || 'Anonymous'}</TableCell>
-                      <TableCell className="text-xs opacity-50 text-left">{new Date(item.dateAdded || item.createdAt || Date.now()).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-mono text-emerald-400 font-bold text-left">${(item.totalAmount || item.amount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs opacity-50 text-left">{item.dateAdded || item.createdAt ? new Date(item.dateAdded || item.createdAt).toLocaleDateString('en-US') : '—'}</TableCell>
+                      <TableCell className="font-mono text-emerald-400 font-bold text-left">${(item.totalAmount || item.amount || 0).toLocaleString('en-US')}</TableCell>
                       <TableCell className="px-8 text-right">
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><MoreVertical size={14} /></Button>
                       </TableCell>

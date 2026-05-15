@@ -143,7 +143,7 @@ export default function ConversationsPage() {
                           </p>
                           {convo.lastMessageDate && (
                             <span className="text-[9px] text-muted-foreground font-mono">
-                              {new Date(convo.lastMessageDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(convo.lastMessageDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </div>

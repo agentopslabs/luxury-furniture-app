@@ -112,7 +112,7 @@ export default function ContactsPage() {
     try {
       const appts = await ghl.getAppointments(contactId);
       setEditingHistory(appts.map(a => ({
-        date: new Date(a.startTime).toLocaleDateString(),
+        date: new Date(a.startTime).toLocaleDateString('en-US'),
         summary: a.title
       })));
     } catch (error) {

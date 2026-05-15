@@ -290,13 +290,13 @@ export default function CalendarPage() {
                             <CardContent className="p-5 flex items-center justify-between">
                               <div className="flex items-center gap-5">
                                 <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center border border-primary/20 group-hover:glow-primary transition-all">
-                                  <span className="text-[9px] font-bold uppercase tracking-widest">{new Date(appt.startTime).toLocaleString('default', { month: 'short' })}</span>
+                                  <span className="text-[9px] font-bold uppercase tracking-widest">{new Date(appt.startTime).toLocaleString('en-US', { month: 'short' })}</span>
                                   <span className="text-2xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
                                 </div>
                                 <div className="space-y-1">
                                   <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</h4>
                                   <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-medium">
-                                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary/60" /> {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="flex items-center gap-1.5"><Clock size={12} className="text-primary/60" /> {new Date(appt.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                                     <span className="flex items-center gap-1.5"><User size={12} className="text-accent/60" /> ID: {appt.contactId.slice(0, 8)}</span>
                                   </div>
                                 </div>

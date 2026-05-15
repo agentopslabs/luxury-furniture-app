@@ -299,7 +299,7 @@ export default function MarketingPage() {
                             <TableCell><div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center"><CalendarDays size={18} className="opacity-20" /></div></TableCell>
                             <TableCell><Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter">{item.status || 'Scheduled'}</Badge></TableCell>
                             <TableCell className="text-xs text-muted-foreground">{item.type || 'Post'}</TableCell>
-                            <TableCell className="text-xs font-mono">{new Date(item.scheduledDate || Date.now()).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-xs font-mono">{item.scheduledDate ? new Date(item.scheduledDate).toLocaleDateString('en-US') : '—'}</TableCell>
                             <TableCell><div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[8px] text-white">f</div></TableCell>
                           </TableRow>
                         ))
