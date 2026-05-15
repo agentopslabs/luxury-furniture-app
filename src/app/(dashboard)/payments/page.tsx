@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { 
   Card, 
@@ -21,15 +21,19 @@ import {
   Plus, 
   Settings as SettingsIcon, 
   Calendar as CalendarIcon,
-  ChevronDown,
   Filter,
   ArrowRight,
   MoreVertical,
   FileText,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  CreditCard
+  CreditCard,
+  Package,
+  Ticket,
+  Link as LinkIcon,
+  RefreshCw,
+  History,
+  Repeat,
+  Gift,
+  Unplug
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,30 +42,116 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const subNavItems = [
-  { name: "Documents & Contracts", value: "docs" },
-  { name: "Orders", value: "orders" },
-  { name: "Subscriptions", value: "subs" },
-  { name: "Payment Links", value: "links" },
-  { name: "Transactions", value: "transactions" },
-  { name: "Products", value: "products", isNew: true },
-  { name: "Coupons", value: "coupons" },
-  { name: "Gift Cards", value: "gift-cards", isNew: true },
-  { name: "Settings", value: "settings" },
-  { name: "Integrations", value: "integrations" },
+  { name: "Documents & Contracts", value: "docs", icon: FileText },
+  { name: "Orders", value: "orders", icon: Package },
+  { name: "Subscriptions", value: "subs", icon: Repeat },
+  { name: "Payment Links", value: "links", icon: LinkIcon },
+  { name: "Transactions", value: "transactions", icon: History },
+  { name: "Products", value: "products", isNew: true, icon: Package },
+  { name: "Coupons", value: "coupons", icon: Ticket },
+  { name: "Gift Cards", value: "gift-cards", isNew: true, icon: Gift },
+  { name: "Settings", value: "settings", icon: SettingsIcon },
+  { name: "Integrations", value: "integrations", icon: Unplug },
 ];
 
-const statusTabs = [
-  { name: "Draft", count: 0 },
-  { name: "Waiting for others", count: 0 },
-  { name: "Completed", count: 0 },
-  { name: "Payments", count: 0 },
-  { name: "Archived", count: 0 },
-];
+const statusTabsByNav: Record<string, { name: string; count: number }[]> = {
+  docs: [
+    { name: "Draft", count: 0 },
+    { name: "Waiting for others", count: 0 },
+    { name: "Completed", count: 0 },
+    { name: "Payments", count: 0 },
+    { name: "Archived", count: 0 },
+  ],
+  orders: [
+    { name: "All", count: 0 },
+    { name: "Pending", count: 0 },
+    { name: "Paid", count: 0 },
+    { name: "Refunded", count: 0 },
+  ],
+  subs: [
+    { name: "Active", count: 0 },
+    { name: "Trialing", count: 0 },
+    { name: "Cancelled", count: 0 },
+    { name: "All", count: 0 },
+  ],
+  transactions: [
+    { name: "Successful", count: 0 },
+    { name: "Failed", count: 0 },
+    { name: "Refunded", count: 0 },
+    { name: "All", count: 0 },
+  ],
+  products: [
+    { name: "Active", count: 0 },
+    { name: "Archived", count: 0 },
+  ],
+};
 
 export default function PaymentsPage() {
   const [activeSubNav, setActiveSubNav] = useState("docs");
-  const [activeStatus, setActiveStatus] = useState("Draft");
+  const [activeStatus, setActiveStatus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const currentNav = useMemo(() => 
+    subNavItems.find(item => item.value === activeSubNav) || subNavItems[0]
+  , [activeSubNav]);
+
+  const currentStatusTabs = useMemo(() => 
+    statusTabsByNav[activeSubNav] || [{ name: "All", count: 0 }]
+  , [activeSubNav]);
+
+  // Set first status tab as active when sub-nav changes
+  const handleSubNavChange = (value: string) => {
+    setActiveSubNav(value);
+    const firstStatus = statusTabsByNav[value]?.[0]?.name || "All";
+    setActiveStatus(firstStatus);
+  };
+
+  const renderTableHeader = () => {
+    switch (activeSubNav) {
+      case 'docs':
+        return (
+          <TableRow className="hover:bg-transparent border-white/5">
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Document Title</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Status</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Modified</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Value</TableHead>
+            <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Ops</TableHead>
+          </TableRow>
+        );
+      case 'orders':
+        return (
+          <TableRow className="hover:bg-transparent border-white/5">
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Order ID</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Payment</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Source</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Total</TableHead>
+            <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Actions</TableHead>
+          </TableRow>
+        );
+      case 'products':
+        return (
+          <TableRow className="hover:bg-transparent border-white/5">
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Product Name</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Type</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Price</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Updated</TableHead>
+            <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Manage</TableHead>
+          </TableRow>
+        );
+      default:
+        return (
+          <TableRow className="hover:bg-transparent border-white/5">
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Item Name</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Status</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Date</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Amount</TableHead>
+            <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Action</TableHead>
+          </TableRow>
+        );
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
@@ -73,9 +163,12 @@ export default function PaymentsPage() {
         {/* Payments Header & Sub-Nav */}
         <header className="border-b border-white/5 bg-background/50 backdrop-blur-md z-10 shrink-0">
           <div className="px-8 pt-8 pb-4">
-            <h1 className="text-2xl font-bold font-headline mb-6">Payments</h1>
+            <h1 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
+              <CreditCard className="text-primary" />
+              Payments
+            </h1>
             
-            <Tabs value={activeSubNav} onValueChange={setActiveSubNav} className="w-full">
+            <Tabs value={activeSubNav} onValueChange={handleSubNavChange} className="w-full">
               <TabsList className="bg-transparent border-b border-white/5 w-full justify-start rounded-none h-auto p-0 gap-8 overflow-x-auto no-scrollbar">
                 {subNavItems.map((item) => (
                   <TabsTrigger 
@@ -83,6 +176,7 @@ export default function PaymentsPage() {
                     value={item.value} 
                     className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-2 text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 group"
                   >
+                    <item.icon size={14} className={cn("transition-colors", activeSubNav === item.value ? "text-primary" : "text-muted-foreground")} />
                     {item.name}
                     {item.isNew && (
                       <span className="bg-amber-400 text-black text-[8px] font-bold px-1 rounded uppercase tracking-tighter">New</span>
@@ -96,20 +190,24 @@ export default function PaymentsPage() {
 
         {/* Dynamic Content Area */}
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 p-8 space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-2 duration-500">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-3xl font-bold tracking-tight">Documents & Contracts</h2>
-                <span className="text-muted-foreground text-sm font-medium opacity-60">(Proposals, Estimates & Contracts)</span>
+                <h2 className="text-3xl font-bold tracking-tight">{currentNav.name}</h2>
+                <span className="text-muted-foreground text-sm font-medium opacity-60">
+                  (GHL V2 Sub-Account Context)
+                </span>
               </div>
-              <p className="text-muted-foreground text-sm">Manage and oversee all documents & contracts created for your business.</p>
+              <p className="text-muted-foreground text-sm">
+                Real-time management for your {currentNav.name.toLowerCase()} stream.
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" className="h-10 rounded-xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08]">
-                <SettingsIcon className="mr-2 h-4 w-4" /> Settings
+                <SettingsIcon className="mr-2 h-4 w-4" /> Config
               </Button>
               <Button className="glow-primary bg-primary hover:bg-primary/90 h-10 px-6 rounded-xl font-bold">
-                <Plus className="mr-2 h-4 w-4" /> New
+                <Plus className="mr-2 h-4 w-4" /> Create {currentNav.name.replace(/s$/, '')}
               </Button>
             </div>
           </div>
@@ -118,37 +216,41 @@ export default function PaymentsPage() {
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center gap-3 glass border-white/10 rounded-xl px-4 h-10 w-full md:w-auto cursor-pointer hover:bg-white/5 transition-all">
               <CalendarIcon size={16} className="text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground">Start Date</span>
-              <ArrowRight size={14} className="text-muted-foreground opacity-40" />
-              <span className="text-xs font-medium text-muted-foreground">End Date</span>
-              <CalendarIcon size={16} className="text-muted-foreground ml-2" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Registry Filter</span>
+              <ArrowRight size={14} className="text-muted-foreground opacity-20" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">All Time</span>
+              <ChevronDown size={14} className="text-muted-foreground ml-2 opacity-50" />
             </div>
 
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
               <Input 
-                placeholder="Search..." 
+                placeholder={`Search ${currentNav.name.toLowerCase()}...`}
                 className="glass pl-10 h-10 rounded-xl text-xs border-white/10 focus:ring-primary"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            
+            <Button variant="outline" size="icon" className="h-10 w-10 glass border-white/10">
+              <RefreshCw size={16} className="text-muted-foreground" />
+            </Button>
           </div>
 
           {/* Status Tabs */}
-          <div className="border-b border-white/5 flex gap-10">
-            {statusTabs.map((tab) => (
+          <div className="border-b border-white/5 flex gap-10 overflow-x-auto no-scrollbar">
+            {currentStatusTabs.map((tab) => (
               <button
                 key={tab.name}
                 onClick={() => setActiveStatus(tab.name)}
                 className={cn(
-                  "pb-4 text-sm font-bold transition-all relative",
+                  "pb-4 text-[11px] font-bold uppercase tracking-[0.2em] transition-all relative whitespace-nowrap",
                   activeStatus === tab.name 
                     ? "text-primary" 
-                    : "text-muted-foreground/60 hover:text-foreground"
+                    : "text-muted-foreground/40 hover:text-foreground"
                 )}
               >
-                {tab.name} <span className="ml-1 opacity-50 font-mono text-[10px]">{tab.count}</span>
+                {tab.name} <span className="ml-1 opacity-30 font-mono text-[9px]">{tab.count}</span>
                 {activeStatus === tab.name && (
                   <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
                 )}
@@ -157,28 +259,29 @@ export default function PaymentsPage() {
           </div>
 
           {/* Records Table */}
-          <Card className="glass border-white/5 rounded-2xl overflow-hidden group">
+          <Card className="glass border-white/5 rounded-3xl overflow-hidden group">
             <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
             <Table>
-              <TableHeader className="bg-white/5">
-                <TableRow className="hover:bg-transparent border-white/5">
-                  <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Title</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Date modified</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Value</TableHead>
-                  <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Ops</TableHead>
-                </TableRow>
+              <TableHeader className="bg-white/[0.02]">
+                {renderTableHeader()}
               </TableHeader>
               <TableBody>
-                {/* Empty State based on photo */}
                 <TableRow className="hover:bg-transparent border-none">
-                  <TableCell colSpan={6} className="h-[300px] text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4 opacity-20">
-                      <div className="w-16 h-16 rounded-full border-2 border-dashed border-white flex items-center justify-center">
-                        <Search size={32} />
+                  <TableCell colSpan={6} className="h-[400px] text-center">
+                    <div className="flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-700">
+                      <div className="w-20 h-20 rounded-full bg-white/[0.02] border-2 border-dashed border-white/10 flex items-center justify-center relative">
+                        <currentNav.icon size={32} className="text-muted-foreground opacity-20" />
+                        <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full" />
                       </div>
-                      <p className="text-sm font-bold uppercase tracking-widest">No documents found</p>
+                      <div className="space-y-2">
+                        <p className="text-lg font-bold text-muted-foreground/80 tracking-tight">No {currentNav.name.toLowerCase()} detected</p>
+                        <p className="text-xs text-muted-foreground/40 max-w-[320px] mx-auto leading-relaxed">
+                          Your GHL V2 sub-account workspace has no records matching the current <strong>{activeStatus}</strong> filter.
+                        </p>
+                      </div>
+                      <Button variant="outline" className="h-9 text-xs rounded-xl border-white/5 bg-white/[0.02] hover:bg-white/[0.05]">
+                        Import Existing Records
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -188,5 +291,24 @@ export default function PaymentsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ChevronDown({ className, size }: { className?: string; size?: number }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size || 24} 
+      height={size || 24} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="m6 9 6 6 6-6"/>
+    </svg>
   );
 }
