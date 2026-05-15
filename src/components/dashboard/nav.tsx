@@ -13,7 +13,8 @@ import {
   Layers,
   Target,
   Sparkles,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { useAuth } from "@/lib/auth-context";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Conversations", href: "/conversations", icon: MessageSquare },
+  { name: "Marketing", href: "/marketing", icon: Megaphone },
   { name: "Pipeline", href: "/pipeline", icon: Layers },
   { name: "Opportunities", href: "/opportunities", icon: Target },
   { name: "Payments", href: "/payments", icon: CreditCard },

@@ -233,7 +233,6 @@ export async function createOrder(orderData: {
   const fingerprint = `fp_${timestamp}`;
   const trackingId = `tr_${timestamp}`;
 
-  // altId and altType are mandatory query parameters for GHL V2 financial endpoints
   url.searchParams.append('altId', altId);
   url.searchParams.append('altType', altType);
 
@@ -245,7 +244,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'direct', // Standard technical identifier for manual/API orders
+      type: 'direct', 
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -322,6 +321,49 @@ export async function createInvoice(invoiceData: {
   });
   return handleResponse(response, 'creating invoice');
 }
+
+// --- MARKETING & AUTOMATION ---
+
+export async function getCampaigns(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/campaigns/`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching campaigns');
+    return data?.campaigns || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getWorkflows(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/workflows/`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching workflows');
+    return data?.workflows || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getEmailTemplates(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/emails/templates`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching email templates');
+    return data?.templates || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+// --- GENERIC ---
 
 export async function getTransactions(limit: number = 50): Promise<any[]> {
   try {
