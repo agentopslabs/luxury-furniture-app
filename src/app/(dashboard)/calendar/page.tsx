@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment } from "@/lib/ghl-actions";
+import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment, getCalendarFreeSlots } from "@/lib/ghl-actions";
 import { GHLAppointment, GHLCalendar, GHLContact } from "@/lib/ghl";
 import { 
   Card, 
@@ -82,8 +82,11 @@ export default function CalendarPage() {
     calendarId: "",
     contactId: "",
     title: "",
-    startTime: ""
+    selectedDate: "",
+    selectedSlot: ""
   });
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const { toast } = useToast();
 
@@ -141,50 +144,48 @@ export default function CalendarPage() {
     }
   };
 
+  const fetchSlotsForDate = useCallback(async (calendarId: string, date: string) => {
+    if (!calendarId || !date) { setAvailableSlots([]); return; }
+    setLoadingSlots(true);
+    setAvailableSlots([]);
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const slots = await getCalendarFreeSlots(calendarId, date, tz);
+      setAvailableSlots(slots);
+      if (slots.length === 0) {
+        toast({ title: "No Available Slots", description: "This calendar has no open slots on the selected date. Try a different day." });
+      }
+    } catch {
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [toast]);
+
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingForm.calendarId || !bookingForm.contactId || !bookingForm.startTime) {
-      toast({ variant: "destructive", title: "Missing Details", description: "Please fill in all required fields." });
-      return;
-    }
-
-    const start = new Date(bookingForm.startTime);
-    // GHL is very sensitive to past dates, we ensure it's at least in the future
-    if (start < new Date()) {
-      toast({ 
-        variant: "destructive", 
-        title: "Invalid Time", 
-        description: "GHL V2 prevents booking appointments in the past. Please select a future time slot." 
-      });
+    if (!bookingForm.calendarId || !bookingForm.contactId || !bookingForm.selectedDate || !bookingForm.selectedSlot) {
+      toast({ variant: "destructive", title: "Missing Details", description: "Please fill in all required fields and select an available slot." });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Pass the user's current timezone to resolve "slot no longer available" validation errors
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      
       await createAppointment({
         calendarId: bookingForm.calendarId,
         contactId: bookingForm.contactId,
         title: bookingForm.title || "Interaction Slot",
-        startTime: start.toISOString(),
+        startTime: bookingForm.selectedSlot,
         timezone: userTimezone
       });
-      
       setIsBookingOpen(false);
-      setBookingForm({ calendarId: "", contactId: "", title: "", startTime: "" });
-      toast({
-        title: "Appointment Booked",
-        description: "Successfully added to GHL calendar.",
-      });
+      setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
+      setAvailableSlots([]);
+      toast({ title: "Appointment Booked", description: "Successfully added to GHL calendar." });
       fetchData(true);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Booking Failed",
-        description: error.message || "The slot you have selected is no longer available in the GHL cloud.",
-      });
+      toast({ variant: "destructive", title: "Booking Failed", description: error.message || "Could not commit slot to GHL." });
     } finally {
       setIsSubmitting(false);
     }
@@ -435,19 +436,47 @@ export default function CalendarPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Signal Date & Time</Label>
-                <Input 
-                  className="glass h-12 rounded-xl" 
-                  type="datetime-local" 
-                  value={bookingForm.startTime}
-                  onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Date</Label>
+                  <Input
+                    className="glass h-12 rounded-xl"
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={bookingForm.selectedDate}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setBookingForm({ ...bookingForm, selectedDate: newDate, selectedSlot: "" });
+                      fetchSlotsForDate(bookingForm.calendarId, newDate);
+                    }}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">
+                    Available Slot {loadingSlots && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
+                  </Label>
+                  <Select
+                    value={bookingForm.selectedSlot}
+                    onValueChange={(val) => setBookingForm({ ...bookingForm, selectedSlot: val })}
+                    disabled={loadingSlots || availableSlots.length === 0}
+                  >
+                    <SelectTrigger className="glass h-12 rounded-xl">
+                      <SelectValue placeholder={loadingSlots ? "Loading..." : availableSlots.length === 0 ? "Pick a date first" : "Select slot"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {availableSlots.map((slot) => (
+                        <SelectItem key={slot} value={slot}>
+                          {new Date(slot).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <DialogFooter className="mt-10">
-              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting}>
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting || !bookingForm.selectedSlot}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
                 Commit Booking
               </Button>

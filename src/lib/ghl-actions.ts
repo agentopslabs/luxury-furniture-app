@@ -188,6 +188,30 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
   await handleResponse(response, 'updating appointment status');
 }
 
+export async function getCalendarFreeSlots(calendarId: string, date: string, timezone: string): Promise<string[]> {
+  try {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const url = new URL(`${GHL_API_BASE_URL}/calendars/${calendarId}/free-slots`);
+    url.searchParams.append('startDate', start.getTime().toString());
+    url.searchParams.append('endDate', end.getTime().toString());
+    url.searchParams.append('timezone', timezone);
+
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching free slots');
+    if (!data) return [];
+
+    const dateKey = Object.keys(data).find(k => k !== 'traceId' && k.startsWith(date));
+    return dateKey ? (data[dateKey]?.slots || []) : [];
+  } catch (error) {
+    console.error("GHL Free Slots Error:", error);
+    return [];
+  }
+}
+
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/calendars/`);
@@ -386,6 +410,17 @@ export async function createInvoice(invoiceData: {
   amount: number;
   contactId: string;
 }): Promise<any> {
+  const contactRes = await fetch(`${GHL_API_BASE_URL}/contacts/${invoiceData.contactId}`, { headers });
+  const contactData = await contactRes.json();
+  const contact = contactData?.contact || {};
+
+  const locRes = await fetch(`${GHL_API_BASE_URL}/locations/${GHL_LOCATION_ID}`, { headers });
+  const locData = await locRes.json();
+  const loc = locData?.location || {};
+
+  const today = new Date().toISOString().split('T')[0];
+  const due = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
@@ -396,13 +431,26 @@ export async function createInvoice(invoiceData: {
     name: invoiceData.title,
     currency: 'USD',
     status: 'draft',
-    contactDetails: { id: invoiceData.contactId },
+    issueDate: today,
+    dueDate: due,
+    businessDetails: {
+      name: loc.name || 'Business',
+      address: loc.address || '',
+      city: loc.city || '',
+      state: loc.state || '',
+      country: loc.country || 'US',
+      website: loc.website || 'https://example.com',
+      email: loc.email || '',
+      phoneNo: loc.phone || '',
+    },
+    contactDetails: {
+      id: invoiceData.contactId,
+      name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Client',
+      email: contact.email || '',
+      phoneNo: contact.phone || '',
+    },
     items: [
-      {
-        name: invoiceData.title,
-        qty: 1,
-        unitPrice: Number(invoiceData.amount),
-      }
+      { name: invoiceData.title, qty: 1, unitPrice: Number(invoiceData.amount) }
     ],
   };
 
