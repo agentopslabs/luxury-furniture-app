@@ -3,7 +3,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { ghl, GHLContact } from "@/lib/ghl";
+import { ghl, GHLContact, GHLAppointment } from "@/lib/ghl";
+import { AIContactInsight } from "@/components/dashboard/ai-insight";
 import { 
   Card, 
   CardContent, 
@@ -30,7 +31,8 @@ import {
   RefreshCw,
   Loader2,
   CheckCircle2,
-  Settings
+  Settings,
+  Sparkles
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,7 @@ export default function ContactsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<GHLContact | null>(null);
+  const [editingHistory, setEditingHistory] = useState<any[]>([]);
   
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [newContact, setNewContact] = useState({
@@ -104,6 +107,19 @@ export default function ContactsPage() {
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+
+  const fetchContactHistory = async (contactId: string) => {
+    try {
+      const appts = await ghl.getAppointments(contactId);
+      setEditingHistory(appts.map(a => ({
+        date: new Date(a.startTime).toLocaleDateString(),
+        summary: a.title
+      })));
+    } catch (error) {
+      console.error("History fetch error:", error);
+      setEditingHistory([]);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +162,7 @@ export default function ContactsPage() {
       setIsEditDialogOpen(false);
       toast({
         title: "Contact Updated",
-        description: "Metadata synchronized with LeadConnector V2.",
+        description: "Metadata and Intelligence synchronized.",
       });
     } catch (error) {
       toast({
@@ -201,15 +217,6 @@ export default function ContactsPage() {
               </p>
             </div>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => toast({ title: "Configuration", description: "Loading sub-account contact settings..." })}
-                className="h-12 px-6 rounded-2xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-md font-bold transition-all"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Config
-              </Button>
               <Button 
                 variant="outline" 
                 size="lg" 
@@ -312,6 +319,8 @@ export default function ContactsPage() {
                               <DropdownMenuSeparator className="bg-white/5 mx-2" />
                               <DropdownMenuItem className="rounded-xl px-4 py-2.5 focus:bg-primary/10 cursor-pointer" onClick={() => {
                                 setEditingContact({ ...contact });
+                                setEditingHistory([]);
+                                fetchContactHistory(contact.id);
                                 setIsEditDialogOpen(true);
                               }}>
                                 <Pencil className="mr-3 h-4 w-4 text-primary" /> Modify record
@@ -399,7 +408,7 @@ export default function ContactsPage() {
             </div>
             <DialogFooter className="mt-10">
               <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
-                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-5 w-5" />}
+                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
                 Commit to Cloud
               </Button>
             </DialogFooter>
@@ -409,81 +418,91 @@ export default function ContactsPage() {
 
       {/* Edit Contact Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
-          <form onSubmit={handleUpdate}>
-            <DialogHeader className="mb-8">
-              <DialogTitle className="text-2xl font-bold">Modify Metadata</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Override contact record in the GHL V2 repository.</DialogDescription>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-4xl max-h-[90vh] overflow-y-auto no-scrollbar">
+          <form onSubmit={handleUpdate} className="space-y-8">
+            <DialogHeader className="mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl font-bold">Modify Metadata</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">Override contact record in the GHL V2 repository.</DialogDescription>
+                </div>
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">V2 Live</Badge>
+              </div>
             </DialogHeader>
-            <div className="grid gap-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">First Identity</Label>
-                  <Input 
-                    className="glass h-12 rounded-xl" 
-                    value={editingContact?.firstName || ""} 
-                    onChange={(e) => setEditingContact(editingContact ? { ...editingContact, firstName: e.target.value } : null)}
-                    required
-                  />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Profile Details */}
+              <div className="space-y-6">
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-50">Identity & Communication</h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">First Identity</Label>
+                      <Input 
+                        className="glass h-11 rounded-xl" 
+                        value={editingContact?.firstName || ""} 
+                        onChange={(e) => setEditingContact(editingContact ? { ...editingContact, firstName: e.target.value } : null)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Last Identity</Label>
+                      <Input 
+                        className="glass h-11 rounded-xl" 
+                        value={editingContact?.lastName || ""} 
+                        onChange={(e) => setEditingContact(editingContact ? { ...editingContact, lastName: e.target.value } : null)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Communication Email</Label>
+                    <Input 
+                      className="glass h-11 rounded-xl" 
+                      type="email"
+                      value={editingContact?.email || ""} 
+                      onChange={(e) => setEditingContact(editingContact ? { ...editingContact, email: e.target.value } : null)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60">Signal Number</Label>
+                    <Input 
+                      className="glass h-11 rounded-xl" 
+                      value={editingContact?.phone || ""} 
+                      onChange={(e) => setEditingContact(editingContact ? { ...editingContact, phone: e.target.value } : null)}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Last Identity</Label>
-                  <Input 
-                    className="glass h-12 rounded-xl" 
-                    value={editingContact?.lastName || ""} 
-                    onChange={(e) => setEditingContact(editingContact ? { ...editingContact, lastName: e.target.value } : null)}
-                    required
-                  />
+
+                <div className="flex gap-4">
+                  <Button type="button" variant="outline" size="lg" className="flex-1 h-12 rounded-xl font-bold" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="lg" className="flex-[2] h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-5 w-5" />}
+                    Sync Overwrite
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Communication Email</Label>
-                <Input 
-                  className="glass h-12 rounded-xl" 
-                  type="email"
-                  value={editingContact?.email || ""} 
-                  onChange={(e) => setEditingContact(editingContact ? { ...editingContact, email: e.target.value } : null)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Signal Number</Label>
-                <Input 
-                  className="glass h-12 rounded-xl" 
-                  value={editingContact?.phone || ""} 
-                  onChange={(e) => setEditingContact(editingContact ? { ...editingContact, phone: e.target.value } : null)}
-                />
+
+              {/* Intelligence Section */}
+              <div className="space-y-6">
+                {editingContact && (
+                  <AIContactInsight 
+                    contactName={`${editingContact.firstName || ''} ${editingContact.lastName || ''}`} 
+                    history={editingHistory} 
+                    className="h-full min-h-[400px]"
+                  />
+                )}
               </div>
             </div>
-            <DialogFooter className="mt-10">
-              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
-                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-5 w-5" />}
-                Sync Overwrite
-              </Button>
-            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function BadgeCheck({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
   );
 }

@@ -4,16 +4,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateContactSummaryAndNotes } from "@/ai/flows/generate-contact-summary-and-notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, RefreshCcw, AlertCircle } from "lucide-react";
+import { Sparkles, RefreshCcw, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface Appointment {
   date: string;
   summary: string;
 }
 
-export function AIContactInsight({ contactName, history }: { contactName: string; history: Appointment[] }) {
+export function AIContactInsight({ 
+  contactName, 
+  history, 
+  className 
+}: { 
+  contactName: string; 
+  history: Appointment[]; 
+  className?: string;
+}) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +40,6 @@ export function AIContactInsight({ contactName, history }: { contactName: string
       setData(result);
       setError(null);
     } catch (e: any) {
-      // Handle the error silently from the console to prevent triggering the Next.js error overlay
-      // Use the error message to provide user-friendly feedback in the UI
       const errorMessage = e.message || String(e);
       
       if (
@@ -51,16 +58,17 @@ export function AIContactInsight({ contactName, history }: { contactName: string
   }, [contactName, history, isLoading]);
 
   useEffect(() => {
-    // Only auto-generate if we have history and haven't tried yet
-    if (history.length > 0 && !data && !isLoading && !error) {
+    // Clear data and re-generate if the contact name changes or history changes
+    if (history.length > 0) {
+      setData(null);
       generate();
     }
-  }, [history.length, data, isLoading, error, generate]);
+  }, [contactName, history.length]);
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-primary/5">
+    <Card className={cn("overflow-hidden border-primary/20 bg-primary/5", className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <CardTitle className="text-sm font-bold flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           AI Prospect Intelligence
         </CardTitle>
@@ -68,21 +76,21 @@ export function AIContactInsight({ contactName, history }: { contactName: string
           variant="ghost" 
           size="icon" 
           onClick={() => {
-            setError(null);
+            setData(null);
             generate();
           }} 
           disabled={isLoading}
           className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
         >
-          <RefreshCcw className={isLoading ? "h-3 w-3 animate-spin" : "h-3 w-3"} />
+          {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="space-y-3 py-2">
-            <div className="h-3 bg-muted animate-pulse rounded w-full" />
-            <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
-            <div className="h-3 bg-muted animate-pulse rounded w-5/6" />
+            <div className="h-3 bg-primary/10 animate-pulse rounded w-full" />
+            <div className="h-3 bg-primary/10 animate-pulse rounded w-3/4" />
+            <div className="h-3 bg-primary/10 animate-pulse rounded w-5/6" />
           </div>
         ) : error ? (
           <div className="space-y-3">
@@ -99,7 +107,7 @@ export function AIContactInsight({ contactName, history }: { contactName: string
                 setError(null);
                 generate();
               }} 
-              className="w-full h-8 text-[10px] font-semibold"
+              className="w-full h-8 text-[10px] font-bold"
             >
               Manual Retry
             </Button>
@@ -107,12 +115,12 @@ export function AIContactInsight({ contactName, history }: { contactName: string
         ) : data ? (
           <div className="space-y-4 animate-in fade-in duration-700">
             <div>
-              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1 tracking-wider">Executive Summary</p>
-              <p className="text-sm leading-relaxed text-foreground/90">{data.executiveSummary}</p>
+              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1 tracking-[0.2em]">Executive Summary</p>
+              <p className="text-xs leading-relaxed text-foreground/90 font-medium">{data.executiveSummary}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1 tracking-wider">Suggested CRM Notes</p>
-              <div className="text-xs text-muted-foreground space-y-1">
+              <p className="text-[10px] font-bold uppercase text-primary/70 mb-1 tracking-[0.2em]">Suggested CRM Notes</p>
+              <div className="text-[10px] text-muted-foreground space-y-1 font-medium">
                 {data.suggestedNotes.split('\n').filter((n: string) => n.trim()).map((note: string, i: number) => (
                   <p key={i} className="flex gap-2">
                     <span className="text-primary opacity-50">•</span>
@@ -123,10 +131,10 @@ export function AIContactInsight({ contactName, history }: { contactName: string
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic">
+          <p className="text-[10px] text-muted-foreground italic font-medium opacity-50">
             {history.length === 0 
               ? "Awaiting appointment history for analysis..." 
-              : "No analysis available. Click refresh to generate insights."}
+              : "Synchronizing intelligence..."}
           </p>
         )}
       </CardContent>
