@@ -18,14 +18,14 @@ const headers = {
 };
 
 /**
- * Helper to safely handle fetch responses
+ * Helper to safely handle fetch responses and extract meaningful error messages.
  */
 async function handleResponse(response: Response, defaultError: string) {
   if (!response.ok) {
     let message = defaultError;
     try {
       const errorData = await response.json();
-      message = errorData.message || message;
+      message = errorData.message || (errorData.errors && errorData.errors[0]?.message) || message;
     } catch (e) {
       message = `${response.status} ${response.statusText}`;
     }
@@ -33,9 +33,9 @@ async function handleResponse(response: Response, defaultError: string) {
   }
   
   try {
-    return await response.json();
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   } catch (e) {
-    // For successful responses that might be empty
     if (response.status === 204) return null;
     throw new Error('Server returned an invalid response format.');
   }
@@ -237,32 +237,46 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
 
 export async function getOpportunities(): Promise<GHLOpportunity[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
+    // V2 uses GET /opportunities with locationId for listing
+    const url = new URL(`${GHL_API_BASE_URL}/opportunities`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('limit', '50');
+    url.searchParams.append('limit', '100');
+    
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'Failed to fetch opportunities');
     return data?.opportunities || [];
   } catch (error) {
+    console.error('getOpportunities error:', error);
     return [];
   }
 }
 
-export async function createOpportunity(oppData: any): Promise<GHLOpportunity> {
+export async function createOpportunity(oppData: {
+  name: string;
+  pipelineId: string;
+  pipelineStageId: string;
+  status: string;
+  monetaryValue?: number;
+  contactId?: string;
+}): Promise<GHLOpportunity> {
   try {
+    // Payload cleanup for GHL V2 strict schema
     const payload: any = {
-      ...oppData,
+      name: oppData.name,
+      pipelineId: oppData.pipelineId,
+      pipelineStageId: oppData.pipelineStageId,
+      status: oppData.status || 'open',
       locationId: GHL_LOCATION_ID,
+      monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
     };
     
-    // Ensure numeric types
-    if (payload.monetaryValue) {
-      payload.monetaryValue = Number(payload.monetaryValue);
+    // Only include contactId if it's a valid string
+    if (oppData.contactId && oppData.contactId.trim()) {
+      payload.contactId = oppData.contactId;
     }
 
-    // GHL V2 POST Opportunities often requires locationId as a query param too
+    // GHL V2 creation endpoint
     const url = new URL(`${GHL_API_BASE_URL}/opportunities`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
 
     const response = await fetch(url.toString(), {
       method: 'POST',
@@ -270,9 +284,10 @@ export async function createOpportunity(oppData: any): Promise<GHLOpportunity> {
       body: JSON.stringify(payload),
     });
 
-    const data = await handleResponse(response, 'Failed to create opportunity in GHL registry');
+    const data = await handleResponse(response, 'GHL rejected the opportunity creation');
     return data.opportunity;
   } catch (error: any) {
+    console.error('createOpportunity error:', error);
     throw new Error(error.message || 'Could not sync opportunity record with GHL backend');
   }
 }

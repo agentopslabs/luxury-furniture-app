@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -396,6 +395,7 @@ export default function OpportunitiesPage() {
                       <SelectValue placeholder="Select Contact" />
                     </SelectTrigger>
                     <SelectContent className="glass border-white/10 rounded-xl max-h-60">
+                      <SelectItem value=" " className="rounded-lg opacity-50">None (General Deal)</SelectItem>
                       {contacts.map(c => (
                         <SelectItem key={c.id} value={c.id} className="rounded-lg">
                           {c.firstName} {c.lastName}
