@@ -102,11 +102,12 @@ export default function PipelinePage() {
   }, [fetchData]);
 
   const handleOpenCreate = () => {
+    const defaultPipe = pipelines[0];
     setFormData({ 
       name: "", 
       monetaryValue: 0, 
-      pipelineId: pipelines[0]?.id || "", 
-      pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
+      pipelineId: defaultPipe?.id || "", 
+      pipelineStageId: defaultPipe?.stages[0]?.id || "", 
       contactId: "", 
       status: "open" 
     });
@@ -267,7 +268,7 @@ export default function PipelinePage() {
                           </div>
                         )}
                         
-                        <Button variant="ghost" className="w-full h-12 rounded-2xl border border-dashed border-white/5 text-muted-foreground hover:text-primary hover:border-primary/20 hover:bg-primary/5 group transition-all">
+                        <Button variant="ghost" onClick={handleOpenCreate} className="w-full h-12 rounded-2xl border border-dashed border-white/5 text-muted-foreground hover:text-primary hover:border-primary/20 hover:bg-primary/5 group transition-all">
                           <Plus size={16} className="mr-2 group-hover:scale-110 transition-transform" />
                           <span className="text-[10px] font-bold uppercase tracking-widest">New Deal</span>
                         </Button>
@@ -323,7 +324,7 @@ export default function PipelinePage() {
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Contact" />
                     </SelectTrigger>
-                    <SelectContent className="glass border-white/10 rounded-xl">
+                    <SelectContent className="glass border-white/10 rounded-xl max-h-60">
                       {contacts.map(c => (
                         <SelectItem key={c.id} value={c.id} className="rounded-lg">
                           {c.firstName} {c.lastName}

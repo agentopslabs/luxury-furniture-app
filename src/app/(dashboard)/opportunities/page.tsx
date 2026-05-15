@@ -124,11 +124,12 @@ export default function OpportunitiesPage() {
   }, [fetchData]);
 
   const handleOpenCreate = () => {
+    const defaultPipe = pipelines[0];
     setFormData({ 
       name: "", 
       monetaryValue: 0, 
-      pipelineId: pipelines[0]?.id || "", 
-      pipelineStageId: pipelines[0]?.stages[0]?.id || "", 
+      pipelineId: defaultPipe?.id || "", 
+      pipelineStageId: defaultPipe?.stages[0]?.id || "", 
       contactId: "", 
       status: "open" 
     });
@@ -391,7 +392,7 @@ export default function OpportunitiesPage() {
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Contact" />
                     </SelectTrigger>
-                    <SelectContent className="glass border-white/10 rounded-xl">
+                    <SelectContent className="glass border-white/10 rounded-xl max-h-60">
                       {contacts.map(c => (
                         <SelectItem key={c.id} value={c.id} className="rounded-lg">
                           {c.firstName} {c.lastName}
