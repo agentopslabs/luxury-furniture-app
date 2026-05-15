@@ -289,16 +289,25 @@ export async function createOrder(orderData: {
   contactId: string;
   status: string;
 }): Promise<any> {
-  const timestamp = Date.now();
+  const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
   
-  // Mandatory GHL V2 Payment tracking params - MUST BE QUERY PARAMS
-  url.searchParams.append('altId', GHL_LOCATION_ID);
-  url.searchParams.append('altType', 'location');
-  url.searchParams.append('fingerprint', `fp_${timestamp}`);
-  url.searchParams.append('trackingId', `tr_${timestamp}`);
+  // Mandatory GHL V2 Payment tracking params - MUST BE BOTH IN QUERY AND BODY
+  const altId = GHL_LOCATION_ID;
+  const altType = 'location';
+  const fingerprint = `fp_${timestamp}`;
+  const trackingId = `tr_${timestamp}`;
+
+  url.searchParams.append('altId', altId);
+  url.searchParams.append('altType', altType);
+  url.searchParams.append('fingerprint', fingerprint);
+  url.searchParams.append('trackingId', trackingId);
 
   const payload = {
+    altId,
+    altType,
+    fingerprint,
+    trackingId,
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
@@ -347,16 +356,25 @@ export async function createInvoice(invoiceData: {
   amount: number;
   contactId: string;
 }): Promise<any> {
-  const timestamp = Date.now();
+  const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   
-  // Mandatory GHL V2 Invoice tracking params - MUST BE QUERY PARAMS
-  url.searchParams.append('altId', GHL_LOCATION_ID);
-  url.searchParams.append('altType', 'location');
-  url.searchParams.append('fingerprint', `fp_${timestamp}`);
-  url.searchParams.append('trackingId', `tr_${timestamp}`);
+  // Mandatory GHL V2 Invoice tracking params - MUST BE BOTH IN QUERY AND BODY
+  const altId = GHL_LOCATION_ID;
+  const altType = 'location';
+  const fingerprint = `fp_${timestamp}`;
+  const trackingId = `tr_${timestamp}`;
+
+  url.searchParams.append('altId', altId);
+  url.searchParams.append('altType', altType);
+  url.searchParams.append('fingerprint', fingerprint);
+  url.searchParams.append('trackingId', trackingId);
 
   const payload = {
+    altId,
+    altType,
+    fingerprint,
+    trackingId,
     locationId: GHL_LOCATION_ID,
     contactId: invoiceData.contactId,
     title: invoiceData.title,
