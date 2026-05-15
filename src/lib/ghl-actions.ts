@@ -311,7 +311,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'manual', 
+      type: 'funnel', 
       id: GHL_LOCATION_ID 
     },
     products: [
