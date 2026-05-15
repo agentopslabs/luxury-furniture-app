@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -29,7 +28,8 @@ import {
   Search,
   LayoutList,
   Calendar as CalendarIcon,
-  X
+  X,
+  Trello
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,7 +173,7 @@ export default function CalendarPage() {
   };
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const currentWeek = [10, 11, 12, 13, 14, 15, 16]; // Simulated week from screenshot
+  const currentWeek = [10, 11, 12, 13, 14, 15, 16]; 
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
@@ -227,7 +227,6 @@ export default function CalendarPage() {
             </div>
 
             <div className="flex-1 flex overflow-hidden">
-              {/* Main Calendar Content */}
               <div className="flex-1 overflow-y-auto no-scrollbar p-0 bg-white/[0.01]">
                 <TabsContent value="view" className="m-0 h-full flex flex-col">
                   <div className="grid grid-cols-8 border-b bg-muted/30">
@@ -253,7 +252,6 @@ export default function CalendarPage() {
                         {Array.from({ length: 12 }).map((_, row) => (
                           <div key={row} className="h-20 border-b hover:bg-primary/5 transition-colors cursor-pointer" />
                         ))}
-                        {/* Simulated Appointment */}
                         {col === 2 && (
                           <div className="absolute top-[160px] left-1 right-1 h-[80px] bg-primary/20 border-l-4 border-l-primary rounded-r-md p-2 animate-in fade-in">
                             <p className="text-[10px] font-bold">Client Consultation</p>
@@ -308,19 +306,33 @@ export default function CalendarPage() {
                 </TabsContent>
 
                 <TabsContent value="calendars" className="m-0 p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {calendars.map(cal => (
-                      <Card key={cal.id} className="glass glass-hover border-border/40 p-6 flex flex-col gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                          {cal.name[0]}
-                        </div>
-                        <div>
-                          <h3 className="font-bold">{cal.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
-                        </div>
-                        <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold">View Availability</Button>
-                      </Card>
-                    ))}
+                  <div className="max-w-6xl mx-auto">
+                    {loading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
+                      </div>
+                    ) : calendars.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {calendars.map(cal => (
+                          <Card key={cal.id} className="glass glass-hover border-border/40 p-6 flex flex-col gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                              {cal.name[0]}
+                            </div>
+                            <div>
+                              <h3 className="font-bold">{cal.name}</h3>
+                              <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
+                            </div>
+                            <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold">View Availability</Button>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-40 text-center opacity-30">
+                        <Trello size={64} className="mx-auto mb-4" />
+                        <p className="text-xl font-bold">No calendars detected</p>
+                        <p className="text-sm">Please configure calendars in your GHL sub-account.</p>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -333,7 +345,6 @@ export default function CalendarPage() {
                 </TabsContent>
               </div>
 
-              {/* Manage View Sidebar */}
               {isManageViewOpen && (
                 <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300 overflow-y-auto no-scrollbar">
                   <div className="p-6 space-y-8">
@@ -341,7 +352,6 @@ export default function CalendarPage() {
                       <h3 className="font-bold text-lg">Manage View</h3>
                       <Button variant="ghost" size="icon" onClick={() => setIsManageViewOpen(false)}><X size={18} /></Button>
                     </div>
-
                     <div className="space-y-4">
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">View by type</p>
                       <RadioGroup defaultValue="all" className="space-y-3">
@@ -359,21 +369,9 @@ export default function CalendarPage() {
                         </div>
                       </RadioGroup>
                     </div>
-
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-white/[0.02]">
                       <Label htmlFor="buffer" className="font-medium text-sm">Show buffer time</Label>
                       <Switch id="buffer" />
-                    </div>
-
-                    <div className="space-y-4 pt-6 border-t">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">Filters</p>
-                        <Button variant="ghost" className="text-[10px] h-6 font-bold text-primary">Clear all</Button>
-                      </div>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
-                        <Input placeholder="Search Users, Calendars..." className="pl-9 h-9 text-xs rounded-lg" />
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -383,7 +381,6 @@ export default function CalendarPage() {
         </Tabs>
       </main>
 
-      {/* Book Appointment Dialog */}
       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleBookingSubmit}>

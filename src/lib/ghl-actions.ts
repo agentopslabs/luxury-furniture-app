@@ -147,7 +147,8 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/calendars`);
+    // Note: GHL V2 often expects trailing slash on resource roots
+    const url = new URL(`${GHL_API_BASE_URL}/calendars/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers });
     const data = await handleResponse(response, 'fetching calendars');
