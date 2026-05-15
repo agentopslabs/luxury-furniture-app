@@ -103,19 +103,35 @@ export async function deleteContact(id: string): Promise<void> {
 
 export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/appointments`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    
-    const now = new Date();
-    const startTime = now.getTime() - (365 * 24 * 60 * 60 * 1000); 
-    const endTime = now.getTime() + (180 * 24 * 60 * 60 * 1000);  
-    
-    url.searchParams.append('startTime', startTime.toString());
-    url.searchParams.append('endTime', endTime.toString());
+    const calendarsUrl = new URL(`${GHL_API_BASE_URL}/calendars/`);
+    calendarsUrl.searchParams.append('locationId', GHL_LOCATION_ID);
+    const calsResponse = await fetch(calendarsUrl.toString(), { headers, next: { revalidate: 0 } });
+    const calsData = await handleResponse(calsResponse, 'fetching calendars list');
+    const calendars: GHLCalendar[] = calsData?.calendars || [];
 
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching appointments');
-    return (data?.appointments || []).sort((a: any, b: any) => 
+    if (calendars.length === 0) return [];
+
+    const now = new Date();
+    const startTime = now.getTime() - (365 * 24 * 60 * 60 * 1000);
+    const endTime = now.getTime() + (180 * 24 * 60 * 60 * 1000);
+
+    const allEvents: GHLAppointment[] = [];
+    for (const calendar of calendars) {
+      try {
+        const url = new URL(`${GHL_API_BASE_URL}/calendars/events`);
+        url.searchParams.append('locationId', GHL_LOCATION_ID);
+        url.searchParams.append('calendarId', calendar.id);
+        url.searchParams.append('startTime', startTime.toString());
+        url.searchParams.append('endTime', endTime.toString());
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+        const data = await handleResponse(response, 'fetching calendar events');
+        allEvents.push(...(data?.events || []));
+      } catch {
+        // skip calendars that fail
+      }
+    }
+
+    return allEvents.sort((a: any, b: any) =>
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
   } catch (error) {
@@ -246,13 +262,11 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
 }
 
 export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
+  const { locationId: _loc, ...safeData } = oppData as any;
   const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify({
-      ...oppData,
-      locationId: GHL_LOCATION_ID, 
-    }),
+    body: JSON.stringify(safeData),
   });
   const data = await handleResponse(response, 'updating opportunity');
   return data.opportunity;
@@ -279,7 +293,7 @@ export async function createOpportunity(oppData: {
     payload.contactId = oppData.contactId;
   }
 
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -354,11 +368,11 @@ export async function createOrder(orderData: {
 
 export async function getInvoices(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/invoices`);
+    const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
+    url.searchParams.append('offset', '0');
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching invoices');
     return data?.invoices || [];
@@ -372,23 +386,24 @@ export async function createInvoice(invoiceData: {
   amount: number;
   contactId: string;
 }): Promise<any> {
-  const timestamp = Date.now().toString();
-  const url = new URL(`${GHL_API_BASE_URL}/invoices`);
+  const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
-  url.searchParams.append('fingerprint', `inv_fp_${timestamp}`);
-  url.searchParams.append('trackingId', `inv_tr_${timestamp}`);
 
   const payload = {
     altId: GHL_LOCATION_ID,
     altType: 'location',
-    locationId: GHL_LOCATION_ID,
-    contactId: invoiceData.contactId,
-    title: invoiceData.title,
-    amount: Number(invoiceData.amount),
+    name: invoiceData.title,
     currency: 'USD',
     status: 'draft',
-    trackingId: `inv_tr_${timestamp}`
+    contactDetails: { id: invoiceData.contactId },
+    items: [
+      {
+        name: invoiceData.title,
+        qty: 1,
+        unitPrice: Number(invoiceData.amount),
+      }
+    ],
   };
 
   const response = await fetch(url.toString(), {
@@ -468,16 +483,20 @@ export async function createSocialPost(postData: {
   status: string;
   channels?: string[];
 }): Promise<any> {
-  const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      ...postData,
-      locationId: GHL_LOCATION_ID,
-      scheduledDate: new Date().toISOString()
-    }),
-  });
-  return handleResponse(response, 'creating social post');
+  try {
+    const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...postData,
+        locationId: GHL_LOCATION_ID,
+        scheduledDate: new Date().toISOString()
+      }),
+    });
+    return handleResponse(response, 'creating social post');
+  } catch (error) {
+    throw new Error('Social Planner is not available on this GHL plan. Please create posts directly in GoHighLevel.');
+  }
 }
 
 export async function getEmailTemplates(limit: number = 50): Promise<any[]> {

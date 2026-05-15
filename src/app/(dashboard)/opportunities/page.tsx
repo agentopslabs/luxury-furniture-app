@@ -182,6 +182,10 @@ export default function OpportunitiesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.contactId) {
+      toast({ variant: "destructive", title: "Contact Required", description: "GHL requires every opportunity to be linked to a contact. Please select one." });
+      return;
+    }
     setIsActionLoading(true);
     try {
       await createOpportunity(formData);
