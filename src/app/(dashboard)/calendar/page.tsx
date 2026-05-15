@@ -150,13 +150,13 @@ export default function CalendarPage() {
 
     setIsSubmitting(true);
     try {
-      // Calculate endTime automatically (+30 mins) to ensure slot availability validation
-      const startTime = new Date(bookingForm.startTime);
-      const startTimeISO = startTime.toISOString();
-      const endTimeISO = new Date(startTime.getTime() + 30 * 60000).toISOString();
+      const startTimeISO = new Date(bookingForm.startTime).toISOString();
+      const endTimeISO = new Date(new Date(bookingForm.startTime).getTime() + 30 * 60000).toISOString();
       
       await createAppointment({
-        ...bookingForm,
+        calendarId: bookingForm.calendarId,
+        contactId: bookingForm.contactId,
+        title: bookingForm.title || "Meeting",
         startTime: startTimeISO,
         endTime: endTimeISO
       });
@@ -180,7 +180,6 @@ export default function CalendarPage() {
   };
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  // Mock current week dates for visualization
   const currentWeek = [10, 11, 12, 13, 14, 15, 16]; 
 
   return (
@@ -200,7 +199,6 @@ export default function CalendarPage() {
           </header>
 
           <div className="flex-1 flex flex-col overflow-hidden bg-background">
-            {/* Controls Bar */}
             <div className="px-8 py-4 border-b flex items-center justify-between bg-card/5 shrink-0">
               <div className="flex items-center gap-4">
                 <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold">Today</Button>
@@ -260,13 +258,6 @@ export default function CalendarPage() {
                         {Array.from({ length: 12 }).map((_, row) => (
                           <div key={row} className="h-20 border-b hover:bg-primary/5 transition-colors cursor-pointer" />
                         ))}
-                        {/* Mock Appointment on Wednesday at 2 PM */}
-                        {col === 3 && (
-                          <div className="absolute top-[160px] left-1 right-1 h-[80px] bg-primary/20 border-l-4 border-l-primary rounded-r-md p-2 animate-in fade-in">
-                            <p className="text-[10px] font-bold">Client Consultation</p>
-                            <p className="text-[9px] opacity-70">2:00 PM - 3:00 PM</p>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -301,18 +292,7 @@ export default function CalendarPage() {
                               </div>
                               
                               <div className="flex items-center gap-4">
-                                <Badge 
-                                  variant="outline" 
-                                  className={cn(
-                                    "text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2",
-                                    appt.status === 'confirmed' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                    appt.status === 'cancelled' ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                    "bg-white/5 text-muted-foreground border-white/10"
-                                  )}
-                                >
-                                  {appt.status}
-                                </Badge>
-                                
+                                <Badge variant="outline" className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2">{appt.status}</Badge>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
@@ -320,13 +300,8 @@ export default function CalendarPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="glass border-white/10 rounded-xl p-2">
-                                    <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-3">Update Status</DropdownMenuLabel>
-                                    <DropdownMenuSeparator className="bg-white/5 mx-2" />
                                     <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'completed')}>
                                       <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'showed')}>
-                                      <CheckCircle className="mr-2 h-4 w-4 text-primary" /> Mark Attended
                                     </DropdownMenuItem>
                                     <DropdownMenuItem className="rounded-lg focus:bg-destructive/10 text-destructive cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'cancelled')}>
                                       <XCircle className="mr-2 h-4 w-4" /> Cancel Slot
@@ -339,14 +314,9 @@ export default function CalendarPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="py-40 text-center space-y-6">
-                        <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4 opacity-20">
-                          <LayoutList className="h-10 w-10" />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-2xl font-bold text-muted-foreground">Registry Empty</p>
-                          <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed font-medium">No appointment records were detected in the GHL synchronicity window.</p>
-                        </div>
+                      <div className="py-40 text-center">
+                        <LayoutList className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                        <p className="text-muted-foreground">Registry Empty</p>
                       </div>
                     )}
                   </div>
@@ -362,9 +332,7 @@ export default function CalendarPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {calendars.map(cal => (
                           <Card key={cal.id} className="glass glass-hover border-border/40 p-6 flex flex-col gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                              {cal.name[0]}
-                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">{cal.name[0]}</div>
                             <div>
                               <h3 className="font-bold">{cal.name}</h3>
                               <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
@@ -377,7 +345,6 @@ export default function CalendarPage() {
                       <div className="py-40 text-center opacity-30">
                         <Trello size={64} className="mx-auto mb-4" />
                         <p className="text-xl font-bold">No calendars detected</p>
-                        <p className="text-sm">Please configure calendars in your GHL sub-account.</p>
                       </div>
                     )}
                   </div>
@@ -387,13 +354,12 @@ export default function CalendarPage() {
                   <div className="max-w-2xl mx-auto py-20 text-center opacity-30">
                     <Settings size={64} className="mx-auto mb-4" />
                     <p className="text-xl font-bold">Calendar Settings</p>
-                    <p className="text-sm">Manage preferences and availability rules here.</p>
                   </div>
                 </TabsContent>
               </div>
 
               {isManageViewOpen && (
-                <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300 overflow-y-auto no-scrollbar">
+                <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300">
                   <div className="p-6 space-y-8">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-lg">Manage View</h3>
@@ -402,23 +368,11 @@ export default function CalendarPage() {
                     <div className="space-y-4">
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">View by type</p>
                       <RadioGroup defaultValue="all" className="space-y-3">
-                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
+                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] cursor-pointer">
                           <RadioGroupItem value="all" id="all" />
                           <Label htmlFor="all" className="flex-1 cursor-pointer font-medium">All</Label>
                         </div>
-                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
-                          <RadioGroupItem value="appointments" id="appointments" />
-                          <Label htmlFor="appointments" className="flex-1 cursor-pointer font-medium">Appointments</Label>
-                        </div>
-                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
-                          <RadioGroupItem value="blocked" id="blocked" />
-                          <Label htmlFor="blocked" className="flex-1 cursor-pointer font-medium">Blocked Slots</Label>
-                        </div>
                       </RadioGroup>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-xl border bg-white/[0.02]">
-                      <Label htmlFor="buffer" className="font-medium text-sm">Show buffer time</Label>
-                      <Switch id="buffer" />
                     </div>
                   </div>
                 </div>
@@ -449,10 +403,7 @@ export default function CalendarPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity</Label>
-                  <Select 
-                    value={bookingForm.contactId} 
-                    onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}
-                  >
+                  <Select value={bookingForm.contactId} onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}>
                     <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Lead" /></SelectTrigger>
                     <SelectContent>
                       {contacts.map((c) => (
@@ -463,10 +414,7 @@ export default function CalendarPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Calendar</Label>
-                  <Select 
-                    value={bookingForm.calendarId} 
-                    onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}
-                  >
+                  <Select value={bookingForm.calendarId} onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}>
                     <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Registry" /></SelectTrigger>
                     <SelectContent>
                       {calendars.map((cal) => (

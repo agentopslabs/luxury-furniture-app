@@ -82,7 +82,10 @@ export async function updateContact(id: string, contactData: Partial<GHLContact>
   const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify(contactData),
+    body: JSON.stringify({
+      ...contactData,
+      locationId: GHL_LOCATION_ID
+    }),
   });
   const data = await handleResponse(response, 'updating contact');
   return data.contact;
@@ -131,11 +134,13 @@ export async function createAppointment(apptData: {
   endTime?: string;
   title: string;
 }): Promise<GHLAppointment> {
-  // GHL V2 often requires an endTime to validate slot availability
   const payload = {
-    ...apptData,
+    calendarId: apptData.calendarId,
+    contactId: apptData.contactId,
+    startTime: apptData.startTime,
+    endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString(),
+    title: apptData.title,
     locationId: GHL_LOCATION_ID,
-    endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString()
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {

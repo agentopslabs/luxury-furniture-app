@@ -35,12 +35,11 @@ export function AIContactInsight({
     setIsLoading(true);
     setError(null);
     try {
-      // Transforming generic history into categorized intelligence markers
       const activities: Activity[] = history.map(h => {
         const desc = h.summary.toLowerCase();
         let type: ActivityType = 'message_sent';
-        if (desc.includes('booked') || desc.includes('consult')) type = 'appointment_booked';
-        else if (desc.includes('lead')) type = 'new_lead';
+        if (desc.includes('booked') || desc.includes('consult') || desc.includes('appt')) type = 'appointment_booked';
+        else if (desc.includes('lead') || desc.includes('new lead')) type = 'new_lead';
         
         return {
           type,
@@ -50,7 +49,6 @@ export function AIContactInsight({
       }).filter(a => selectedTypes.includes(a.type as ActivityType));
 
       if (activities.length === 0 && history.length > 0 && selectedTypes.length > 0) {
-        // Mock a representative event if history matches requested types
         activities.push({
           type: selectedTypes[0],
           date: new Date().toLocaleDateString(),
