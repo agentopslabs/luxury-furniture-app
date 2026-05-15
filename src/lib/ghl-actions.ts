@@ -190,9 +190,9 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 export async function getCalendarFreeSlots(calendarId: string, date: string, timezone: string): Promise<string[]> {
   const start = new Date(date);
-  start.setUTCHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(date);
-  end.setUTCHours(23, 59, 59, 999);
+  end.setHours(23, 59, 59, 999);
 
   const url = new URL(`${GHL_API_BASE_URL}/calendars/${calendarId}/free-slots`);
   url.searchParams.append('startDate', start.getTime().toString());
@@ -211,8 +211,27 @@ export async function getCalendarFreeSlots(calendarId: string, date: string, tim
   const data = await response.json();
   if (!data) return [];
 
-  const dateKey = Object.keys(data).find(k => k !== 'traceId' && k.startsWith(date));
-  return dateKey ? (data[dateKey]?.slots || []) : [];
+  // Handle flat structure: { slots: [...] }
+  if (Array.isArray(data.slots)) return data.slots;
+
+  // Handle nested structure: { "YYYY-MM-DD": { slots: [...] } }
+  // Try exact date key first
+  if (data[date]?.slots) return data[date].slots;
+
+  // Try any key that starts with the date
+  const dateKey = Object.keys(data).find(k => k !== 'traceId' && typeof data[k] === 'object' && k.startsWith(date));
+  if (dateKey) return data[dateKey]?.slots || [];
+
+  // Collect all slots from any date key that has a slots array
+  const allSlots: string[] = [];
+  for (const key of Object.keys(data)) {
+    if (key === 'traceId') continue;
+    const val = data[key];
+    if (val && Array.isArray(val.slots)) {
+      allSlots.push(...val.slots);
+    }
+  }
+  return allSlots;
 }
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
@@ -520,10 +539,10 @@ export async function getSocialPosts(limit: number = 50): Promise<any[]> {
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    if (response.status === 404) return [];
     const data = await handleResponse(response, 'fetching social posts');
     return data?.posts || [];
   } catch (error) {
-    console.error("GHL Sync Error:", error);
     return [];
   }
 }
@@ -546,6 +565,9 @@ export async function createSocialPost(postData: {
       scheduledDate: new Date(Date.now() + 5 * 60000).toISOString(),
     }),
   });
+  if (response.status === 404) {
+    throw new Error('Social Planner is not enabled on this GHL account. Please create posts directly in GoHighLevel.');
+  }
   return await handleResponse(response, 'creating social post');
 }
 
