@@ -100,8 +100,10 @@ export default function ConversationsPage() {
     c.lastMessageBody?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
+  const formatTime = (dateVal: string | number | undefined) => {
+    if (!dateVal) return "";
+    const d = new Date(typeof dateVal === "number" ? dateVal : dateVal);
+    if (isNaN(d.getTime())) return "";
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });

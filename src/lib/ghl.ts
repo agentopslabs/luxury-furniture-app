@@ -40,12 +40,16 @@ export interface GHLConversation {
   contactId: string;
   locationId: string;
   lastMessageBody?: string;
-  lastMessageDate?: string;
+  lastMessageDate?: string | number;
+  lastMessageType?: string;
   contactName?: string;
+  fullName?: string;
   unreadCount?: number;
   type?: string;
   email?: string;
   phone?: string;
+  inbox?: boolean;
+  assignedTo?: string;
 }
 
 export interface GHLMessage {
@@ -54,9 +58,12 @@ export interface GHLMessage {
   direction: 'inbound' | 'outbound';
   dateAdded: string;
   type?: number;
+  messageType?: string;
   contentType?: string;
   source?: string;
   attachments?: string[];
+  conversationId?: string;
+  contactId?: string;
 }
 
 export interface GHLPipeline {

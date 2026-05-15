@@ -264,13 +264,42 @@ export async function getConversations(): Promise<GHLConversation[]> {
   }
 }
 
+const ACTIVITY_MESSAGE_TYPES = [
+  'TYPE_ACTIVITY_OPPORTUNITY',
+  'TYPE_ACTIVITY_APPOINTMENT',
+  'TYPE_ACTIVITY_CONTACT',
+  'TYPE_ACTIVITY_EMPLOYEE_ACTION_LOG',
+  'TYPE_ACTIVITY_PAYMENT',
+  'TYPE_ACTIVITY_CONVERSATION',
+  'TYPE_NO_SHOW',
+  'TYPE_CALL_CONNECTED',
+  'TYPE_CALL_ENDED',
+];
+
 export async function getConversationMessages(conversationId: string): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`);
     url.searchParams.append('limit', '100');
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching messages');
-    return data?.messages || data?.conversations || [];
+
+    if (!data) return [];
+
+    // GHL V2: { messages: { lastMessageId, nextPage, messages: [...] }, traceId }
+    const outer = data.messages;
+    let all: any[] = [];
+    if (Array.isArray(outer)) {
+      all = outer;
+    } else if (outer && Array.isArray(outer.messages)) {
+      all = outer.messages;
+    }
+
+    // Filter out system activity entries — keep only real conversation messages
+    return all.filter((m: any) => {
+      if (!m.body && !m.attachments?.length) return false;
+      if (ACTIVITY_MESSAGE_TYPES.includes(m.messageType)) return false;
+      return true;
+    });
   } catch (error) {
     console.error('GHL Messages Sync Error:', error);
     return [];
