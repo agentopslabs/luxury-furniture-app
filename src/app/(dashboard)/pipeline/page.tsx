@@ -303,7 +303,7 @@ export default function PipelinePage() {
                   className="glass h-12 rounded-xl focus:ring-primary" 
                   placeholder="e.g. Enterprise License Alpha" 
                   value={formData.name} 
-                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
                   required 
                 />
               </div>
@@ -315,12 +315,12 @@ export default function PipelinePage() {
                     type="number" 
                     placeholder="0" 
                     value={formData.monetaryValue} 
-                    onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
+                    onChange={e => setFormData(prev => ({ ...prev, monetaryValue: Number(e.target.value) }))} 
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
-                  <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
+                  <Select value={formData.contactId} onValueChange={val => setFormData(prev => ({ ...prev, contactId: val }))}>
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Contact" />
                     </SelectTrigger>
@@ -340,11 +340,11 @@ export default function PipelinePage() {
                   value={formData.pipelineId} 
                   onValueChange={val => {
                     const pipe = pipelines.find(p => p.id === val);
-                    setFormData({ 
-                      ...formData, 
+                    setFormData(prev => ({ 
+                      ...prev, 
                       pipelineId: val, 
                       pipelineStageId: pipe?.stages[0]?.id || "" 
-                    });
+                    }));
                   }}
                 >
                   <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
@@ -364,7 +364,7 @@ export default function PipelinePage() {
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
                   <Select 
                     value={formData.pipelineStageId} 
-                    onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
+                    onValueChange={val => setFormData(prev => ({ ...prev, pipelineStageId: val }))}
                   >
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Stage" />

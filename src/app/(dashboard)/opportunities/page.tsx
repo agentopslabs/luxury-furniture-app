@@ -22,7 +22,6 @@ import {
   MoreVertical,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Search,
   Plus,
   Trash2,
@@ -371,7 +370,7 @@ export default function OpportunitiesPage() {
                   className="glass h-12 rounded-xl focus:ring-primary" 
                   placeholder="e.g. Enterprise License Alpha" 
                   value={formData.name} 
-                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
                   required 
                 />
               </div>
@@ -383,12 +382,12 @@ export default function OpportunitiesPage() {
                     type="number" 
                     placeholder="0" 
                     value={formData.monetaryValue} 
-                    onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} 
+                    onChange={e => setFormData(prev => ({ ...prev, monetaryValue: Number(e.target.value) }))} 
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
-                  <Select value={formData.contactId} onValueChange={val => setFormData({ ...formData, contactId: val })}>
+                  <Select value={formData.contactId} onValueChange={val => setFormData(prev => ({ ...prev, contactId: val }))}>
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Contact" />
                     </SelectTrigger>
@@ -408,11 +407,11 @@ export default function OpportunitiesPage() {
                   value={formData.pipelineId} 
                   onValueChange={val => {
                     const pipe = pipelines.find(p => p.id === val);
-                    setFormData({ 
-                      ...formData, 
+                    setFormData(prev => ({ 
+                      ...prev, 
                       pipelineId: val, 
                       pipelineStageId: pipe?.stages[0]?.id || "" 
-                    });
+                    }));
                   }}
                 >
                   <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
@@ -432,7 +431,7 @@ export default function OpportunitiesPage() {
                   <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Stage</Label>
                   <Select 
                     value={formData.pipelineStageId} 
-                    onValueChange={val => setFormData({ ...formData, pipelineStageId: val })}
+                    onValueChange={val => setFormData(prev => ({ ...prev, pipelineStageId: val }))}
                   >
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Stage" />
@@ -469,15 +468,15 @@ export default function OpportunitiesPage() {
             <div className="grid gap-6">
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Override</Label>
-                <Input className="glass h-12 rounded-xl" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                <Input className="glass h-12 rounded-xl" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} required />
               </div>
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Alignment ($)</Label>
-                <Input className="glass h-12 rounded-xl" type="number" value={formData.monetaryValue} onChange={e => setFormData({ ...formData, monetaryValue: Number(e.target.value) })} />
+                <Input className="glass h-12 rounded-xl" type="number" value={formData.monetaryValue} onChange={e => setFormData(prev => ({ ...prev, monetaryValue: Number(e.target.value) }))} />
               </div>
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Status Transition</Label>
-                <Select value={formData.status} onValueChange={val => setFormData({ ...formData, status: val as any })}>
+                <Select value={formData.status} onValueChange={val => setFormData(prev => ({ ...prev, status: val as any }))}>
                   <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary"><SelectValue /></SelectTrigger>
                   <SelectContent className="glass border-white/10 rounded-xl">
                     <SelectItem value="open" className="rounded-lg">Open</SelectItem>
