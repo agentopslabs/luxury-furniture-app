@@ -287,14 +287,16 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
+  // Refined payload for GHL V2 Order Creation compliance
   const payload = {
     altId: GHL_LOCATION_ID,
     altType: 'location',
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
-    source: 'api',
+    source: { type: 'api' }, // Changed string to nested object as per API requirement
     products: [
       {
+        id: `custom_${timestamp}`, // Added mandatory product ID
         productName: orderData.productName,
         qty: 1,
         price: Number(orderData.totalAmount),
