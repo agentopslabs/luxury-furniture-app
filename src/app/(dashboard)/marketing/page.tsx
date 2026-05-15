@@ -2,13 +2,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getCampaigns, getWorkflows, getEmailTemplates } from "@/lib/ghl-actions";
+import { getSocialPosts, getEmailTemplates, getTriggerLinks } from "@/lib/ghl-actions";
 import { 
   Card, 
   CardContent, 
   CardHeader, 
-  CardTitle,
-  CardDescription
+  CardTitle 
 } from "@/components/ui/card";
 import { 
   Table, 
@@ -19,18 +18,26 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { 
-  Megaphone, 
-  Zap, 
+  CalendarDays, 
   Mail, 
+  Link as LinkIcon, 
   Search, 
-  RefreshCw, 
-  Plus,
-  MoreVertical,
-  Activity,
-  CheckCircle2,
-  Clock,
-  ArrowUpRight,
-  Filter
+  Plus, 
+  Settings, 
+  Filter, 
+  LayoutList, 
+  Calendar as CalendarIcon, 
+  MessageSquare, 
+  BarChart3, 
+  Radio, 
+  Clock, 
+  ChevronDown,
+  MoreHorizontal,
+  RefreshCw,
+  Zap,
+  Ticket,
+  Palette,
+  Target
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,238 +47,259 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-export default function MarketingPage() {
-  const [activeTab, setActiveTab] = useState("campaigns");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [workflows, setWorkflows] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+const mainTabs = [
+  { name: "Social Planner", value: "social", icon: CalendarDays },
+  { name: "Emails", value: "emails", icon: Mail },
+  { name: "Snippets", value: "snippets", icon: Zap },
+  { name: "Countdown Timers", value: "timers", icon: Clock },
+  { name: "Trigger Links", value: "links", icon: LinkIcon },
+  { name: "Affiliate Manager", value: "affiliate", icon: UsersIcon },
+  { name: "Brand Boards", value: "brand", icon: Palette },
+  { name: "Ad Manager", value: "ads", icon: Target },
+];
 
+const socialSubTabs = [
+  { name: "Planner", value: "planner", icon: CalendarDays },
+  { name: "Content", value: "content", icon: LayoutList },
+  { name: "Comments", value: "comments", icon: MessageSquare },
+  { name: "Statistics", value: "stats", icon: BarChart3 },
+  { name: "Social Listening", value: "listening", icon: Radio },
+  { name: "Settings", value: "settings", icon: Settings },
+];
+
+export default function MarketingPage() {
+  const [activeMainTab, setActiveMainTab] = useState("social");
+  const [activeSocialTab, setActiveSocialTab] = useState("planner");
+  const [loading, setLoading] = useState(true);
+  const [dataList, setDataList] = useState<any[]>([]);
   const { toast } = useToast();
 
-  const fetchData = useCallback(async (isManual = false) => {
-    if (isManual) setRefreshing(true);
-    else setLoading(true);
-
+  const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const [campData, workData, tempData] = await Promise.all([
-        getCampaigns(),
-        getWorkflows(),
-        getEmailTemplates()
-      ]);
-      
-      setCampaigns(campData);
-      setWorkflows(workData);
-      setTemplates(tempData);
-      
-      if (isManual) {
-        toast({
-          title: "Registry Synced",
-          description: "Marketing automation repository updated from GHL cloud.",
-        });
+      let data = [];
+      if (activeMainTab === "social") {
+        data = await getSocialPosts();
+      } else if (activeMainTab === "emails") {
+        data = await getEmailTemplates();
+      } else if (activeMainTab === "links") {
+        data = await getTriggerLinks();
       }
+      setDataList(data || []);
     } catch (error) {
       console.error("Marketing fetch error:", error);
-      toast({
-        variant: "destructive",
-        title: "Sync Error",
-        description: "Failed to pull automation data from LeadConnector.",
-      });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [toast]);
+  }, [activeMainTab]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const filteredData = useMemo(() => {
-    const list = activeTab === 'campaigns' ? campaigns : 
-                 activeTab === 'workflows' ? workflows : templates;
-    
-    return list.filter(item => {
-      const name = (item.name || item.title || item.subject || "").toLowerCase();
-      return name.includes(searchQuery.toLowerCase());
-    });
-  }, [activeTab, campaigns, workflows, templates, searchQuery]);
-
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
-      <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-        
-        <header className="border-b border-white/5 bg-background/50 backdrop-blur-md z-10 shrink-0">
-          <div className="px-8 pt-8 pb-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <div className="space-y-1">
-                <h1 className="text-4xl font-bold font-headline flex items-center gap-3">
-                  <Megaphone className="text-primary h-8 w-8" />
-                  Marketing Intelligence
-                </h1>
-                <p className="text-muted-foreground font-medium flex items-center gap-2">
-                  <Activity size={14} className="text-primary" />
-                  V2 Automation Sync • nBYJTjYbHTIsJGiqT0W4
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => fetchData(true)}
-                  disabled={loading || refreshing}
-                  className="h-11 rounded-xl border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all font-bold"
-                >
-                  <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                  {refreshing ? "Refreshing..." : "Sync Cloud"}
-                </Button>
-                <Button className="glow-primary bg-primary hover:bg-primary/90 h-11 px-6 rounded-xl font-bold transition-all active:scale-95">
-                  <Plus className="mr-2 h-5 w-5" /> New Automation
-                </Button>
-              </div>
-            </div>
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="bg-transparent border-b border-white/5 w-full justify-start rounded-none h-auto p-0 gap-10">
-                <TabsTrigger 
-                  value="campaigns" 
-                  className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold uppercase tracking-widest opacity-60 data-[state=active]:opacity-100 transition-all flex items-center gap-2"
-                >
-                  <Megaphone size={16} /> Campaigns
-                  <Badge variant="secondary" className="ml-2 text-[10px] bg-white/5 h-4 px-1.5">{campaigns.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="workflows" 
-                  className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold uppercase tracking-widest opacity-60 data-[state=active]:opacity-100 transition-all flex items-center gap-2"
-                >
-                  <Zap size={16} /> Workflows
-                  <Badge variant="secondary" className="ml-2 text-[10px] bg-white/5 h-4 px-1.5">{workflows.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="templates" 
-                  className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold uppercase tracking-widest opacity-60 data-[state=active]:opacity-100 transition-all flex items-center gap-2"
-                >
-                  <Mail size={16} /> Templates
-                  <Badge variant="secondary" className="ml-2 text-[10px] bg-white/5 h-4 px-1.5">{templates.length}</Badge>
-                </TabsTrigger>
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top Hub Navigation (from screenshot) */}
+        <header className="border-b border-border bg-card/30 backdrop-blur-md z-20 shrink-0">
+          <div className="px-8 flex items-center h-16 gap-2">
+            <span className="text-sm font-bold text-muted-foreground pr-4 border-r mr-4">Marketing</span>
+            <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="flex-1">
+              <TabsList className="bg-transparent h-16 p-0 gap-8">
+                {mainTabs.map((tab) => (
+                  <TabsTrigger 
+                    key={tab.value} 
+                    value={tab.value}
+                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-medium transition-all"
+                  >
+                    {tab.name}
+                  </TabsTrigger>
+                ))}
               </TabsList>
             </Tabs>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 p-8">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-                <Input 
-                  placeholder={`Search in ${activeTab}...`}
-                  className="glass pl-11 h-12 rounded-xl text-sm border-white/5 focus:ring-primary transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="h-10 text-[11px] font-bold uppercase tracking-widest text-muted-foreground opacity-60 hover:opacity-100">
-                  <Filter size={14} className="mr-2" /> Advanced filters
+        {/* Social Planner Content */}
+        {activeMainTab === "social" && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="px-8 py-6 border-b bg-card/10 flex items-center justify-between shrink-0">
+              <h1 className="text-3xl font-bold font-headline tracking-tight">Social Planner</h1>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-md"><MessageSquare size={18} /></Button>
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-md"><Settings size={18} /></Button>
+                <Button variant="outline" className="h-9 rounded-md border-border bg-card">
+                  <Plus size={18} className="mr-2" /> Socials
                 </Button>
-                <Button variant="ghost" size="sm" className="h-10 text-[11px] font-bold uppercase tracking-widest text-muted-foreground opacity-60 hover:opacity-100">
-                  <Activity size={14} className="mr-2" /> Show analytics
+                <Button className="h-9 rounded-md bg-primary hover:bg-primary/90 px-6 font-bold shadow-lg">
+                  <Plus size={18} className="mr-2" /> New Post
                 </Button>
               </div>
             </div>
 
-            <Card className="glass border-white/5 rounded-3xl overflow-hidden group">
-              <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
-              <Table>
-                <TableHeader className="bg-white/[0.02]">
-                  <TableRow className="hover:bg-transparent border-white/5">
-                    <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-14">Definition</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-14">Identity</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-14">State</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-14">Updated</TableHead>
-                    <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-14">Ops</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    Array(6).fill(0).map((_, i) => (
-                      <TableRow key={i} className="border-white/5">
-                        <TableCell colSpan={5} className="px-8 py-4"><Skeleton className="h-12 w-full rounded-xl" /></TableCell>
+            {/* Social Planner Sub-Tabs */}
+            <div className="px-8 border-b bg-card/5 shrink-0">
+              <Tabs value={activeSocialTab} onValueChange={setActiveSocialTab}>
+                <TabsList className="bg-transparent h-12 p-0 gap-8">
+                  {socialSubTabs.map((tab) => (
+                    <TabsTrigger 
+                      key={tab.value} 
+                      value={tab.value}
+                      className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-medium transition-all"
+                    >
+                      {tab.name}
+                      {tab.value === "comments" && <Badge variant="secondary" className="ml-2 bg-amber-400 text-black text-[9px] font-bold h-4 px-1">New</Badge>}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Planner Filters and Controls */}
+            <div className="px-8 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/30 shrink-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-card text-xs font-medium">
+                  <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[8px] text-white">A</div>
+                  <ChevronDown size={14} className="opacity-50" />
+                </div>
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-md border bg-card text-xs font-medium min-w-[280px]">
+                  <span>2025-12-15</span>
+                  <ArrowRightIcon className="mx-2 opacity-30" />
+                  <span>2026-06-15</span>
+                  <CalendarIcon size={14} className="ml-auto opacity-50" />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 rounded-md"><Filter size={14} className="mr-2" /> Filters</Button>
+                <div className="h-9 w-px bg-border mx-1" />
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm"><LayoutList size={14} /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-sm bg-card shadow-sm"><CalendarIcon size={14} /></Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Main Data Area */}
+            <div className="flex-1 overflow-y-auto p-8 no-scrollbar bg-card/5">
+              <div className="max-w-[1600px] mx-auto space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" size="sm" className="h-10 px-4 rounded-lg font-bold">Actions <ChevronDown size={14} className="ml-2 opacity-50" /></Button>
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      Filter Views: <Button variant="ghost" size="sm" className="text-primary font-bold h-8 px-2">All <ChevronDown size={14} className="ml-1" /></Button>
+                    </div>
+                  </div>
+                  <div className="relative w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+                    <Input 
+                      placeholder="Search by caption (min 3 chars)" 
+                      className="pl-10 h-10 rounded-lg text-sm border-border bg-card/50"
+                    />
+                  </div>
+                </div>
+
+                <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden bg-card/50">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="hover:bg-transparent border-border/50">
+                        <TableHead className="w-[50px] px-6 text-center"><Input type="checkbox" className="h-4 w-4" /></TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Caption</TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Media</TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Status</TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Type</TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Date</TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4">Social</TableHead>
                       </TableRow>
-                    ))
-                  ) : filteredData.length > 0 ? (
-                    filteredData.map((item, i) => (
-                      <TableRow key={item.id || i} className="group hover:bg-white/[0.02] border-white/5 transition-all animate-in fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                        <TableCell className="px-8 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold border",
-                              activeTab === 'campaigns' ? "bg-primary/10 text-primary border-primary/20" :
-                              activeTab === 'workflows' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                              "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                            )}>
-                              {activeTab === 'campaigns' ? <Megaphone size={18} /> : 
-                               activeTab === 'workflows' ? <Zap size={18} /> : <Mail size={18} />}
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        Array(5).fill(0).map((_, i) => (
+                          <TableRow key={i}><TableCell colSpan={7} className="px-6 py-4"><Skeleton className="h-12 w-full" /></TableCell></TableRow>
+                        ))
+                      ) : dataList.length > 0 ? (
+                        dataList.map((item, i) => (
+                          <TableRow key={i} className="hover:bg-muted/30 border-border/30 transition-all">
+                            <TableCell className="px-6 text-center"><Input type="checkbox" className="h-4 w-4" /></TableCell>
+                            <TableCell className="font-medium text-sm">{item.caption || 'No caption'}</TableCell>
+                            <TableCell><div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center"><CalendarDays size={18} className="opacity-20" /></div></TableCell>
+                            <TableCell><Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter">{item.status || 'Scheduled'}</Badge></TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{item.type || 'Post'}</TableCell>
+                            <TableCell className="text-xs font-mono">{new Date().toLocaleDateString()}</TableCell>
+                            <TableCell><div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[8px] text-white">f</div></TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-[400px] text-center">
+                            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                              <CalendarDays size={64} className="mb-4" />
+                              <p className="text-xl font-bold">No social posts found</p>
+                              <p className="text-sm">Start scheduling by clicking 'New Post'</p>
                             </div>
-                            <div>
-                              <p className="font-bold text-sm group-hover:text-primary transition-colors">{item.name || item.title || item.subject || 'Untitled Automation'}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium opacity-50">Ref ID: {(item.id || 'N/A').slice(0, 8)}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest bg-white/5 border-white/10 px-2 py-0.5">
-                            {item.status || item.type || (activeTab === 'templates' ? 'Static' : 'Active')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {item.status === 'published' || item.status === 'active' ? (
-                              <CheckCircle2 size={14} className="text-emerald-400" />
-                            ) : (
-                              <Clock size={14} className="text-amber-400" />
-                            )}
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground/70">{item.status || 'Draft'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium text-muted-foreground opacity-50">
-                          {new Date(item.dateUpdated || item.updatedAt || Date.now()).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="px-8 text-right">
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
-                            <ArrowUpRight size={18} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-[400px] text-center">
-                        <div className="py-20 flex flex-col items-center justify-center space-y-6">
-                          <div className="w-24 h-24 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mb-4 opacity-20">
-                            <Megaphone className="h-10 w-10" />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-2xl font-bold text-muted-foreground">Reservoir Empty</p>
-                            <p className="text-sm text-muted-foreground/60 max-w-[350px] mx-auto leading-relaxed font-medium">
-                              No automation records were detected in the GHL synchronicity window for {activeTab}.
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Placeholder Content for other tabs */}
+        {activeMainTab !== "social" && (
+          <div className="flex-1 flex flex-col items-center justify-center opacity-30">
+            <BarChart3 size={64} className="mb-4" />
+            <h2 className="text-2xl font-bold">{mainTabs.find(t => t.value === activeMainTab)?.name} Module</h2>
+            <p className="text-sm">Synchronizing live records from GHL cloud...</p>
+          </div>
+        )}
       </main>
     </div>
+  );
+}
+
+function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
   );
 }

@@ -18,9 +18,6 @@ const headers = {
   'Accept': 'application/json',
 };
 
-/**
- * Resilient response handler for GHL V2 Sync.
- */
 async function handleResponse(response: Response, actionName: string) {
   if (!response.ok) {
     let errorMessage = `Sync Error [${response.status}] during ${actionName}`;
@@ -193,16 +190,6 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
   }
 }
 
-export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(oppData),
-  });
-  const data = await handleResponse(response, 'updating opportunity');
-  return data.opportunity;
-}
-
 // --- PAYMENTS & ORDERS ---
 
 export async function getOrders(limit: number = 50): Promise<any[]> {
@@ -268,7 +255,7 @@ export async function createOrder(orderData: {
   return handleResponse(response, 'creating order');
 }
 
-// --- INVOICES (DOCUMENTS & CONTRACTS) ---
+// --- INVOICES ---
 
 export async function getInvoices(limit: number = 50): Promise<any[]> {
   try {
@@ -284,67 +271,17 @@ export async function getInvoices(limit: number = 50): Promise<any[]> {
   }
 }
 
-export async function createInvoice(invoiceData: {
-  title: string;
-  amount: number;
-  contactId: string;
-}): Promise<any> {
-  const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
-  
-  const altId = GHL_LOCATION_ID;
-  const altType = 'location';
+// --- MARKETING (NEW) ---
 
-  url.searchParams.append('altId', altId);
-  url.searchParams.append('altType', altType);
-
-  const payload = {
-    altId,
-    altType,
-    locationId: GHL_LOCATION_ID,
-    contactId: invoiceData.contactId,
-    title: invoiceData.title,
-    liveMode: false,
-    currency: 'USD',
-    items: [
-      {
-        name: invoiceData.title,
-        amount: Number(invoiceData.amount),
-        qty: 1
-      }
-    ]
-  };
-
-  const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(response, 'creating invoice');
-}
-
-// --- MARKETING & AUTOMATION ---
-
-export async function getCampaigns(limit: number = 50): Promise<any[]> {
+export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/campaigns/`);
+    // Note: Social Planner in GHL V2 often relies on specialized sub-endpoints
+    const url = new URL(`${GHL_API_BASE_URL}/social-planner/posts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching campaigns');
-    return data?.campaigns || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function getWorkflows(limit: number = 50): Promise<any[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/workflows/`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching workflows');
-    return data?.workflows || [];
+    const data = await handleResponse(response, 'fetching social posts');
+    return data?.posts || [];
   } catch (error) {
     return [];
   }
@@ -363,7 +300,17 @@ export async function getEmailTemplates(limit: number = 50): Promise<any[]> {
   }
 }
 
-// --- GENERIC ---
+export async function getTriggerLinks(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/links/`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching trigger links');
+    return data?.links || [];
+  } catch (error) {
+    return [];
+  }
+}
 
 export async function getTransactions(limit: number = 50): Promise<any[]> {
   try {
@@ -407,12 +354,14 @@ export async function getProducts(limit: number = 50): Promise<any[]> {
   }
 }
 
-export async function deleteOpportunity(id: string): Promise<void> {
+export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
   const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
-    method: 'DELETE',
+    method: 'PUT',
     headers,
+    body: JSON.stringify(oppData),
   });
-  await handleResponse(response, 'deleting opportunity');
+  const data = await handleResponse(response, 'updating opportunity');
+  return data.opportunity;
 }
 
 export async function createOpportunity(oppData: {
