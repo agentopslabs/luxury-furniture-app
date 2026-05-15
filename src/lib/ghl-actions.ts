@@ -19,11 +19,11 @@ const headers = {
 };
 
 /**
- * Resilient response handler to provide clear diagnostics for Sync Errors.
+ * Resilient response handler for GHL V2 Sync.
  */
 async function handleResponse(response: Response, actionName: string) {
   if (!response.ok) {
-    let errorMessage = `GHL API Error [${response.status}] during ${actionName}`;
+    let errorMessage = `Sync Error [${response.status}] during ${actionName}`;
     try {
       const errorData = await response.json();
       if (Array.isArray(errorData.message)) {
@@ -34,7 +34,6 @@ async function handleResponse(response: Response, actionName: string) {
     } catch (e) {
       errorMessage = `${errorMessage}: ${response.statusText}`;
     }
-    console.error(`[SYNC FAILURE] ${errorMessage}`);
     throw new Error(errorMessage);
   }
   
@@ -236,8 +235,6 @@ export async function createOrder(orderData: {
 
   url.searchParams.append('altId', altId);
   url.searchParams.append('altType', altType);
-  url.searchParams.append('fingerprint', fingerprint);
-  url.searchParams.append('trackingId', trackingId);
 
   const payload = {
     altId,
@@ -297,19 +294,13 @@ export async function createInvoice(invoiceData: {
   
   const altId = GHL_LOCATION_ID;
   const altType = 'location';
-  const fingerprint = `fp_${timestamp}`;
-  const trackingId = `tr_${timestamp}`;
 
   url.searchParams.append('altId', altId);
   url.searchParams.append('altType', altType);
-  url.searchParams.append('fingerprint', fingerprint);
-  url.searchParams.append('trackingId', trackingId);
 
   const payload = {
     altId,
     altType,
-    fingerprint,
-    trackingId,
     locationId: GHL_LOCATION_ID,
     contactId: invoiceData.contactId,
     title: invoiceData.title,
