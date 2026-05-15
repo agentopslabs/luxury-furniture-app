@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getOrders, createOrder, getTransactions, getContacts } from "@/lib/ghl-actions";
+import { getOrders, createOrder, getTransactions, getContacts, getInvoices, createInvoice } from "@/lib/ghl-actions";
 import { GHLContact } from "@/lib/ghl";
 import { 
   Card, 
@@ -129,11 +129,18 @@ export default function PaymentsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [contData, listData] = await Promise.all([
-        getContacts(100),
-        activeSubNav === 'orders' ? getOrders() : activeSubNav === 'transactions' ? getTransactions() : Promise.resolve([])
-      ]);
+      let listData: any[] = [];
+      const contData = await getContacts(100);
       setContacts(contData);
+
+      if (activeSubNav === 'orders') {
+        listData = await getOrders();
+      } else if (activeSubNav === 'transactions') {
+        listData = await getTransactions();
+      } else if (activeSubNav === 'docs') {
+        listData = await getInvoices();
+      }
+      
       setDataList(listData);
     } catch (error) {
       console.error("Payment fetch error:", error);
@@ -159,7 +166,7 @@ export default function PaymentsPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createFormData.contactId) {
-      toast({ variant: "destructive", title: "Missing Contact", description: "An order must be linked to a customer identity." });
+      toast({ variant: "destructive", title: "Missing Contact", description: "This record must be linked to a customer identity." });
       return;
     }
 
@@ -172,14 +179,24 @@ export default function PaymentsPage() {
           contactId: createFormData.contactId,
           status: 'pending'
         });
+        toast({
+          title: "Order Synchronized",
+          description: "Successfully committed financial record to LeadConnector V2 repository.",
+        });
+      } else if (activeSubNav === 'docs') {
+        await createInvoice({
+          title: createFormData.title,
+          amount: Number(createFormData.amount),
+          contactId: createFormData.contactId
+        });
+        toast({
+          title: "Document Created",
+          description: "Contract record injected into GHL repository.",
+        });
       }
       
       setIsCreateOpen(false);
       setCreateFormData({ title: "", amount: 0, contactId: "" });
-      toast({
-        title: "Order Synchronized",
-        description: "Successfully committed financial record to LeadConnector V2 repository.",
-      });
       fetchData();
     } catch (error: any) {
       toast({
@@ -205,7 +222,7 @@ export default function PaymentsPage() {
             <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Document Title</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Status</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Modified</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Created</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Value</TableHead>
             <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Ops</TableHead>
           </TableRow>
@@ -314,12 +331,12 @@ export default function PaymentsPage() {
                 ) : filteredData.length > 0 ? (
                   filteredData.map((item, i) => (
                     <TableRow key={i} className="hover:bg-white/[0.02] border-white/5 animate-in fade-in">
-                      <TableCell className="px-8 font-bold">{item.productName || item.title || 'Untitled Record'}</TableCell>
+                      <TableCell className="px-8 font-bold">{item.title || item.productName || 'Untitled Record'}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary" className="uppercase text-[9px]">{item.status || 'Active'}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs">{item.customerName || 'Anonymous'}</TableCell>
-                      <TableCell className="text-xs opacity-50">{new Date(item.dateAdded || Date.now()).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs">{item.customerName || item.contactName || 'Anonymous'}</TableCell>
+                      <TableCell className="text-xs opacity-50">{new Date(item.dateAdded || item.createdAt || Date.now()).toLocaleDateString()}</TableCell>
                       <TableCell className="font-mono text-emerald-400 font-bold">${(item.totalAmount || item.amount || 0).toLocaleString()}</TableCell>
                       <TableCell className="px-8 text-right">
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><MoreVertical size={14} /></Button>
@@ -354,7 +371,7 @@ export default function PaymentsPage() {
                 <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Record Title</Label>
                 <Input 
                   className="glass h-12 rounded-xl" 
-                  placeholder="e.g. Laptop" 
+                  placeholder="e.g. Enterprise Contract" 
                   value={createFormData.title}
                   onChange={e => setCreateFormData({...createFormData, title: e.target.value})}
                   required 

@@ -280,9 +280,6 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
   }
 }
 
-/**
- * Creates an order with all mandatory GHL V2 fields.
- */
 export async function createOrder(orderData: {
   productName: string;
   totalAmount: number;
@@ -315,6 +312,51 @@ export async function createOrder(orderData: {
     body: JSON.stringify(payload),
   });
   return handleResponse(response, 'creating order');
+}
+
+// --- INVOICES (DOCUMENTS & CONTRACTS) ---
+
+export async function getInvoices(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/invoices`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching invoices');
+    return data?.invoices || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function createInvoice(invoiceData: {
+  title: string;
+  amount: number;
+  contactId: string;
+}): Promise<any> {
+  const payload = {
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
+    contactId: invoiceData.contactId,
+    title: invoiceData.title,
+    liveMode: false,
+    currency: 'USD',
+    items: [
+      {
+        name: invoiceData.title,
+        amount: Number(invoiceData.amount),
+        qty: 1
+      }
+    ]
+  };
+
+  const response = await fetch(`${GHL_API_BASE_URL}/payments/invoices`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response, 'creating invoice');
 }
 
 export async function getTransactions(limit: number = 50): Promise<any[]> {
