@@ -575,12 +575,19 @@ export async function getProducts(limit: number = 50): Promise<any[]> {
 
 // --- MARKETING ---
 
+const socialPlannerHeaders = {
+  'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
+  'Version': '2021-04-15',
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+};
+
 export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/posts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, next: { revalidate: 0 } });
     if (response.status === 404) return [];
     const data = await handleResponse(response, 'fetching social posts');
     return data?.posts || [];
@@ -597,7 +604,7 @@ export async function createSocialPost(postData: {
 }): Promise<any> {
   const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
     method: 'POST',
-    headers,
+    headers: socialPlannerHeaders,
     body: JSON.stringify({
       summary: postData.caption,
       postType: postData.type,
