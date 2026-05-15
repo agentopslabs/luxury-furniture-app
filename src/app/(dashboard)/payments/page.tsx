@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getOrders, createOrder, getTransactions } from "@/lib/ghl-actions";
+import { getOrders, createOrder, getTransactions, getContacts } from "@/lib/ghl-actions";
+import { GHLContact } from "@/lib/ghl";
 import { 
   Card, 
   CardContent, 
@@ -51,6 +52,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -109,10 +117,11 @@ export default function PaymentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dataList, setDataList] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [createFormData, setCreateFormData] = useState({
     title: "",
     amount: 0,
-    customerId: ""
+    contactId: ""
   });
 
   const { toast } = useToast();
@@ -120,14 +129,12 @@ export default function PaymentsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      let data: any[] = [];
-      if (activeSubNav === 'orders') {
-        data = await getOrders();
-      } else if (activeSubNav === 'transactions') {
-        data = await getTransactions();
-      }
-      // For other tabs we default to empty list in this MVP
-      setDataList(data);
+      const [contData, listData] = await Promise.all([
+        getContacts(100),
+        activeSubNav === 'orders' ? getOrders() : activeSubNav === 'transactions' ? getTransactions() : Promise.resolve([])
+      ]);
+      setContacts(contData);
+      setDataList(listData);
     } catch (error) {
       console.error("Payment fetch error:", error);
     } finally {
@@ -143,10 +150,6 @@ export default function PaymentsPage() {
     subNavItems.find(item => item.value === activeSubNav) || subNavItems[0]
   , [activeSubNav]);
 
-  const currentStatusTabs = useMemo(() => 
-    statusTabsByNav[activeSubNav] || [{ name: "All", count: 0 }]
-  , [activeSubNav]);
-
   const handleSubNavChange = (value: string) => {
     setActiveSubNav(value);
     const firstStatus = statusTabsByNav[value]?.[0]?.name || "All";
@@ -155,21 +158,27 @@ export default function PaymentsPage() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!createFormData.contactId) {
+      toast({ variant: "destructive", title: "Missing Contact", description: "An order must be linked to a customer identity." });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (activeSubNav === 'orders') {
         await createOrder({
           productName: createFormData.title,
           totalAmount: Number(createFormData.amount),
+          contactId: createFormData.contactId,
           status: 'pending'
         });
       }
       
       setIsCreateOpen(false);
-      setCreateFormData({ title: "", amount: 0, customerId: "" });
+      setCreateFormData({ title: "", amount: 0, contactId: "" });
       toast({
-        title: "Record Created",
-        description: `Successfully injected new ${currentNav.name.replace(/s$/, '')} into GHL repository.`,
+        title: "Order Synchronized",
+        description: "Successfully committed financial record to LeadConnector V2 repository.",
       });
       fetchData();
     } catch (error: any) {
@@ -362,6 +371,21 @@ export default function PaymentsPage() {
                     onChange={e => setCreateFormData({...createFormData, amount: Number(e.target.value)})}
                     required 
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
+                  <Select value={createFormData.contactId} onValueChange={val => setCreateFormData(prev => ({ ...prev, contactId: val }))}>
+                    <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
+                      <SelectValue placeholder="Select Contact" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-xl max-h-60">
+                      {contacts.map(c => (
+                        <SelectItem key={c.id} value={c.id} className="rounded-lg">
+                          {c.firstName} {c.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

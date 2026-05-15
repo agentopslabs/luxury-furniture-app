@@ -26,7 +26,7 @@ async function handleResponse(response: Response, actionName: string) {
     let errorMessage = `GHL API Error [${response.status}] during ${actionName}`;
     try {
       const errorData = await response.json();
-      errorMessage = errorData.message || (errorData.errors && errorData.errors[0]?.message) || errorMessage;
+      errorMessage = errorData.message || (errorData.errors && errorData.errors[0]?.message) || (Array.isArray(errorData.message) ? errorData.message.join(',') : errorMessage);
     } catch (e) {
       errorMessage = `${errorMessage}: ${response.statusText}`;
     }
@@ -280,14 +280,39 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
   }
 }
 
-export async function createOrder(orderData: any): Promise<any> {
+/**
+ * Creates an order with all mandatory GHL V2 fields.
+ */
+export async function createOrder(orderData: {
+  productName: string;
+  totalAmount: number;
+  contactId: string;
+  status: string;
+}): Promise<any> {
+  const timestamp = Date.now().toString();
+  const payload = {
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
+    locationId: GHL_LOCATION_ID,
+    contactId: orderData.contactId,
+    source: 'api',
+    products: [
+      {
+        productName: orderData.productName,
+        qty: 1,
+        price: Number(orderData.totalAmount),
+        currency: 'USD'
+      }
+    ],
+    fingerprint: `kore_${timestamp}`,
+    trackingId: `track_${timestamp}`,
+    status: orderData.status || 'pending'
+  };
+
   const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      ...orderData,
-      locationId: GHL_LOCATION_ID,
-    }),
+    body: JSON.stringify(payload),
   });
   return handleResponse(response, 'creating order');
 }
