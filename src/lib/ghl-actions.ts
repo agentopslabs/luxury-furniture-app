@@ -123,21 +123,25 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 
 /**
  * Creates a new appointment using the specific GHL V2 calendar events endpoint.
- * This resolves the 404 "Not Found" error previously encountered with the generic /appointments path.
  */
 export async function createAppointment(apptData: {
   calendarId: string;
   contactId: string;
   startTime: string; 
+  endTime?: string;
   title: string;
 }): Promise<GHLAppointment> {
+  // GHL V2 often requires an endTime to validate slot availability
+  const payload = {
+    ...apptData,
+    locationId: GHL_LOCATION_ID,
+    endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString()
+  };
+
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      ...apptData,
-      locationId: GHL_LOCATION_ID,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await handleResponse(response, 'booking appointment');
   return data.appointment;

@@ -150,10 +150,15 @@ export default function CalendarPage() {
 
     setIsSubmitting(true);
     try {
-      const startTimeISO = new Date(bookingForm.startTime).toISOString();
+      // Calculate endTime automatically (+30 mins) to ensure slot availability validation
+      const startTime = new Date(bookingForm.startTime);
+      const startTimeISO = startTime.toISOString();
+      const endTimeISO = new Date(startTime.getTime() + 30 * 60000).toISOString();
+      
       await createAppointment({
         ...bookingForm,
-        startTime: startTimeISO
+        startTime: startTimeISO,
+        endTime: endTimeISO
       });
       
       setIsBookingOpen(false);
@@ -167,7 +172,7 @@ export default function CalendarPage() {
       toast({
         variant: "destructive",
         title: "Booking Failed",
-        description: error.message || "Could not sync appointment.",
+        description: error.message || "The slot you have selected is no longer available.",
       });
     } finally {
       setIsSubmitting(false);

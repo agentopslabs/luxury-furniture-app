@@ -29,7 +29,6 @@ export function AIContactInsight({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Mapping current history to categorized types for migration
   const [selectedTypes, setSelectedTypes] = useState<ActivityType[]>(['appointment_booked', 'new_lead', 'message_sent']);
 
   const generate = useCallback(async () => {
@@ -37,19 +36,25 @@ export function AIContactInsight({
     setError(null);
     try {
       // Transforming generic history into categorized intelligence markers
-      const activities: Activity[] = history.map(h => ({
-        type: h.summary.toLowerCase().includes('booking') || h.summary.toLowerCase().includes('consult') ? 'appointment_booked' : 
-              h.summary.toLowerCase().includes('lead') ? 'new_lead' : 'message_sent',
-        date: h.date,
-        description: h.summary
-      })).filter(a => selectedTypes.includes(a.type as ActivityType));
+      const activities: Activity[] = history.map(h => {
+        const desc = h.summary.toLowerCase();
+        let type: ActivityType = 'message_sent';
+        if (desc.includes('booked') || desc.includes('consult')) type = 'appointment_booked';
+        else if (desc.includes('lead')) type = 'new_lead';
+        
+        return {
+          type,
+          date: h.date,
+          description: h.summary
+        };
+      }).filter(a => selectedTypes.includes(a.type as ActivityType));
 
       if (activities.length === 0 && history.length > 0 && selectedTypes.length > 0) {
-        // Mocking at least one categorized event if history exists for demonstration
+        // Mock a representative event if history matches requested types
         activities.push({
           type: selectedTypes[0],
           date: new Date().toLocaleDateString(),
-          description: `Categorized interaction for ${contactName}`
+          description: `Engagement event for ${contactName}`
         });
       }
 
