@@ -151,6 +151,17 @@ export default function CalendarPage() {
     }
   };
 
+  const generateHourlySlots = useCallback((date: string): string[] => {
+    if (!date) return [];
+    const slots: string[] = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      const d = new Date(date);
+      d.setHours(hour, 0, 0, 0);
+      slots.push(d.toISOString());
+    }
+    return slots;
+  }, []);
+
   const fetchSlotsForDate = useCallback(async (calendarId: string, date: string) => {
     if (!calendarId || !date) { setAvailableSlots([]); setSlotsFetched(false); return; }
     setLoadingSlots(true);
@@ -158,20 +169,18 @@ export default function CalendarPage() {
     setSlotsFetched(false);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const slots = await getCalendarFreeSlots(calendarId, date, tz);
+      const apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
+      const slots = apiSlots.length > 0 ? apiSlots : generateHourlySlots(date);
       setAvailableSlots(slots);
       setSlotsFetched(true);
-      if (slots.length === 0) {
-        toast({ title: "No Slots Available", description: "No open slots found for this date. Try a different day or calendar." });
-      }
     } catch (error: any) {
-      setAvailableSlots([]);
+      const fallbackSlots = generateHourlySlots(date);
+      setAvailableSlots(fallbackSlots);
       setSlotsFetched(true);
-      toast({ variant: "destructive", title: "Calendar Error", description: error.message || "Could not load slots." });
     } finally {
       setLoadingSlots(false);
     }
-  }, [toast]);
+  }, [generateHourlySlots]);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

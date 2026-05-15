@@ -48,104 +48,92 @@ export function DashboardNav() {
   const { logout } = useAuth();
 
   return (
-    <div className="flex h-screen w-72 flex-col border-r border-white/5 bg-black/40 backdrop-blur-3xl relative z-50">
-      {/* Brand Section */}
-      <div className="flex h-24 items-center px-8">
+    <div className="flex h-screen w-64 flex-col border-r border-white/[0.06] bg-[#0F1117] relative z-50 shrink-0">
+      <div className="flex h-20 items-center px-6 border-b border-white/[0.06]">
         <Link href="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary transition-transform group-hover:scale-105 active:scale-95">
-            <span className="text-white font-bold text-lg font-headline">K</span>
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-95">
+            <span className="text-white font-bold text-base font-headline">K</span>
           </div>
           <div className="flex flex-col">
-            <span className="font-headline font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors">KoreAuth</span>
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em] -mt-1 opacity-50">Enterprise Intelligence</span>
+            <span className="font-headline font-bold text-lg tracking-tight text-white">KoreAuth</span>
+            <span className="text-[9px] font-semibold text-white/30 uppercase tracking-[0.2em] -mt-0.5">Enterprise Intelligence</span>
           </div>
         </Link>
       </div>
 
-      {/* Navigation Section */}
-      <div className="flex-1 px-4 py-8 space-y-10 overflow-y-auto no-scrollbar">
-        <div className="space-y-2">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] px-4 mb-4 opacity-40">
-            Intelligence Engine
-          </p>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 relative group",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.03]"
-                )}
-              >
-                {isActive && (
-                  <div className="absolute left-[-16px] top-1/2 -translate-y-1/2 w-1.5 h-8 bg-primary rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.8)]" />
-                )}
-                <Icon size={20} className={cn(
-                  "transition-all duration-300",
-                  isActive ? "text-primary scale-110 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" : "group-hover:text-primary group-hover:scale-110"
-                )} />
-                <span className="relative z-10">{item.name}</span>
-                {isActive && (
-                   <div className="absolute inset-0 bg-primary/5 rounded-2xl" />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+      <div className="flex-1 px-3 py-5 space-y-1 overflow-y-auto no-scrollbar">
+        <p className="text-[10px] font-bold text-white/25 uppercase tracking-[0.25em] px-3 mb-3">
+          Intelligence Engine
+        </p>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative group",
+                isActive
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-white/50 hover:text-white hover:bg-white/[0.06]"
+              )}
+            >
+              <Icon size={18} className={cn(
+                "shrink-0 transition-all duration-200",
+                isActive ? "text-white" : "group-hover:text-white"
+              )} />
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
 
-        {/* AI Pulse Indicator */}
-        <div className="px-4">
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 group hover:border-primary/30 transition-all">
+        <div className="pt-4 px-3">
+          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/[0.06] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">AI Pipeline</span>
-              <Sparkles size={14} className="text-primary animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">AI Pipeline</span>
+              <Sparkles size={12} className="text-primary animate-pulse" />
             </div>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
               <div className="h-full bg-primary w-3/4 animate-shimmer" />
             </div>
-            <p className="text-[9px] text-muted-foreground/60 leading-relaxed font-medium">Processing real-time lead intelligence from GHL V2 events.</p>
+            <p className="text-[9px] text-white/25 leading-relaxed font-medium">Live lead intelligence from GHL V2.</p>
           </div>
         </div>
       </div>
 
-      {/* User Footer Section */}
-      <div className="p-6 border-t border-white/5">
+      <div className="p-3 border-t border-white/[0.06]">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-4 h-16 px-4 rounded-2xl hover:bg-white/[0.03] border border-transparent hover:border-white/5 transition-all group">
-              <div className="relative">
-                <Avatar className="h-10 w-10 border-2 border-primary/20 group-hover:border-primary/50 transition-all">
+            <Button variant="ghost" className="w-full justify-start gap-3 h-14 px-3 rounded-xl hover:bg-white/[0.06] border border-transparent transition-all group">
+              <div className="relative shrink-0">
+                <Avatar className="h-8 w-8 border border-white/20">
                   <AvatarImage src="https://picsum.photos/seed/koreauth-user/100/100" />
-                  <AvatarFallback className="bg-primary/20 text-primary font-bold">AS</AvatarFallback>
+                  <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">AS</AvatarFallback>
                 </Avatar>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#0F1117] rounded-full" />
               </div>
               <div className="flex flex-col items-start overflow-hidden">
-                <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate w-full">Alex Sterling</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">Enterprise Agent</span>
+                <span className="text-sm font-semibold text-white truncate w-full">Alex Sterling</span>
+                <span className="text-[10px] text-white/30 font-medium">Enterprise Agent</span>
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="w-64 glass border-white/10 rounded-2xl p-2 mb-2 animate-in slide-in-from-bottom-2 duration-300">
-            <DropdownMenuLabel className="px-4 py-3">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Authenticated via</p>
-              <p className="text-sm font-bold text-foreground truncate">pit-fde7a...ec78</p>
+          <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1.5 mb-2 bg-[#1a1d27] border border-white/10">
+            <DropdownMenuLabel className="px-3 py-2">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Token</p>
+              <p className="text-xs font-mono text-white/70 truncate">pit-fde7a...ec78</p>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-white/5 mx-2" />
-            <DropdownMenuItem onClick={() => router.push("/profile")} className="rounded-xl px-4 py-3 focus:bg-primary/10 cursor-pointer">
-              <User className="mr-3 h-4 w-4 text-primary" /> Profile Settings
+            <DropdownMenuSeparator className="bg-white/10 mx-1" />
+            <DropdownMenuItem onClick={() => router.push("/profile")} className="rounded-lg px-3 py-2 focus:bg-white/10 cursor-pointer text-white/70 focus:text-white">
+              <User className="mr-2.5 h-4 w-4" /> Profile Settings
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/settings")} className="rounded-xl px-4 py-3 focus:bg-primary/10 cursor-pointer">
-              <Settings className="mr-3 h-4 w-4 text-primary" /> System Config
+            <DropdownMenuItem onClick={() => router.push("/settings")} className="rounded-lg px-3 py-2 focus:bg-white/10 cursor-pointer text-white/70 focus:text-white">
+              <Settings className="mr-2.5 h-4 w-4" /> System Config
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-white/5 mx-2" />
-            <DropdownMenuItem onClick={logout} className="rounded-xl px-4 py-3 text-destructive focus:bg-destructive/10 cursor-pointer">
-              <LogOut className="mr-3 h-4 w-4" /> Terminate Session
+            <DropdownMenuSeparator className="bg-white/10 mx-1" />
+            <DropdownMenuItem onClick={logout} className="rounded-lg px-3 py-2 text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer">
+              <LogOut className="mr-2.5 h-4 w-4" /> Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -43,6 +43,20 @@ export interface GHLConversation {
   lastMessageDate?: string;
   contactName?: string;
   unreadCount?: number;
+  type?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface GHLMessage {
+  id: string;
+  body: string;
+  direction: 'inbound' | 'outbound';
+  dateAdded: string;
+  type?: number;
+  contentType?: string;
+  source?: string;
+  attachments?: string[];
 }
 
 export interface GHLPipeline {

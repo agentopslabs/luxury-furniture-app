@@ -264,6 +264,19 @@ export async function getConversations(): Promise<GHLConversation[]> {
   }
 }
 
+export async function getConversationMessages(conversationId: string): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`);
+    url.searchParams.append('limit', '100');
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching messages');
+    return data?.messages || data?.conversations || [];
+  } catch (error) {
+    console.error('GHL Messages Sync Error:', error);
+    return [];
+  }
+}
+
 export async function sendMessage(conversationId: string, body: string, type: 'email' | 'sms' = 'sms'): Promise<void> {
   const response = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
     method: 'POST',
