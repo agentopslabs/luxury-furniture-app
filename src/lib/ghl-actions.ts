@@ -190,6 +190,50 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
   }
 }
 
+export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      ...oppData,
+      locationId: GHL_LOCATION_ID, // Mandatory in V2 PUT body
+    }),
+  });
+  const data = await handleResponse(response, 'updating opportunity');
+  return data.opportunity;
+}
+
+export async function createOpportunity(oppData: {
+  name: string;
+  pipelineId: string;
+  pipelineStageId: string;
+  status: string;
+  monetaryValue?: number;
+  contactId?: string;
+}): Promise<GHLOpportunity> {
+  const payload: any = {
+    name: oppData.name,
+    pipelineId: oppData.pipelineId,
+    pipelineStageId: oppData.pipelineStageId,
+    status: oppData.status || 'open',
+    locationId: GHL_LOCATION_ID,
+    monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
+  };
+  
+  if (oppData.contactId && oppData.contactId.trim()) {
+    payload.contactId = oppData.contactId;
+  }
+
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await handleResponse(response, 'creating opportunity');
+  return data.opportunity;
+}
+
 // --- PAYMENTS & ORDERS ---
 
 export async function getOrders(limit: number = 50): Promise<any[]> {
@@ -398,47 +442,6 @@ export async function getProducts(limit: number = 50): Promise<any[]> {
   } catch (error) {
     return [];
   }
-}
-
-export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(oppData),
-  });
-  const data = await handleResponse(response, 'updating opportunity');
-  return data.opportunity;
-}
-
-export async function createOpportunity(oppData: {
-  name: string;
-  pipelineId: string;
-  pipelineStageId: string;
-  status: string;
-  monetaryValue?: number;
-  contactId?: string;
-}): Promise<GHLOpportunity> {
-  const payload: any = {
-    name: oppData.name,
-    pipelineId: oppData.pipelineId,
-    pipelineStageId: oppData.pipelineStageId,
-    status: oppData.status || 'open',
-    locationId: GHL_LOCATION_ID,
-    monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
-  };
-  
-  if (oppData.contactId && oppData.contactId.trim()) {
-    payload.contactId = oppData.contactId;
-  }
-
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
-
-  const data = await handleResponse(response, 'creating opportunity');
-  return data.opportunity;
 }
 
 export async function createAppointment(apptData: {

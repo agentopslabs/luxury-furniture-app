@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -163,10 +162,13 @@ export default function OpportunitiesPage() {
       setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, pipelineStageId: stageId } : o));
       
       try {
-        await updateOpportunity(oppId, { pipelineStageId: stageId });
+        await updateOpportunity(oppId, { 
+          pipelineStageId: stageId,
+          pipelineId: opp.pipelineId // Ensure pipeline context is maintained
+        });
         toast({ title: "Deal Transitioned", description: `Opportunity moved to new stage.` });
       } catch (error) {
-        fetchData();
+        fetchData(); // Rollback to server state on failure
         toast({ variant: "destructive", title: "Move Failed", description: "Could not sync stage change." });
       }
     }
@@ -185,13 +187,6 @@ export default function OpportunitiesPage() {
     } finally {
       setIsActionLoading(false);
     }
-  };
-
-  const handleImportClick = () => {
-    toast({
-      title: "Import Utility",
-      description: "CSV/Excel import module is currently in read-only maintenance.",
-    });
   };
 
   return (
@@ -262,10 +257,6 @@ export default function OpportunitiesPage() {
                   <List size={16} />
                 </Button>
               </div>
-
-              <Button variant="outline" size="sm" className="h-10 rounded-xl border-white/10" onClick={handleImportClick}>
-                <Download size={16} className="mr-2" /> Import
-              </Button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -296,13 +287,13 @@ export default function OpportunitiesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-4 mt-4 overflow-x-auto no-scrollbar pb-1">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setStatusFilter('open')}
               className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all",
+                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
                 statusFilter === 'open' ? "text-primary border-primary" : "text-muted-foreground border-transparent opacity-60"
               )}
             >
@@ -313,7 +304,7 @@ export default function OpportunitiesPage() {
               size="sm" 
               onClick={() => setStatusFilter('won')}
               className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all",
+                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
                 statusFilter === 'won' ? "text-emerald-400 border-emerald-400" : "text-muted-foreground border-transparent opacity-60"
               )}
             >
@@ -324,7 +315,7 @@ export default function OpportunitiesPage() {
               size="sm" 
               onClick={() => setStatusFilter('lost')}
               className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all",
+                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
                 statusFilter === 'lost' ? "text-destructive border-destructive" : "text-muted-foreground border-transparent opacity-60"
               )}
             >
@@ -335,21 +326,12 @@ export default function OpportunitiesPage() {
               size="sm" 
               onClick={() => setStatusFilter('all')}
               className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all",
+                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
                 statusFilter === 'all' ? "text-foreground border-foreground" : "text-muted-foreground border-transparent opacity-60"
               )}
             >
               All
             </Button>
-            
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold text-muted-foreground opacity-60 hover:opacity-100">
-                <Filter size={12} className="mr-2" /> Advanced Filters
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold text-muted-foreground opacity-60 hover:opacity-100">
-                <ArrowUpDown size={12} className="mr-2" /> Sort (1)
-              </Button>
-            </div>
           </div>
         </div>
 
@@ -380,7 +362,7 @@ export default function OpportunitiesPage() {
                         <ChevronDown size={14} className="text-muted-foreground opacity-50 group-hover/stage:opacity-100 transition-opacity" />
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium opacity-60">
-                        <span>{stage.opps.length} Opportunities</span>
+                        <span>{stage.opps.length} Deals</span>
                         <span className="font-mono">${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}</span>
                       </div>
                     </div>
@@ -421,24 +403,14 @@ export default function OpportunitiesPage() {
                                 <div className="flex items-center gap-1 opacity-30 hover:opacity-100 hover:text-primary transition-all cursor-pointer">
                                   <Tag size={12} />
                                 </div>
-                                <div className="flex items-center gap-1 opacity-30 hover:opacity-100 hover:text-primary transition-all cursor-pointer">
-                                  <FileText size={12} />
-                                </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                 <CheckSquare size={12} className="opacity-20" />
                                  <Calendar size={12} className="opacity-20" />
                               </div>
                             </div>
                           </div>
                         </div>
                       ))}
-                      
-                      {stage.opps.length === 0 && (
-                        <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl opacity-10">
-                          <Plus size={24} />
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))
@@ -488,7 +460,6 @@ export default function OpportunitiesPage() {
                           <TableCell className="text-right px-6">
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><Eye size={14} /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10 text-destructive"><Trash2 size={14} /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
