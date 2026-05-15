@@ -215,23 +215,19 @@ export async function createOrder(orderData: {
   const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
   
-  const altId = GHL_LOCATION_ID;
-  const altType = 'location';
-  const fingerprint = `fp_${timestamp}`;
-  const trackingId = `tr_${timestamp}`;
-
-  url.searchParams.append('altId', altId);
-  url.searchParams.append('altType', altType);
+  // Mandatory tracking parameters for GHL V2 financial compliance
+  url.searchParams.append('altId', GHL_LOCATION_ID);
+  url.searchParams.append('altType', 'location');
 
   const payload = {
-    altId,
-    altType,
-    fingerprint,
-    trackingId,
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
+    fingerprint: `fp_${timestamp}`,
+    trackingId: `tr_${timestamp}`,
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'direct', 
+      type: 'manual', 
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -271,11 +267,40 @@ export async function getInvoices(limit: number = 50): Promise<any[]> {
   }
 }
 
-// --- MARKETING (NEW) ---
+export async function createInvoice(invoiceData: {
+  title: string;
+  amount: number;
+  contactId: string;
+}): Promise<any> {
+  const timestamp = Date.now().toString();
+  const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
+  url.searchParams.append('altId', GHL_LOCATION_ID);
+  url.searchParams.append('altType', 'location');
+
+  const payload = {
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
+    locationId: GHL_LOCATION_ID,
+    contactId: invoiceData.contactId,
+    title: invoiceData.title,
+    amount: Number(invoiceData.amount),
+    currency: 'USD',
+    status: 'draft',
+    trackingId: `inv_tr_${timestamp}`
+  };
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response, 'creating invoice');
+}
+
+// --- MARKETING ---
 
 export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   try {
-    // Note: Social Planner in GHL V2 often relies on specialized sub-endpoints
     const url = new URL(`${GHL_API_BASE_URL}/social-planner/posts`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
