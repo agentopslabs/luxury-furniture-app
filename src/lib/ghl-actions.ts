@@ -26,7 +26,12 @@ async function handleResponse(response: Response, actionName: string) {
     let errorMessage = `GHL API Error [${response.status}] during ${actionName}`;
     try {
       const errorData = await response.json();
-      errorMessage = errorData.message || (errorData.errors && errorData.errors[0]?.message) || (Array.isArray(errorData.message) ? errorData.message.join(',') : errorMessage);
+      // Handle GHL V2 specific error structures
+      if (Array.isArray(errorData.message)) {
+        errorMessage = errorData.message.join(', ');
+      } else {
+        errorMessage = errorData.message || (errorData.errors && errorData.errors[0]?.message) || errorMessage;
+      }
     } catch (e) {
       errorMessage = `${errorMessage}: ${response.statusText}`;
     }
@@ -288,13 +293,18 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
+  // Aligning with strict GHL V2 financial schema
   const payload = {
     locationId: GHL_LOCATION_ID,
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
     contactId: orderData.contactId,
     source: { type: 'api' }, 
+    fingerprint: `fp_${timestamp}`,
+    trackingId: `tr_${timestamp}`,
     products: [
       {
-        id: `custom_${timestamp}`,
+        id: `prod_${timestamp}`,
         productName: orderData.productName,
         qty: 1,
         price: Number(orderData.totalAmount),
@@ -304,10 +314,7 @@ export async function createOrder(orderData: {
     status: orderData.status || 'pending'
   };
 
-  const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
-  url.searchParams.append('locationId', GHL_LOCATION_ID);
-
-  const response = await fetch(url.toString(), {
+  const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -338,6 +345,8 @@ export async function createInvoice(invoiceData: {
 }): Promise<any> {
   const payload = {
     locationId: GHL_LOCATION_ID,
+    altId: GHL_LOCATION_ID,
+    altType: 'location',
     contactId: invoiceData.contactId,
     title: invoiceData.title,
     liveMode: false,
