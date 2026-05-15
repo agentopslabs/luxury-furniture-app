@@ -196,7 +196,7 @@ export async function updateOpportunity(id: string, oppData: Partial<GHLOpportun
     headers,
     body: JSON.stringify({
       ...oppData,
-      locationId: GHL_LOCATION_ID, // Mandatory in V2 PUT body
+      locationId: GHL_LOCATION_ID, 
     }),
   });
   const data = await handleResponse(response, 'updating opportunity');
@@ -272,7 +272,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'manual', 
+      type: 'direct', 
       id: GHL_LOCATION_ID 
     },
     products: [

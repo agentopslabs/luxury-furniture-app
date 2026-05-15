@@ -31,7 +31,9 @@ import {
   UserPlus,
   Trash2,
   Eye,
-  DollarSign
+  DollarSign,
+  TrendingUp,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +115,7 @@ export default function OpportunitiesPage() {
       }
       
       if (isManual) {
-        toast({ title: "Registry Synced", description: "Real-time GHL deal flow updated." });
+        toast({ title: "Deal Flow Synced", description: `Synchronized ${opps.length} records across ${pipes.length} pipelines.` });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Sync Error", description: "Could not reach LeadConnector cloud." });
@@ -149,6 +151,22 @@ export default function OpportunitiesPage() {
     }));
   }, [activePipeline, filteredOpps]);
 
+  const statsBreakdown = useMemo(() => {
+    const counts = {
+      open: opportunities.filter(o => o.status === 'open').length,
+      won: opportunities.filter(o => o.status === 'won').length,
+      lost: opportunities.filter(o => o.status === 'lost').length,
+      abandoned: opportunities.filter(o => o.status === 'abandoned').length,
+    };
+    const values = {
+      open: opportunities.filter(o => o.status === 'open').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
+      won: opportunities.filter(o => o.status === 'won').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
+      lost: opportunities.filter(o => o.status === 'lost').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
+      abandoned: opportunities.filter(o => o.status === 'abandoned').reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0),
+    };
+    return { counts, values };
+  }, [opportunities]);
+
   const handleDragStart = (e: React.DragEvent, oppId: string) => {
     e.dataTransfer.setData("oppId", oppId);
   };
@@ -164,11 +182,11 @@ export default function OpportunitiesPage() {
       try {
         await updateOpportunity(oppId, { 
           pipelineStageId: stageId,
-          pipelineId: opp.pipelineId // Ensure pipeline context is maintained
+          pipelineId: opp.pipelineId 
         });
         toast({ title: "Deal Transitioned", description: `Opportunity moved to new stage.` });
       } catch (error) {
-        fetchData(); // Rollback to server state on failure
+        fetchData(); 
         toast({ variant: "destructive", title: "Move Failed", description: "Could not sync stage change." });
       }
     }
@@ -197,79 +215,80 @@ export default function OpportunitiesPage() {
 
         <header className="border-b border-white/5 px-8 pt-8 pb-4 shrink-0 bg-background/50 backdrop-blur-md z-10">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold font-headline">Opportunities</h1>
+            <h1 className="text-4xl font-bold font-headline tracking-tight">Opportunities</h1>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing}>
+              <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing} className="h-10 px-4 rounded-xl border-white/10 bg-white/5">
                 <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
-                {refreshing ? "Refreshing..." : "Refresh"}
+                {refreshing ? "Refreshing..." : "Refresh Hub"}
               </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/5">
                 <MoreHorizontal size={20} />
               </Button>
             </div>
           </div>
           
-          <Tabs defaultValue="opportunities" className="w-full">
+          <Tabs defaultValue="overview" className="w-full">
             <TabsList className="bg-transparent border-b border-white/5 w-full justify-start rounded-none h-auto p-0 gap-8">
-              <TabsTrigger value="opportunities" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-2 text-sm font-medium transition-all">Opportunities</TabsTrigger>
-              <TabsTrigger value="forecast" className="opacity-40 cursor-not-allowed rounded-none border-b-2 border-transparent px-0 py-2 text-sm font-medium">Forecast</TabsTrigger>
-              <TabsTrigger value="pipelines" className="opacity-40 cursor-not-allowed rounded-none border-b-2 border-transparent px-0 py-2 text-sm font-medium">Pipelines</TabsTrigger>
-              <TabsTrigger value="bulk" className="opacity-40 cursor-not-allowed rounded-none border-b-2 border-transparent px-0 py-2 text-sm font-medium">Bulk Actions</TabsTrigger>
+              <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold transition-all uppercase tracking-widest opacity-60 data-[state=active]:opacity-100">Overview</TabsTrigger>
+              <TabsTrigger value="stats" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold transition-all uppercase tracking-widest opacity-60 data-[state=active]:opacity-100">Deal Analytics</TabsTrigger>
+              <TabsTrigger value="pipelines" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-bold transition-all uppercase tracking-widest opacity-60 data-[state=active]:opacity-100">Pipeline Config</TabsTrigger>
             </TabsList>
           </Tabs>
         </header>
 
         <div className="px-8 py-4 border-b border-white/5 bg-background/30 backdrop-blur-sm shrink-0 z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex flex-wrap items-center gap-4">
-              <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className="w-[240px] h-10 glass border-white/10 rounded-xl font-medium">
-                  <SelectValue placeholder="Select Pipeline" />
-                </SelectTrigger>
-                <SelectContent className="glass border-white/10 rounded-2xl">
-                  {pipelines.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-50 ml-1">Active Pipeline</p>
+                <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+                  <SelectTrigger className="w-[280px] h-11 glass border-white/10 rounded-xl font-bold">
+                    <SelectValue placeholder="Select Pipeline" />
+                  </SelectTrigger>
+                  <SelectContent className="glass border-white/10 rounded-2xl">
+                    {pipelines.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="rounded-lg">{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
-              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 h-10 px-4 rounded-xl text-xs font-bold font-mono">
-                {filteredOpps.length} opportunities
-              </Badge>
+              <div className="h-10 w-px bg-white/10 self-end mb-1 mx-2" />
 
-              <div className="h-6 w-px bg-white/10" />
-
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setViewMode('kanban')}
-                  className={cn("h-8 w-8 p-0 rounded-lg", viewMode === 'kanban' ? "bg-white/10 shadow-lg text-primary" : "opacity-40")}
-                >
-                  <LayoutGrid size={16} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setViewMode('list')}
-                  className={cn("h-8 w-8 p-0 rounded-lg", viewMode === 'list' ? "bg-white/10 shadow-lg text-primary" : "opacity-40")}
-                >
-                  <List size={16} />
-                </Button>
+              <div className="space-y-1">
+                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground opacity-50 ml-1">Visualization</p>
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl h-11 border border-white/5">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setViewMode('kanban')}
+                    className={cn("h-9 px-4 rounded-lg font-bold flex items-center gap-2 transition-all", viewMode === 'kanban' ? "bg-white/10 shadow-lg text-primary" : "opacity-40 hover:opacity-100")}
+                  >
+                    <LayoutGrid size={16} /> Kanban
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setViewMode('list')}
+                    className={cn("h-9 px-4 rounded-lg font-bold flex items-center gap-2 transition-all", viewMode === 'list' ? "bg-white/10 shadow-lg text-primary" : "opacity-40 hover:opacity-100")}
+                  >
+                    <List size={16} /> Registry
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
+            <div className="flex flex-col md:flex-row items-end md:items-center gap-4">
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
                 <Input 
-                  placeholder="Search Opportunities" 
-                  className="glass pl-10 h-10 rounded-xl text-xs border-white/10 focus:ring-primary"
+                  placeholder="Filter records..." 
+                  className="glass pl-11 h-11 rounded-xl text-xs border-white/10 focus:ring-primary"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button className="glow-primary bg-primary hover:bg-primary/90 h-10 px-6 rounded-xl font-bold" onClick={() => {
+              <Button className="glow-primary bg-primary hover:bg-primary/90 h-11 px-8 rounded-xl font-bold shadow-2xl active:scale-95 transition-all" onClick={() => {
                 if (activePipeline) {
                   setFormData({
                     name: "",
@@ -282,67 +301,46 @@ export default function OpportunitiesPage() {
                   setIsCreateOpen(true);
                 }
               }}>
-                <Plus size={18} className="mr-2" /> Add opportunity
+                <Plus size={18} className="mr-2" /> Inject Opportunity
               </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mt-4 overflow-x-auto no-scrollbar pb-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setStatusFilter('open')}
-              className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
-                statusFilter === 'open' ? "text-primary border-primary" : "text-muted-foreground border-transparent opacity-60"
-              )}
-            >
-              <LayoutGrid size={12} className="mr-2" /> Open opportunities
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setStatusFilter('won')}
-              className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
-                statusFilter === 'won' ? "text-emerald-400 border-emerald-400" : "text-muted-foreground border-transparent opacity-60"
-              )}
-            >
-              Won
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setStatusFilter('lost')}
-              className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
-                statusFilter === 'lost' ? "text-destructive border-destructive" : "text-muted-foreground border-transparent opacity-60"
-              )}
-            >
-              Lost
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setStatusFilter('all')}
-              className={cn(
-                "h-8 text-[11px] font-bold uppercase tracking-widest rounded-none px-0 border-b-2 transition-all shrink-0",
-                statusFilter === 'all' ? "text-foreground border-foreground" : "text-muted-foreground border-transparent opacity-60"
-              )}
-            >
-              All
-            </Button>
+          <div className="flex items-center gap-6 mt-6 overflow-x-auto no-scrollbar pb-1">
+            {[
+              { id: 'open', label: 'Open Deals', color: 'text-primary' },
+              { id: 'won', label: 'Won', color: 'text-emerald-400' },
+              { id: 'lost', label: 'Lost', color: 'text-destructive' },
+              { id: 'abandoned', label: 'Abandoned', color: 'text-amber-500' },
+              { id: 'all', label: 'All Past Data', color: 'text-foreground' }
+            ].map((filter) => (
+              <Button 
+                key={filter.id}
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setStatusFilter(filter.id as StatusFilter)}
+                className={cn(
+                  "h-9 text-[11px] font-bold uppercase tracking-[0.2em] rounded-none px-0 border-b-2 transition-all shrink-0 flex items-center gap-2",
+                  statusFilter === filter.id ? `${filter.color} border-current` : "text-muted-foreground border-transparent opacity-40 hover:opacity-100"
+                )}
+              >
+                {filter.label}
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-white/5 border-white/5">
+                  {filter.id === 'all' ? opportunities.length : statsBreakdown.counts[filter.id as keyof typeof statsBreakdown.counts] || 0}
+                </Badge>
+              </Button>
+            ))}
           </div>
         </div>
 
         <div className="flex-1 overflow-hidden relative">
           {viewMode === 'kanban' ? (
-            <div className="flex gap-6 h-full overflow-x-auto p-8 no-scrollbar">
+            <div className="flex gap-8 h-full overflow-x-auto p-10 no-scrollbar">
               {loading ? (
                 Array(4).fill(0).map((_, i) => (
-                  <div key={i} className="w-80 shrink-0 space-y-4">
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                    <Skeleton className="h-full w-full rounded-3xl" />
+                  <div key={i} className="w-80 shrink-0 space-y-6">
+                    <Skeleton className="h-12 w-full rounded-2xl" />
+                    <Skeleton className="h-full w-full rounded-[2rem]" />
                   </div>
                 ))
               ) : kanbanData.length > 0 ? (
@@ -353,121 +351,156 @@ export default function OpportunitiesPage() {
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, stage.id)}
                   >
-                    <div className="flex flex-col mb-4 px-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-primary" />
-                          <h3 className="text-sm font-bold truncate">{stage.name}</h3>
+                    <div className="flex flex-col mb-6 px-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary glow-primary" />
+                          <h3 className="text-sm font-bold truncate uppercase tracking-widest">{stage.name}</h3>
                         </div>
-                        <ChevronDown size={14} className="text-muted-foreground opacity-50 group-hover/stage:opacity-100 transition-opacity" />
+                        <Badge variant="outline" className="bg-white/5 border-white/10 text-[10px] font-mono">
+                          {stage.opps.length}
+                        </Badge>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium opacity-60">
-                        <span>{stage.opps.length} Deals</span>
-                        <span className="font-mono">${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}</span>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-emerald-400 font-mono opacity-80">
+                        <span className="uppercase tracking-widest opacity-50">Stage Value</span>
+                        <span>${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}</span>
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 rounded-2xl bg-white/[0.01] border border-white/5 p-2 transition-all hover:bg-white/[0.03] min-h-[200px]">
+                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-5 rounded-[2rem] bg-white/[0.01] border border-white/5 p-3 transition-all hover:bg-white/[0.03] min-h-[200px]">
                       {stage.opps.map((opp) => (
                         <div 
                           key={opp.id} 
                           draggable
                           onDragStart={(e) => handleDragStart(e, opp.id)}
-                          className="glass glass-hover p-4 rounded-2xl border-white/5 group transition-all cursor-grab active:cursor-grabbing hover:glow-primary animate-in fade-in slide-in-from-bottom-2"
+                          className="glass glass-hover p-5 rounded-2xl border-white/5 group transition-all cursor-grab active:cursor-grabbing hover:glow-primary animate-in fade-in slide-in-from-bottom-4 duration-500"
                         >
                           <div className="flex justify-between items-start mb-4">
-                            <p className="text-sm font-bold text-foreground leading-tight group-hover:text-primary transition-colors pr-6">
-                              {opp.name}
-                            </p>
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary border border-primary/20 shrink-0">
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-foreground leading-tight group-hover:text-primary transition-colors pr-4 whitespace-normal">
+                                {opp.name}
+                              </p>
+                              <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">#{opp.id.slice(0, 8)}</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold border border-primary/20 shrink-0 transition-all group-hover:bg-primary group-hover:text-white">
                               {opp.contact?.name?.[0] || 'L'}
                             </div>
                           </div>
 
-                          <div className="space-y-3">
+                          <div className="space-y-4 pt-4 border-t border-white/5">
                             <div className="flex flex-col gap-1">
-                              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-40">Value</span>
-                              <span className="text-sm font-mono font-bold text-emerald-400">
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-40">Contract Value</span>
+                              <span className="text-base font-mono font-bold text-emerald-400">
                                 ${opp.monetaryValue?.toLocaleString() || '0.00'}
                               </span>
                             </div>
 
-                            <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                            <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1 opacity-30 hover:opacity-100 hover:text-primary transition-all cursor-pointer">
-                                  <Phone size={12} />
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center opacity-30 group-hover:opacity-100 hover:text-primary transition-all cursor-pointer">
+                                  <Phone size={14} />
                                 </div>
-                                <div className="flex items-center gap-1 opacity-30 hover:opacity-100 hover:text-primary transition-all cursor-pointer">
-                                  <MessageSquare size={12} />
-                                </div>
-                                <div className="flex items-center gap-1 opacity-30 hover:opacity-100 hover:text-primary transition-all cursor-pointer">
-                                  <Tag size={12} />
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center opacity-30 group-hover:opacity-100 hover:text-primary transition-all cursor-pointer">
+                                  <MessageSquare size={14} />
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                 <Calendar size={12} className="opacity-20" />
+                              <div className="flex items-center gap-1.5 opacity-40">
+                                 <Calendar size={12} />
+                                 <span className="text-[9px] font-bold font-mono">2025-01</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       ))}
+                      
+                      {stage.opps.length === 0 && (
+                        <div className="h-40 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center opacity-10 gap-2">
+                          <TrendingUp size={24} />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Deals</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-20">
-                  <LayoutGrid size={64} />
-                  <p className="text-xl font-bold">No active pipelines found</p>
+                <div className="flex-1 flex flex-col items-center justify-center space-y-8 py-40">
+                  <div className="w-24 h-24 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center opacity-20">
+                    <LayoutGrid size={48} />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-2xl font-bold text-muted-foreground/60">Registry Empty</p>
+                    <p className="text-sm text-muted-foreground/40 max-w-[300px] mx-auto font-medium">No opportunities match the current status or pipeline filters.</p>
+                  </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="h-full overflow-y-auto p-8 no-scrollbar">
-              <Card className="glass border-white/5 rounded-2xl overflow-hidden">
+            <div className="h-full overflow-y-auto p-10 no-scrollbar">
+              <Card className="glass border-white/5 rounded-3xl overflow-hidden group">
+                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-20" />
                 <Table>
-                  <TableHeader className="bg-white/5">
+                  <TableHeader className="bg-white/[0.02]">
                     <TableRow className="hover:bg-transparent border-white/5">
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-6">Name</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50">Contact</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50">Value</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50">Stage</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50">Status</TableHead>
-                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest opacity-50 px-6">Actions</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-8 py-5">Name & ID</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 py-5">Contact Entity</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 py-5 text-right">Revenue Value</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 py-5">Flow Stage</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 py-5 text-center">Status</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest opacity-50 px-8 py-5">Ops</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredOpps.length > 0 ? (
-                      filteredOpps.map((opp) => (
-                        <TableRow key={opp.id} className="hover:bg-white/[0.02] border-white/5">
-                          <TableCell className="px-6 font-bold py-4">{opp.name}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold">
-                                {opp.contact?.name?.[0] || 'L'}
-                              </div>
-                              <span className="text-xs font-medium">{opp.contact?.name || 'Lead Anonymous'}</span>
+                      filteredOpps.map((opp, i) => (
+                        <TableRow key={opp.id} className="hover:bg-white/[0.02] border-white/5 animate-in fade-in" style={{ animationDelay: `${i * 30}ms` }}>
+                          <TableCell className="px-8 font-bold py-5">
+                            <div className="space-y-1">
+                              <p className="text-sm">{opp.name}</p>
+                              <p className="text-[9px] font-mono opacity-30">ID: {opp.id}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-emerald-400 font-bold">${opp.monetaryValue?.toLocaleString() || '0'}</TableCell>
-                          <TableCell className="text-xs opacity-70">
-                            {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || 'Unknown'}
-                          </TableCell>
                           <TableCell>
-                            <Badge variant={opp.status === 'won' ? 'default' : opp.status === 'lost' ? 'destructive' : 'secondary'} className="capitalize text-[9px] px-2 py-0">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold border border-primary/20">
+                                {opp.contact?.name?.[0] || 'L'}
+                              </div>
+                              <span className="text-xs font-bold">{opp.contact?.name || 'Lead Anonymous'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-emerald-400 font-bold text-right text-sm">
+                            ${opp.monetaryValue?.toLocaleString() || '0'}
+                          </TableCell>
+                          <TableCell className="text-xs font-bold opacity-60 uppercase tracking-tighter">
+                            {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || 'Unknown Stage'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant={opp.status === 'won' ? 'default' : opp.status === 'lost' ? 'destructive' : 'secondary'} 
+                              className={cn(
+                                "capitalize text-[9px] px-3 py-0.5 rounded-lg font-bold border",
+                                opp.status === 'won' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : 
+                                opp.status === 'lost' ? "bg-destructive/10 text-destructive border-destructive/20" : 
+                                "bg-primary/10 text-primary border-primary/20"
+                              )}
+                            >
                               {opp.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right px-6">
+                          <TableCell className="text-right px-8">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><Eye size={14} /></Button>
+                              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 transition-all"><Eye size={16} /></Button>
+                              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 transition-all text-destructive"><Trash2 size={16} /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-60 text-center text-muted-foreground opacity-40 italic">
-                          No opportunities match your current filters.
+                        <TableCell colSpan={6} className="h-80 text-center">
+                          <div className="flex flex-col items-center justify-center opacity-30 space-y-4">
+                            <Target size={48} />
+                            <p className="text-sm font-bold uppercase tracking-widest italic">No deal flow records detected</p>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -479,62 +512,87 @@ export default function OpportunitiesPage() {
         </div>
       </main>
 
+      {/* Inject Opportunity Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
+        <DialogContent className="glass border-white/10 rounded-[2.5rem] p-10 max-w-xl">
           <form onSubmit={handleCreate}>
-            <DialogHeader className="mb-8">
-              <DialogTitle className="text-2xl font-bold">New Opportunity</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Inject deal into your active sales pipeline.</DialogDescription>
+            <DialogHeader className="mb-10 text-center">
+              <div className="w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6 border border-primary/20">
+                <Target size={32} />
+              </div>
+              <DialogTitle className="text-3xl font-bold font-headline">New Opportunity</DialogTitle>
+              <DialogDescription className="text-muted-foreground font-medium mt-2">
+                Programmatically inject a deal into your LeadConnector V2 flow.
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6">
+            <div className="grid gap-8">
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Deal Name</Label>
+                <Label className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-60 ml-1">Deal Identity</Label>
                 <Input 
-                  className="glass h-12 rounded-xl focus:ring-primary" 
-                  placeholder="e.g. Enterprise Solution" 
+                  className="glass h-14 rounded-2xl focus:ring-primary text-base px-6 font-bold" 
+                  placeholder="e.g. Enterprise License Expansion" 
                   value={formData.name} 
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
                   required 
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Revenue Value ($)</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-60 ml-1">Revenue Value ($)</Label>
                   <Input 
-                    className="glass h-12 rounded-xl" 
+                    className="glass h-14 rounded-2xl font-mono font-bold px-6" 
                     type="number" 
                     value={formData.monetaryValue} 
                     onChange={e => setFormData(prev => ({ ...prev, monetaryValue: Number(e.target.value) }))} 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Link Contact</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-60 ml-1">Customer Entity</Label>
                   <Select value={formData.contactId} onValueChange={val => setFormData(prev => ({ ...prev, contactId: val }))}>
-                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Select Contact" /></SelectTrigger>
-                    <SelectContent className="glass border-white/10 rounded-xl">
+                    <SelectTrigger className="glass h-14 rounded-2xl font-bold px-6"><SelectValue placeholder="Link Lead" /></SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-2xl max-h-60">
                       {contacts.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>
+                        <SelectItem key={c.id} value={c.id} className="rounded-xl font-bold">{c.firstName} {c.lastName}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Pipeline Stage</Label>
-                <Select value={formData.pipelineStageId} onValueChange={val => setFormData(prev => ({ ...prev, pipelineStageId: val }))}>
-                  <SelectTrigger className="glass h-12 rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent className="glass border-white/10 rounded-xl">
-                    {activePipeline?.stages.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-60 ml-1">Registry (Pipeline)</Label>
+                  <Select 
+                    value={formData.pipelineId} 
+                    onValueChange={val => {
+                      const pipe = pipelines.find(p => p.id === val);
+                      setFormData(prev => ({ ...prev, pipelineId: val, pipelineStageId: pipe?.stages[0]?.id || "" }));
+                    }}
+                  >
+                    <SelectTrigger className="glass h-14 rounded-2xl font-bold px-6"><SelectValue /></SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-2xl">
+                      {pipelines.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="rounded-xl font-bold">{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-60 ml-1">Initial Stage</Label>
+                  <Select value={formData.pipelineStageId} onValueChange={val => setFormData(prev => ({ ...prev, pipelineStageId: val }))}>
+                    <SelectTrigger className="glass h-14 rounded-2xl font-bold px-6"><SelectValue /></SelectTrigger>
+                    <SelectContent className="glass border-white/10 rounded-2xl">
+                      {pipelines.find(p => p.id === formData.pipelineId)?.stages.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="rounded-xl font-bold">{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            <DialogFooter className="mt-10">
-              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isActionLoading}>
-                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                Commit Deal
+            <DialogFooter className="mt-12">
+              <Button type="submit" size="lg" className="w-full h-14 rounded-2xl glow-primary font-bold text-lg active:scale-95 transition-all shadow-2xl" disabled={isActionLoading}>
+                {isActionLoading ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <CheckSquare className="mr-3 h-6 w-6" />}
+                Commit Deal Flow
               </Button>
             </DialogFooter>
           </form>
