@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment } from "@/lib/ghl-actions";
 import { GHLAppointment, GHLCalendar, GHLContact } from "@/lib/ghl";
@@ -22,11 +22,23 @@ import {
   XCircle,
   CheckCircle,
   Loader2,
-  Settings
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Search,
+  LayoutList,
+  Calendar as CalendarIcon,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,19 +62,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/toast-context"; // Assuming a shared toast or using shadcn/ui toast directly
-import { useToast as useShadcnToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CalendarPage() {
+  const [activeTab, setActiveTab] = useState("view");
   const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isManageViewOpen, setIsManageViewOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [bookingForm, setBookingForm] = useState({
@@ -72,7 +83,7 @@ export default function CalendarPage() {
     startTime: ""
   });
 
-  const { toast } = useShadcnToast();
+  const { toast } = useToast();
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -161,221 +172,263 @@ export default function CalendarPage() {
     }
   };
 
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const currentWeek = [10, 11, 12, 13, 14, 15, 16]; // Simulated week from screenshot
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-4xl font-bold tracking-tight">Calendar</h1>
-              <p className="text-muted-foreground">Real-time schedule management via GHL V2 API.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => toast({ title: "Calendar Config", description: "Loading calendar availability settings..." })}
-                className="bg-card"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Config
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => fetchData(true)} 
-                disabled={loading || refreshing}
-                className="bg-card"
-              >
-                <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-                {refreshing ? "Refreshing..." : "Refresh"}
-              </Button>
-              <Button size="sm" onClick={() => setIsBookingOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Book Appointment
-              </Button>
-            </div>
-          </header>
+      <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
+        
+        <header className="border-b border-border bg-card/30 backdrop-blur-md z-20 shrink-0">
+          <div className="px-8 flex items-center h-16 gap-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+              <TabsList className="bg-transparent h-16 p-0 gap-8">
+                <TabsTrigger value="calendars" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Calendars</TabsTrigger>
+                <TabsTrigger value="view" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Calendar View</TabsTrigger>
+                <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Appointment List View</TabsTrigger>
+                <TabsTrigger value="settings" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100 flex items-center gap-2"><Settings size={14} /> Calendar Settings</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1 space-y-6">
-              <Card className="glass border-border/40">
-                <CardHeader>
-                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground font-body">Sub-Account Calendars</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {loading ? (
-                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
-                  ) : calendars.length > 0 ? (
-                    calendars.map(cal => (
-                      <div key={cal.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        <span className="text-xs font-medium truncate">{cal.name}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">No active calendars.</p>
-                  )}
-                </CardContent>
-              </Card>
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+          {/* Controls Bar */}
+          <div className="px-8 py-4 border-b flex items-center justify-between bg-card/5 shrink-0">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold">Today</Button>
+              <div className="flex items-center border rounded-md">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-r"><ChevronLeft size={16} /></Button>
+                <div className="px-4 py-1 text-sm font-bold min-w-[150px] text-center">May 10 – 16, 2026</div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-l"><ChevronRight size={16} /></Button>
+              </div>
+              <Select defaultValue="week">
+                <SelectTrigger className="w-[120px] h-9 rounded-md font-bold">
+                  <SelectValue placeholder="View" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">Day View</SelectItem>
+                  <SelectItem value="week">Week View</SelectItem>
+                  <SelectItem value="month">Month View</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="lg:col-span-3 space-y-6">
-              <Card className="glass border-border/40 min-h-[400px]">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl font-headline">Live Events Feed</CardTitle>
-                      <CardDescription>Location ID: nBYJTjYbHTIsJGiqT0W4</CardDescription>
-                    </div>
-                    <Badge variant="outline" className="font-mono text-[10px]">
-                      {appointments.length} Total
-                    </Badge>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold" onClick={() => setIsManageViewOpen(true)}>
+                <Filter size={16} className="mr-2" /> Manage View
+              </Button>
+              <Button size="sm" className="h-9 px-6 rounded-md bg-primary hover:bg-primary/90 font-bold shadow-lg" onClick={() => setIsBookingOpen(true)}>
+                <Plus size={16} className="mr-2" /> New
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="h-9 w-9">
+                <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex overflow-hidden">
+            {/* Main Calendar Content */}
+            <div className="flex-1 overflow-y-auto no-scrollbar p-0 bg-white/[0.01]">
+              <TabsContent value="view" className="m-0 h-full flex flex-col">
+                <div className="grid grid-cols-8 border-b bg-muted/30">
+                  <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">
+                    GMT +05:30
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                  {weekDays.map((day, i) => (
+                    <div key={day} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
+                      <span className={cn("text-lg font-bold", i === 0 && "text-destructive")}>{currentWeek[i]} {day}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 grid grid-cols-8 relative h-[800px]">
+                  <div className="border-r bg-muted/10">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <div key={i} className="h-20 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
+                        {i + 12} PM
+                      </div>
+                    ))}
+                  </div>
+                  {Array.from({ length: 7 }).map((_, col) => (
+                    <div key={col} className="border-r last:border-r-0 relative">
+                      {Array.from({ length: 12 }).map((_, row) => (
+                        <div key={row} className="h-20 border-b hover:bg-primary/5 transition-colors cursor-pointer" />
+                      ))}
+                      {/* Simulated Appointment */}
+                      {col === 2 && (
+                        <div className="absolute top-[160px] left-1 right-1 h-[80px] bg-primary/20 border-l-4 border-l-primary rounded-r-md p-2 animate-in fade-in">
+                          <p className="text-[10px] font-bold">Client Consultation</p>
+                          <p className="text-[9px] opacity-70">2:00 PM - 3:00 PM</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="list" className="m-0 p-8">
+                <div className="max-w-4xl mx-auto space-y-4">
                   {loading ? (
-                    Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+                    Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                   ) : appointments.length > 0 ? (
-                    appointments.map((appt) => {
-                      const date = new Date(appt.startTime);
-                      return (
-                        <div 
-                          key={appt.id} 
-                          className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/40 hover:bg-card/60 transition-all group animate-in fade-in slide-in-from-bottom-2"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={cn(
-                              "w-14 h-14 rounded-xl flex flex-col items-center justify-center border",
-                              appt.status === 'confirmed' || appt.status === 'booked' 
-                                ? "bg-primary/5 text-primary border-primary/10" 
-                                : "bg-muted text-muted-foreground border-border"
-                            )}>
-                              <span className="text-[10px] font-bold uppercase opacity-70">
-                                {date.toLocaleString('default', { month: 'short' })}
-                              </span>
-                              <span className="text-xl font-bold leading-none">
-                                {date.getDate()}
-                              </span>
+                    appointments.map((appt) => (
+                      <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
+                        <CardContent className="p-5 flex items-center justify-between">
+                          <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center border border-primary/20">
+                              <span className="text-[8px] font-bold uppercase">{new Date(appt.startTime).toLocaleString('default', { month: 'short' })}</span>
+                              <span className="text-xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
                             </div>
-                            <div className="space-y-1">
-                              <p className="font-bold text-sm">{appt.title}</p>
-                              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock size={12} className="text-primary/60" />
-                                  {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                {appt.status === 'completed' && (
-                                  <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                    <CheckCircle size={12} /> Completed
-                                  </span>
-                                )}
+                            <div>
+                              <h4 className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</h4>
+                              <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+                                <span className="flex items-center gap-1"><Clock size={12} /> {new Date(appt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <Badge variant="outline" className="text-[9px] py-0 h-4 uppercase">{appt.status}</Badge>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px]">
-                              {appt.status}
-                            </Badge>
-                            
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical size={16} />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>Update Status</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'completed')}>
-                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'noshow')}>
-                                  <AlertCircle className="mr-2 h-4 w-4 text-amber-500" /> Mark No-Show
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'cancelled')} className="text-destructive">
-                                  <XCircle className="mr-2 h-4 w-4" /> Cancel Event
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-                      );
-                    })
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreVertical size={16} /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'completed')}><CheckCircle className="mr-2 h-4 w-4" /> Complete</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'cancelled')} className="text-destructive"><XCircle className="mr-2 h-4 w-4" /> Cancel</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </CardContent>
+                      </Card>
+                    ))
                   ) : (
-                    <div className="py-24 text-center space-y-4 border rounded-xl border-dashed bg-muted/20">
-                      <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
-                      <p className="font-medium text-muted-foreground">No upcoming events found</p>
+                    <div className="py-40 text-center opacity-30">
+                      <CalendarDays size={64} className="mx-auto mb-4" />
+                      <p className="text-xl font-bold">No appointments found</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="calendars" className="m-0 p-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {calendars.map(cal => (
+                    <Card key={cal.id} className="glass glass-hover border-border/40 p-6 flex flex-col gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        {cal.name[0]}
+                      </div>
+                      <div>
+                        <h3 className="font-bold">{cal.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
+                      </div>
+                      <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold">View Availability</Button>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
             </div>
+
+            {/* Manage View Sidebar */}
+            {isManageViewOpen && (
+              <div className="w-80 border-l bg-card/20 backdrop-blur-xl animate-in slide-in-from-right duration-300 overflow-y-auto no-scrollbar">
+                <div className="p-6 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg">Manage View</h3>
+                    <Button variant="ghost" size="icon" onClick={() => setIsManageViewOpen(false)}><X size={18} /></Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">View by type</p>
+                    <RadioGroup defaultValue="all" className="space-y-3">
+                      <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
+                        <RadioGroupItem value="all" id="all" />
+                        <Label htmlFor="all" className="flex-1 cursor-pointer font-medium">All</Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
+                        <RadioGroupItem value="appointments" id="appointments" />
+                        <Label htmlFor="appointments" className="flex-1 cursor-pointer font-medium">Appointments</Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 rounded-xl border bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer">
+                        <RadioGroupItem value="blocked" id="blocked" />
+                        <Label htmlFor="blocked" className="flex-1 cursor-pointer font-medium">Blocked Slots</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/[0.02]">
+                    <Label htmlFor="buffer" className="font-medium text-sm">Show buffer time</Label>
+                    <Switch id="buffer" />
+                  </div>
+
+                  <div className="space-y-4 pt-6 border-t">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">Filters</p>
+                      <Button variant="ghost" className="text-[10px] h-6 font-bold text-primary">Clear all</Button>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
+                      <Input placeholder="Search Users, Calendars..." className="pl-9 h-9 text-xs rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
       {/* Book Appointment Dialog */}
       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
           <form onSubmit={handleBookingSubmit}>
-            <DialogHeader>
-              <DialogTitle>Book Appointment</DialogTitle>
-              <DialogDescription>
-                Schedule a new meeting. This will be synced to GHL immediately.
-              </DialogDescription>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">Book Appointment</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Schedule a new interaction. Synchronized to GHL V2 cloud.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Appointment Title</Label>
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Title</Label>
                 <Input 
-                  id="title" 
-                  placeholder="e.g. Consultation Call"
+                  className="glass h-12 rounded-xl" 
+                  placeholder="e.g. Discovery Call"
                   value={bookingForm.title} 
                   onChange={(e) => setBookingForm({ ...bookingForm, title: e.target.value })}
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Contact</Label>
-                <Select 
-                  value={bookingForm.contactId} 
-                  onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a contact" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.firstName} {c.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity</Label>
+                  <Select 
+                    value={bookingForm.contactId} 
+                    onValueChange={(val) => setBookingForm({ ...bookingForm, contactId: val })}
+                  >
+                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Lead" /></SelectTrigger>
+                    <SelectContent>
+                      {contacts.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Calendar</Label>
+                  <Select 
+                    value={bookingForm.calendarId} 
+                    onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}
+                  >
+                    <SelectTrigger className="glass h-12 rounded-xl"><SelectValue placeholder="Registry" /></SelectTrigger>
+                    <SelectContent>
+                      {calendars.map((cal) => (
+                        <SelectItem key={cal.id} value={cal.id}>{cal.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Calendar</Label>
-                <Select 
-                  value={bookingForm.calendarId} 
-                  onValueChange={(val) => setBookingForm({ ...bookingForm, calendarId: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a calendar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {calendars.map((cal) => (
-                      <SelectItem key={cal.id} value={cal.id}>
-                        {cal.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time</Label>
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Signal Date & Time</Label>
                 <Input 
-                  id="startTime" 
+                  className="glass h-12 rounded-xl" 
                   type="datetime-local" 
                   value={bookingForm.startTime}
                   onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })}
@@ -383,13 +436,10 @@ export default function CalendarPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirm Booking
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
+                Commit Booking
               </Button>
             </DialogFooter>
           </form>
