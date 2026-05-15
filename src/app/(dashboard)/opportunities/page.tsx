@@ -144,11 +144,11 @@ export default function OpportunitiesPage() {
 
     setIsActionLoading(true);
     try {
-      const result = await createOpportunity(formData);
+      await createOpportunity(formData);
       setIsCreateOpen(false);
       toast({ 
         title: "Opportunity Created", 
-        description: `${result.name} has been synchronized with GHL Cloud.`,
+        description: `${formData.name} has been synchronized with GHL Cloud.`,
       });
       fetchData(true);
     } catch (error: any) {
@@ -171,8 +171,12 @@ export default function OpportunitiesPage() {
       setIsEditOpen(false);
       toast({ title: "Record Overwritten", description: "V2 Metadata successfully synchronized." });
       fetchData(true);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Mutation Failed", description: "GHL rejected the update command." });
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Mutation Failed", 
+        description: error.message || "GHL rejected the update command." 
+      });
     } finally {
       setIsActionLoading(false);
     }

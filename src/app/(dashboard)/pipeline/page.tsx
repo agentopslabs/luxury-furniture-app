@@ -127,8 +127,12 @@ export default function PipelinePage() {
       setIsCreateOpen(false);
       toast({ title: "Opportunity Created", description: "Successfully pushed to GHL deal flow." });
       fetchData(true);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Sync Failure", description: "Could not create opportunity." });
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Sync Failure", 
+        description: error.message || "Could not create opportunity." 
+      });
     } finally {
       setIsActionLoading(false);
     }

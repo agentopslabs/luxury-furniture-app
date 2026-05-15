@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -242,19 +243,31 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
 
 export async function createOpportunity(oppData: any): Promise<GHLOpportunity> {
   try {
+    // Clean payload for GHL V2 requirements
+    const payload: any = {
+      ...oppData,
+      locationId: GHL_LOCATION_ID,
+    };
+    
+    // Remove empty optional values that might cause API errors
+    if (!payload.contactId) delete payload.contactId;
+    if (payload.monetaryValue === 0) delete payload.monetaryValue;
+
     const response = await fetch(`${GHL_API_BASE_URL}/opportunities`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        ...oppData,
-        locationId: GHL_LOCATION_ID,
-      }),
+      body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Failed to create opportunity');
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create opportunity in GHL registry');
+    }
+
     const data = await response.json();
     return data.opportunity;
-  } catch (error) {
-    throw new Error('Could not create opportunity in GHL');
+  } catch (error: any) {
+    throw new Error(error.message || 'Could not sync opportunity record with GHL backend');
   }
 }
 
@@ -265,11 +278,14 @@ export async function updateOpportunity(id: string, oppData: Partial<GHLOpportun
       headers,
       body: JSON.stringify(oppData),
     });
-    if (!response.ok) throw new Error('Failed to update opportunity');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update opportunity');
+    }
     const data = await response.json();
     return data.opportunity;
-  } catch (error) {
-    throw new Error('Could not update opportunity in GHL');
+  } catch (error: any) {
+    throw new Error(error.message || 'Could not update opportunity in GHL');
   }
 }
 
