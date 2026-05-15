@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -44,7 +43,7 @@ async function handleResponse(response: Response, actionName: string) {
     return JSON.parse(text);
   } catch (e) {
     if (response.status === 204) return null;
-    return null; // Return null for non-JSON 200 responses to maintain stability
+    return null;
   }
 }
 
@@ -115,6 +114,24 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
   } catch (error) {
     return [];
   }
+}
+
+export async function createAppointment(apptData: {
+  calendarId: string;
+  contactId: string;
+  startTime: string; 
+  title: string;
+}): Promise<GHLAppointment> {
+  const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ...apptData,
+      locationId: GHL_LOCATION_ID,
+    }),
+  });
+  const data = await handleResponse(response, 'booking appointment');
+  return data.appointment;
 }
 
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
@@ -246,6 +263,7 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
     const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching orders');
@@ -277,7 +295,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'direct', 
+      type: 'manual', 
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -308,6 +326,7 @@ export async function getInvoices(limit: number = 50): Promise<any[]> {
     const url = new URL(`${GHL_API_BASE_URL}/invoices`);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching invoices');
@@ -347,6 +366,53 @@ export async function createInvoice(invoiceData: {
     body: JSON.stringify(payload),
   });
   return handleResponse(response, 'creating invoice');
+}
+
+// --- TRANSACTIONS & SUBSCRIPTIONS ---
+
+export async function getTransactions(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/transactions`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching transactions');
+    return data?.transactions || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getSubscriptions(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/subscriptions`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching subscriptions');
+    return data?.subscriptions || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getProducts(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/custom-plans`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching products');
+    return data?.customPlans || [];
+  } catch (error) {
+    return [];
+  }
 }
 
 // --- MARKETING ---
@@ -405,96 +471,4 @@ export async function getTriggerLinks(limit: number = 50): Promise<any[]> {
   } catch (error) {
     return [];
   }
-}
-
-export async function getTransactions(limit: number = 50): Promise<any[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/payments/transactions`);
-    url.searchParams.append('altId', GHL_LOCATION_ID);
-    url.searchParams.append('altType', 'location');
-    url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching transactions');
-    return data?.transactions || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function getSubscriptions(limit: number = 50): Promise<any[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/payments/subscriptions`);
-    url.searchParams.append('altId', GHL_LOCATION_ID);
-    url.searchParams.append('altType', 'location');
-    url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching subscriptions');
-    return data?.subscriptions || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function getProducts(limit: number = 50): Promise<any[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/payments/custom-plans`);
-    url.searchParams.append('altId', GHL_LOCATION_ID);
-    url.searchParams.append('altType', 'location');
-    url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'fetching products');
-    return data?.customPlans || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function createAppointment(apptData: {
-  calendarId: string;
-  contactId: string;
-  startTime: string; 
-  title: string;
-}): Promise<GHLAppointment> {
-  const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      ...apptData,
-      locationId: GHL_LOCATION_ID,
-    }),
-  });
-  const data = await handleResponse(response, 'booking appointment');
-  return data.appointment;
-}
-
-export async function createInvoice(invoiceData: {
-  title: string;
-  amount: number;
-  contactId: string;
-}): Promise<any> {
-  const timestamp = Date.now().toString();
-  const url = new URL(`${GHL_API_BASE_URL}/invoices`);
-  url.searchParams.append('altId', GHL_LOCATION_ID);
-  url.searchParams.append('altType', 'location');
-  url.searchParams.append('fingerprint', `inv_fp_${timestamp}`);
-  url.searchParams.append('trackingId', `inv_tr_${timestamp}`);
-
-  const payload = {
-    altId: GHL_LOCATION_ID,
-    altType: 'location',
-    locationId: GHL_LOCATION_ID,
-    contactId: invoiceData.contactId,
-    title: invoiceData.title,
-    amount: Number(invoiceData.amount),
-    currency: 'USD',
-    status: 'draft',
-    trackingId: `inv_tr_${timestamp}`
-  };
-
-  const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(response, 'creating invoice');
 }
