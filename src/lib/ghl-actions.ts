@@ -271,6 +271,8 @@ export async function getOrders(limit: number = 50): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching orders');
@@ -287,16 +289,16 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  // Refined payload for GHL V2 Order Creation compliance
+  // Valid source.type enum value is 'direct' for API creations in GHL V2
   const payload = {
     altId: GHL_LOCATION_ID,
     altType: 'location',
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
-    source: { type: 'api' }, // Changed string to nested object as per API requirement
+    source: { type: 'direct' }, 
     products: [
       {
-        id: `custom_${timestamp}`, // Added mandatory product ID
+        id: `custom_${timestamp}`,
         productName: orderData.productName,
         qty: 1,
         price: Number(orderData.totalAmount),
@@ -308,7 +310,10 @@ export async function createOrder(orderData: {
     status: orderData.status || 'pending'
   };
 
-  const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
+  const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
+  url.searchParams.append('locationId', GHL_LOCATION_ID);
+
+  const response = await fetch(url.toString(), {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -365,6 +370,8 @@ export async function getTransactions(limit: number = 50): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/payments/transactions`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching transactions');
