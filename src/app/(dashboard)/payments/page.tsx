@@ -2,7 +2,16 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getOrders, createOrder, getTransactions, getContacts, getInvoices, createInvoice } from "@/lib/ghl-actions";
+import { 
+  getOrders, 
+  createOrder, 
+  getTransactions, 
+  getContacts, 
+  getInvoices, 
+  createInvoice,
+  getSubscriptions,
+  getProducts
+} from "@/lib/ghl-actions";
 import { GHLContact } from "@/lib/ghl";
 import { 
   Card, 
@@ -23,9 +32,7 @@ import {
   Search, 
   Plus, 
   Settings as SettingsIcon, 
-  Calendar as CalendarIcon,
   Filter,
-  ArrowRight,
   MoreVertical,
   FileText,
   CreditCard,
@@ -37,7 +44,6 @@ import {
   Repeat,
   Gift,
   Unplug,
-  ChevronDown,
   Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -77,41 +83,8 @@ const subNavItems = [
   { name: "Integrations", value: "integrations", icon: Unplug },
 ];
 
-const statusTabsByNav: Record<string, { name: string; count: number }[]> = {
-  docs: [
-    { name: "Draft", count: 0 },
-    { name: "Waiting for others", count: 0 },
-    { name: "Completed", count: 0 },
-    { name: "Payments", count: 0 },
-    { name: "Archived", count: 0 },
-  ],
-  orders: [
-    { name: "All", count: 0 },
-    { name: "Pending", count: 0 },
-    { name: "Paid", count: 0 },
-    { name: "Refunded", count: 0 },
-  ],
-  subs: [
-    { name: "Active", count: 0 },
-    { name: "Trialing", count: 0 },
-    { name: "Cancelled", count: 0 },
-    { name: "All", count: 0 },
-  ],
-  transactions: [
-    { name: "Successful", count: 0 },
-    { name: "Failed", count: 0 },
-    { name: "Refunded", count: 0 },
-    { name: "All", count: 0 },
-  ],
-  products: [
-    { name: "Active", count: 0 },
-    { name: "Archived", count: 0 },
-  ],
-};
-
 export default function PaymentsPage() {
   const [activeSubNav, setActiveSubNav] = useState("docs");
-  const [activeStatus, setActiveStatus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,9 +112,13 @@ export default function PaymentsPage() {
         listData = await getTransactions();
       } else if (activeSubNav === 'docs') {
         listData = await getInvoices();
+      } else if (activeSubNav === 'subs') {
+        listData = await getSubscriptions();
+      } else if (activeSubNav === 'products') {
+        listData = await getProducts();
       }
       
-      setDataList(listData);
+      setDataList(listData || []);
     } catch (error) {
       console.error("Payment fetch error:", error);
     } finally {
@@ -159,8 +136,6 @@ export default function PaymentsPage() {
 
   const handleSubNavChange = (value: string) => {
     setActiveSubNav(value);
-    const firstStatus = statusTabsByNav[value]?.[0]?.name || "All";
-    setActiveStatus(firstStatus);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -179,20 +154,16 @@ export default function PaymentsPage() {
           contactId: createFormData.contactId,
           status: 'pending'
         });
-        toast({
-          title: "Order Synchronized",
-          description: "Successfully committed financial record to LeadConnector V2 repository.",
-        });
+        toast({ title: "Order Synchronized", description: "Order committed to GHL backend." });
       } else if (activeSubNav === 'docs') {
         await createInvoice({
           title: createFormData.title,
           amount: Number(createFormData.amount),
           contactId: createFormData.contactId
         });
-        toast({
-          title: "Document Created",
-          description: "Contract record injected into GHL repository.",
-        });
+        toast({ title: "Document Created", description: "Contract injected into GHL repository." });
+      } else {
+        toast({ title: "Module Locked", description: "This payment type is in read-only mode." });
       }
       
       setIsCreateOpen(false);
@@ -202,49 +173,61 @@ export default function PaymentsPage() {
       toast({
         variant: "destructive",
         title: "Sync Failure",
-        description: error.message || "Could not reach payment server.",
+        description: error.message || "LeadConnector validation failed.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredData = dataList.filter(item => {
-    const title = (item.title || item.productName || item.customerName || "").toLowerCase();
-    return title.includes(searchQuery.toLowerCase());
-  });
+  const filteredData = useMemo(() => {
+    return dataList.filter(item => {
+      const title = (item.title || item.productName || item.customerName || item.name || "").toLowerCase();
+      return title.includes(searchQuery.toLowerCase());
+    });
+  }, [dataList, searchQuery]);
 
   const renderTableHeader = () => {
     switch (activeSubNav) {
       case 'docs':
         return (
           <TableRow className="hover:bg-transparent border-white/5">
-            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Document Title</TableHead>
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Document Title</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Status</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Created</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Value</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Customer</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Created</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Value</TableHead>
             <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Ops</TableHead>
           </TableRow>
         );
       case 'orders':
         return (
           <TableRow className="hover:bg-transparent border-white/5">
-            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Order Item</TableHead>
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Order Item</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Payment Status</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Customer</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Date</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Total</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Customer</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Date</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Total</TableHead>
             <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Actions</TableHead>
+          </TableRow>
+        );
+      case 'subs':
+        return (
+          <TableRow className="hover:bg-transparent border-white/5">
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Plan Name</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-center">Status</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Cycle</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Value</TableHead>
+            <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Ops</TableHead>
           </TableRow>
         );
       default:
         return (
           <TableRow className="hover:bg-transparent border-white/5">
-            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Item Name</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Status</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Date</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Amount</TableHead>
+            <TableHead className="px-8 text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Item Name</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Status</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Date</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest opacity-50 h-12 text-left">Amount</TableHead>
             <TableHead className="px-8 text-right text-[10px] font-bold uppercase tracking-widest opacity-50 h-12">Action</TableHead>
           </TableRow>
         );
@@ -261,7 +244,7 @@ export default function PaymentsPage() {
           <div className="px-8 pt-8 pb-4">
             <h1 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
               <CreditCard className="text-primary" />
-              Payments
+              Payments Hub
             </h1>
             
             <Tabs value={activeSubNav} onValueChange={handleSubNavChange} className="w-full">
@@ -285,7 +268,7 @@ export default function PaymentsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1">
               <h2 className="text-3xl font-bold tracking-tight">{currentNav.name}</h2>
-              <p className="text-muted-foreground text-sm">Real-time GHL V2 financial stream.</p>
+              <p className="text-muted-foreground text-sm">Synchronized records from LeadConnector V2.</p>
             </div>
             <div className="flex items-center gap-3">
               <Button 
@@ -308,7 +291,7 @@ export default function PaymentsPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
             <Input 
-              placeholder={`Search ${currentNav.name.toLowerCase()}...`}
+              placeholder={`Search in ${currentNav.name.toLowerCase()}...`}
               className="glass pl-10 h-10 rounded-xl text-xs border-white/10 focus:ring-primary"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -325,20 +308,20 @@ export default function PaymentsPage() {
                 {loading ? (
                   Array(5).fill(0).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell>
+                      <TableCell colSpan={6} className="px-8"><Skeleton className="h-12 w-full" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredData.length > 0 ? (
                   filteredData.map((item, i) => (
-                    <TableRow key={i} className="hover:bg-white/[0.02] border-white/5 animate-in fade-in">
-                      <TableCell className="px-8 font-bold">{item.title || item.productName || 'Untitled Record'}</TableCell>
+                    <TableRow key={i} className="hover:bg-white/[0.02] border-white/5 animate-in fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+                      <TableCell className="px-8 font-bold text-left">{item.title || item.productName || item.name || 'Untitled Record'}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="secondary" className="uppercase text-[9px]">{item.status || 'Active'}</Badge>
+                        <Badge variant="secondary" className="uppercase text-[9px]">{item.status || item.paymentStatus || 'Active'}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs">{item.customerName || item.contactName || 'Anonymous'}</TableCell>
-                      <TableCell className="text-xs opacity-50">{new Date(item.dateAdded || item.createdAt || Date.now()).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-mono text-emerald-400 font-bold">${(item.totalAmount || item.amount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="px-8 text-right">
+                      <TableCell className="text-xs text-left">{item.customerName || item.contactName || 'Anonymous'}</TableCell>
+                      <TableCell className="text-xs opacity-50 text-left">{new Date(item.dateAdded || item.createdAt || Date.now()).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-mono text-emerald-400 font-bold text-left">${(item.totalAmount || item.amount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="px-8 text-right text-left">
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><MoreVertical size={14} /></Button>
                       </TableCell>
                     </TableRow>
@@ -348,7 +331,7 @@ export default function PaymentsPage() {
                     <TableCell colSpan={6} className="h-[400px] text-center">
                       <div className="flex flex-col items-center justify-center space-y-6">
                         <currentNav.icon size={32} className="text-muted-foreground opacity-20" />
-                        <p className="text-lg font-bold text-muted-foreground/80">No {currentNav.name.toLowerCase()} found.</p>
+                        <p className="text-lg font-bold text-muted-foreground/80">No {currentNav.name.toLowerCase()} records found.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -364,14 +347,14 @@ export default function PaymentsPage() {
           <form onSubmit={handleCreateSubmit}>
             <DialogHeader className="mb-8">
               <DialogTitle className="text-2xl font-bold">New {currentNav.name.replace(/s$/, '')}</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Injecting a new record into LeadConnector V2.</DialogDescription>
+              <DialogDescription className="text-muted-foreground">Synchronizing financial record with GHL sub-account.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Record Title</Label>
                 <Input 
                   className="glass h-12 rounded-xl" 
-                  placeholder="e.g. Enterprise Contract" 
+                  placeholder="e.g. Enterprise License" 
                   value={createFormData.title}
                   onChange={e => setCreateFormData({...createFormData, title: e.target.value})}
                   required 
@@ -390,7 +373,7 @@ export default function PaymentsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link (Contact)</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Identity Link</Label>
                   <Select value={createFormData.contactId} onValueChange={val => setCreateFormData(prev => ({ ...prev, contactId: val }))}>
                     <SelectTrigger className="glass h-12 rounded-xl focus:ring-primary">
                       <SelectValue placeholder="Select Contact" />
@@ -409,7 +392,7 @@ export default function PaymentsPage() {
             <DialogFooter className="mt-10">
               <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
-                Commit Record
+                Sync Record
               </Button>
             </DialogFooter>
           </form>

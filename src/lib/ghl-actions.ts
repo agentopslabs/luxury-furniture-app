@@ -26,7 +26,6 @@ async function handleResponse(response: Response, actionName: string) {
     let errorMessage = `GHL API Error [${response.status}] during ${actionName}`;
     try {
       const errorData = await response.json();
-      // Handle GHL V2 specific error structures
       if (Array.isArray(errorData.message)) {
         errorMessage = errorData.message.join(', ');
       } else {
@@ -115,11 +114,9 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/appointments/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
-    
     const now = new Date();
     const startTime = now.getTime() - (30 * 24 * 60 * 60 * 1000); 
     const endTime = now.getTime() + (90 * 24 * 60 * 60 * 1000);  
-    
     url.searchParams.append('startTime', startTime.toString());
     url.searchParams.append('endTime', endTime.toString());
 
@@ -293,13 +290,14 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  // Aligning with strict GHL V2 financial schema
+  // V2 payments/orders requires source.type to be from valid enum [funnel, website, manual, api, import]
+  // We use 'manual' to simulate a dashboard creation compliant with V2 financial middleware
   const payload = {
     locationId: GHL_LOCATION_ID,
     altId: GHL_LOCATION_ID,
     altType: 'location',
     contactId: orderData.contactId,
-    source: { type: 'api' }, 
+    source: { type: 'manual' }, 
     fingerprint: `fp_${timestamp}`,
     trackingId: `tr_${timestamp}`,
     products: [
@@ -377,6 +375,34 @@ export async function getTransactions(limit: number = 50): Promise<any[]> {
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
     const data = await handleResponse(response, 'fetching transactions');
     return data?.transactions || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getSubscriptions(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/subscriptions`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching subscriptions');
+    return data?.subscriptions || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function getProducts(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/custom-plans`);
+    url.searchParams.append('altId', GHL_LOCATION_ID);
+    url.searchParams.append('altType', 'location');
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching products');
+    return data?.customPlans || [];
   } catch (error) {
     return [];
   }
