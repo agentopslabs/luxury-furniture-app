@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -290,26 +291,26 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  // V2 payments/orders requires source.type to be from valid enum [funnel, website, manual, api, import]
-  // We use 'manual' to simulate a dashboard creation compliant with V2 financial middleware
+  // Fixing "source id is required" by providing locationId as the source id
+  // and source.type as 'manual' which is compliant with LeadConnector V2.
   const payload = {
     locationId: GHL_LOCATION_ID,
-    altId: GHL_LOCATION_ID,
-    altType: 'location',
     contactId: orderData.contactId,
-    source: { type: 'manual' }, 
-    fingerprint: `fp_${timestamp}`,
-    trackingId: `tr_${timestamp}`,
+    source: { 
+      type: 'manual', 
+      id: GHL_LOCATION_ID 
+    },
     products: [
       {
         id: `prod_${timestamp}`,
-        productName: orderData.productName,
+        name: orderData.productName,
         qty: 1,
         price: Number(orderData.totalAmount),
         currency: 'USD'
       }
     ],
-    status: orderData.status || 'pending'
+    status: orderData.status || 'pending',
+    liveMode: false
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
@@ -343,8 +344,6 @@ export async function createInvoice(invoiceData: {
 }): Promise<any> {
   const payload = {
     locationId: GHL_LOCATION_ID,
-    altId: GHL_LOCATION_ID,
-    altType: 'location',
     contactId: invoiceData.contactId,
     title: invoiceData.title,
     liveMode: false,

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -67,7 +68,7 @@ export default function DashboardPage() {
         setContactCount(contactsData.length);
         setOpportunities(oppsData);
         setPipelines(pipeData);
-        setOrders(ordersData);
+        setOrders(ordersData || []);
         
         const firstContact = contactsData.length > 0 ? contactsData[0] : null;
         if (firstContact) {
@@ -340,11 +341,11 @@ export default function DashboardPage() {
                               <Package size={20} />
                             </div>
                             <div>
-                              <p className="font-bold text-sm">Order: {order.productName || 'New Transaction'}</p>
+                              <p className="font-bold text-sm">Order: {order.productName || order.name || (order.products?.[0]?.name) || 'New Transaction'}</p>
                               <p className="text-[11px] text-muted-foreground mt-1">Status: {order.status || 'Pending'}</p>
                             </div>
                           </div>
-                          <p className="text-sm font-mono font-bold text-emerald-400">${order.totalAmount || '0.00'}</p>
+                          <p className="text-sm font-mono font-bold text-emerald-400">${order.totalAmount || order.amount || '0.00'}</p>
                         </div>
                       ))}
                       {appts.slice(0, 3).map((appt, i) => (
