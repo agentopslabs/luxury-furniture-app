@@ -233,6 +233,7 @@ export async function createOrder(orderData: {
   const fingerprint = `fp_${timestamp}`;
   const trackingId = `tr_${timestamp}`;
 
+  // altId and altType are mandatory query parameters for GHL V2 financial endpoints
   url.searchParams.append('altId', altId);
   url.searchParams.append('altType', altType);
 
@@ -244,7 +245,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'manual', 
+      type: 'direct', // Standard technical identifier for manual/API orders
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -289,7 +290,6 @@ export async function createInvoice(invoiceData: {
   amount: number;
   contactId: string;
 }): Promise<any> {
-  const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   
   const altId = GHL_LOCATION_ID;
