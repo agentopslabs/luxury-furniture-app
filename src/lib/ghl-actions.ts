@@ -233,7 +233,7 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
 export async function getOpportunities(): Promise<GHLOpportunity[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('location_id', GHL_LOCATION_ID);
     url.searchParams.append('limit', '100');
     
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
