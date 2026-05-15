@@ -12,7 +12,8 @@ import {
   MessageSquare,
   Layers,
   Target,
-  Sparkles
+  Sparkles,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const navItems = [
   { name: "Conversations", href: "/conversations", icon: MessageSquare },
   { name: "Pipeline", href: "/pipeline", icon: Layers },
   { name: "Opportunities", href: "/opportunities", icon: Target },
+  { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Contacts", href: "/contacts", icon: Users },
   { name: "Profile", href: "/profile", icon: User },
