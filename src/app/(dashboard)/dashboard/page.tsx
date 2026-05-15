@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { AIContactInsight } from "@/components/dashboard/ai-insight";
 import { ghl, GHLContact, GHLAppointment, GHLOpportunity, GHLPipeline } from "@/lib/ghl";
+import { getOrders } from "@/lib/ghl-actions";
 import { 
   Card, 
   CardContent, 
@@ -27,7 +27,9 @@ import {
   Calendar,
   Layers,
   MoreVertical,
-  DollarSign
+  DollarSign,
+  Package,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +43,7 @@ export default function DashboardPage() {
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
   const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -53,16 +56,18 @@ export default function DashboardPage() {
       setSyncStatus(isMock ? 'mock' : 'syncing');
       
       try {
-        const [contactsData, oppsData, allAppts, pipeData] = await Promise.all([
+        const [contactsData, oppsData, allAppts, pipeData, ordersData] = await Promise.all([
           ghl.getContacts(100),
           ghl.getOpportunities(),
           ghl.getAllAppointments(),
-          ghl.getPipelines()
+          ghl.getPipelines(),
+          getOrders(5)
         ]);
         
         setContactCount(contactsData.length);
         setOpportunities(oppsData);
         setPipelines(pipeData);
+        setOrders(ordersData);
         
         const firstContact = contactsData.length > 0 ? contactsData[0] : null;
         if (firstContact) {
@@ -88,15 +93,15 @@ export default function DashboardPage() {
     const pipelineValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
     const activeLeads = contactCount;
     const wonDeals = opportunities.filter(o => o.status === 'won').length;
-    const conversion = opportunities.length > 0 ? ((wonDeals / opportunities.length) * 100).toFixed(1) : "0.0";
+    const orderTotal = orders.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
     return [
       { label: "Pipeline Value", value: `$${(pipelineValue / 1000).toFixed(1)}k`, icon: TrendingUp, color: "text-emerald-400" },
       { label: "Active Leads", value: activeLeads.toLocaleString(), icon: Users, color: "text-primary" },
       { label: "Won Deals", value: wonDeals.toString(), icon: Zap, color: "text-amber-400" },
-      { label: "Conversion", value: `${conversion}%`, icon: Clock, color: "text-blue-400" }
+      { label: "Order Volume", value: `$${(orderTotal / 1000).toFixed(1)}k`, icon: CreditCard, color: "text-blue-400" }
     ];
-  }, [opportunities, contactCount]);
+  }, [opportunities, contactCount, orders]);
 
   const historyForAI = useMemo(() => {
     return appts.map(a => ({
@@ -105,7 +110,6 @@ export default function DashboardPage() {
     }));
   }, [appts, isMounted]);
 
-  // Group opportunities by stage for the Kanban preview
   const kanbanData = useMemo(() => {
     if (pipelines.length === 0) return [];
     const mainPipe = pipelines[0];
@@ -175,7 +179,6 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Kanban Section */}
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -239,19 +242,10 @@ export default function DashboardPage() {
                             </div>
                           </Card>
                         ))}
-                        {stage.opps.length === 0 && (
-                          <div className="h-24 border border-dashed border-white/5 rounded-2xl flex items-center justify-center opacity-20">
-                            <Layers size={20} className="text-muted-foreground" />
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))
-                ) : (
-                  <div className="w-full py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No pipelines detected in GHL.</p>
-                  </div>
-                )}
+                ) : null}
               </div>
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -259,7 +253,6 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              {/* Identity Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="glass glass-hover border-border/40 p-8">
                   <div className="flex items-center justify-between mb-8">
@@ -305,8 +298,8 @@ export default function DashboardPage() {
                         </Link>
                       </Button>
                       <Button variant="outline" size="sm" className="w-full justify-between h-10 border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-primary/30 transition-all rounded-xl text-xs font-bold" asChild>
-                        <Link href="/contacts">
-                          Directory <ArrowUpRight className="h-3 w-3 text-primary" />
+                        <Link href="/payments">
+                          Finance <ArrowUpRight className="h-3 w-3 text-primary" />
                         </Link>
                       </Button>
                     </div>
@@ -321,7 +314,6 @@ export default function DashboardPage() {
                 </Card>
               </div>
 
-              {/* Engagement Feed */}
               <Card className="glass border-border/40 overflow-hidden group">
                 <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-30 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="p-8">
@@ -330,55 +322,53 @@ export default function DashboardPage() {
                       <CardTitle className="text-2xl font-bold flex items-center gap-2">
                         Engagement Stream
                       </CardTitle>
-                      <CardDescription className="text-muted-foreground/80 mt-1">Real-time interaction log</CardDescription>
+                      <CardDescription className="text-muted-foreground/80 mt-1">Activity feed including Orders and Appointments</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{appts.length} Events</Badge>
+                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">Live</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="px-8 pb-8 space-y-4">
                   {loading ? (
                     Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
-                  ) : appts.length > 0 ? (
-                    appts.map((appt, i) => (
-                      <div 
-                        key={appt.id} 
-                        className={cn(
-                          "flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group animate-in fade-in slide-in-from-bottom-2 duration-500 cursor-pointer",
-                          i === 0 && "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
-                        )}
-                        style={{ animationDelay: `${i * 100}ms` }}
-                      >
-                        <div className="flex items-center gap-5">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:glow-primary",
-                            appt.status === 'confirmed' || appt.status === 'booked' ? "bg-primary/20 text-primary shadow-lg shadow-primary/10" : "bg-white/5 text-muted-foreground"
-                          )}>
-                            <Clock size={20} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm group-hover:text-primary transition-colors">{appt.title}</p>
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1 font-medium">
-                              <Calendar size={12} className="opacity-60" />
-                              {new Date(appt.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  ) : (
+                    <>
+                      {/* Mix of Orders and Appointments */}
+                      {orders.map((order, i) => (
+                        <div key={`order-${i}`} className="flex items-center justify-between p-5 rounded-2xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-all group animate-in fade-in">
+                          <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                              <Package size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm">Order: {order.productName || 'New Transaction'}</p>
+                              <p className="text-[11px] text-muted-foreground mt-1">Status: {order.status || 'Pending'}</p>
                             </div>
                           </div>
+                          <p className="text-sm font-mono font-bold text-emerald-400">${order.totalAmount || '0.00'}</p>
                         </div>
-                        <Badge variant={appt.status === 'confirmed' || appt.status === 'booked' ? 'default' : 'secondary'} className="capitalize text-[10px] h-6 px-3 rounded-lg font-bold">
-                          {appt.status}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
-                      <Activity className="h-8 w-8 text-muted-foreground opacity-20 mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground/60">No recent interactions.</p>
-                    </div>
+                      ))}
+                      {appts.slice(0, 3).map((appt, i) => (
+                        <div key={`appt-${i}`} className="flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group animate-in fade-in">
+                          <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
+                              <Calendar size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm">{appt.title}</p>
+                              <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
+                                {new Date(appt.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">{appt.status}</Badge>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Sidebar widgets */}
             <div className="space-y-8">
               {!loading && profile && (
                 <div className="animate-in fade-in zoom-in-95 duration-700">
@@ -400,10 +390,6 @@ export default function DashboardPage() {
                       <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
                         <CheckCircle2 size={12} /> PIT_ACTIVE
                       </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/5">
-                      <span className="text-[11px] text-muted-foreground font-medium">V2 Proxy</span>
-                      <span className="text-[11px] font-mono text-foreground/80">SECURE_TUNNEL</span>
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-12 text-xs border-primary/20 bg-primary/5 hover:bg-primary/20 hover:text-white transition-all group rounded-2xl font-bold" asChild>

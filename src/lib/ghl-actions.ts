@@ -265,13 +265,44 @@ export async function updateOpportunity(id: string, oppData: Partial<GHLOpportun
   return data.opportunity;
 }
 
-export async function updateOpportunityStatus(id: string, status: string): Promise<void> {
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}/status`, {
-    method: 'PUT',
+// --- PAYMENTS & ORDERS ---
+
+export async function getOrders(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching orders');
+    return data?.orders || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function createOrder(orderData: any): Promise<any> {
+  const response = await fetch(`${GHL_API_BASE_URL}/payments/orders`, {
+    method: 'POST',
     headers,
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({
+      ...orderData,
+      locationId: GHL_LOCATION_ID,
+    }),
   });
-  await handleResponse(response, 'updating opportunity status');
+  return handleResponse(response, 'creating order');
+}
+
+export async function getTransactions(limit: number = 50): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/payments/transactions`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('limit', limit.toString());
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'fetching transactions');
+    return data?.transactions || [];
+  } catch (error) {
+    return [];
+  }
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
