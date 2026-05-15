@@ -63,20 +63,6 @@ export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
   }
 }
 
-export async function searchContacts(query: string = ""): Promise<GHLContact[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/contacts/`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    if (query) url.searchParams.append('query', query);
-    
-    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'searching contacts');
-    return data?.contacts || [];
-  } catch (error) {
-    return [];
-  }
-}
-
 export async function createContact(contactData: Partial<GHLContact>): Promise<GHLContact> {
   const response = await fetch(`${GHL_API_BASE_URL}/contacts/`, {
     method: 'POST',
@@ -128,24 +114,6 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
   } catch (error) {
     return [];
   }
-}
-
-export async function createAppointment(apptData: {
-  calendarId: string;
-  contactId: string;
-  startTime: string; 
-  title: string;
-}): Promise<GHLAppointment> {
-  const response = await fetch(`${GHL_API_BASE_URL}/appointments/`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      ...apptData,
-      locationId: GHL_LOCATION_ID,
-    }),
-  });
-  const data = await handleResponse(response, 'booking appointment');
-  return data.appointment;
 }
 
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
@@ -226,37 +194,6 @@ export async function getOpportunities(): Promise<GHLOpportunity[]> {
   }
 }
 
-export async function createOpportunity(oppData: {
-  name: string;
-  pipelineId: string;
-  pipelineStageId: string;
-  status: string;
-  monetaryValue?: number;
-  contactId?: string;
-}): Promise<GHLOpportunity> {
-  const payload: any = {
-    name: oppData.name,
-    pipelineId: oppData.pipelineId,
-    pipelineStageId: oppData.pipelineStageId,
-    status: oppData.status || 'open',
-    locationId: GHL_LOCATION_ID,
-    monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
-  };
-  
-  if (oppData.contactId && oppData.contactId.trim()) {
-    payload.contactId = oppData.contactId;
-  }
-
-  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
-
-  const data = await handleResponse(response, 'creating opportunity');
-  return data.opportunity;
-}
-
 export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
   const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
     method: 'PUT',
@@ -292,7 +229,6 @@ export async function createOrder(orderData: {
   const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
   
-  // Mandatory GHL V2 Payment tracking params - MUST BE BOTH IN QUERY AND BODY
   const altId = GHL_LOCATION_ID;
   const altType = 'location';
   const fingerprint = `fp_${timestamp}`;
@@ -311,7 +247,7 @@ export async function createOrder(orderData: {
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { 
-      type: 'funnel', 
+      type: 'manual', 
       id: GHL_LOCATION_ID 
     },
     products: [
@@ -359,7 +295,6 @@ export async function createInvoice(invoiceData: {
   const timestamp = Date.now().toString();
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   
-  // Mandatory GHL V2 Invoice tracking params - MUST BE BOTH IN QUERY AND BODY
   const altId = GHL_LOCATION_ID;
   const altType = 'location';
   const fingerprint = `fp_${timestamp}`;
@@ -445,4 +380,53 @@ export async function deleteOpportunity(id: string): Promise<void> {
     headers,
   });
   await handleResponse(response, 'deleting opportunity');
+}
+
+export async function createOpportunity(oppData: {
+  name: string;
+  pipelineId: string;
+  pipelineStageId: string;
+  status: string;
+  monetaryValue?: number;
+  contactId?: string;
+}): Promise<GHLOpportunity> {
+  const payload: any = {
+    name: oppData.name,
+    pipelineId: oppData.pipelineId,
+    pipelineStageId: oppData.pipelineStageId,
+    status: oppData.status || 'open',
+    locationId: GHL_LOCATION_ID,
+    monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
+  };
+  
+  if (oppData.contactId && oppData.contactId.trim()) {
+    payload.contactId = oppData.contactId;
+  }
+
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await handleResponse(response, 'creating opportunity');
+  return data.opportunity;
+}
+
+export async function createAppointment(apptData: {
+  calendarId: string;
+  contactId: string;
+  startTime: string; 
+  title: string;
+}): Promise<GHLAppointment> {
+  const response = await fetch(`${GHL_API_BASE_URL}/appointments/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ...apptData,
+      locationId: GHL_LOCATION_ID,
+    }),
+  });
+  const data = await handleResponse(response, 'booking appointment');
+  return data.appointment;
 }
