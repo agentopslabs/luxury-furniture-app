@@ -288,10 +288,7 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  // Changed source.type to 'api' as 'direct' was invalid in V2 context
   const payload = {
-    altId: GHL_LOCATION_ID,
-    altType: 'location',
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
     source: { type: 'api' }, 
@@ -304,8 +301,6 @@ export async function createOrder(orderData: {
         currency: 'USD'
       }
     ],
-    fingerprint: `kore_${timestamp}`,
-    trackingId: `track_${timestamp}`,
     status: orderData.status || 'pending'
   };
 
@@ -324,7 +319,7 @@ export async function createOrder(orderData: {
 
 export async function getInvoices(limit: number = 50): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/payments/invoices`);
+    const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
@@ -342,8 +337,7 @@ export async function createInvoice(invoiceData: {
   contactId: string;
 }): Promise<any> {
   const payload = {
-    altId: GHL_LOCATION_ID,
-    altType: 'location',
+    locationId: GHL_LOCATION_ID,
     contactId: invoiceData.contactId,
     title: invoiceData.title,
     liveMode: false,
@@ -357,7 +351,7 @@ export async function createInvoice(invoiceData: {
     ]
   };
 
-  const response = await fetch(`${GHL_API_BASE_URL}/payments/invoices`, {
+  const response = await fetch(`${GHL_API_BASE_URL}/invoices/`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
