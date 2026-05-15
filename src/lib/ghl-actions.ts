@@ -134,15 +134,21 @@ export async function createAppointment(apptData: {
   startTime: string; 
   endTime?: string;
   title: string;
+  timezone?: string;
 }): Promise<GHLAppointment> {
+  // Ensure we have a strictly defined end time (default 30 mins)
+  const start = new Date(apptData.startTime);
+  const end = apptData.endTime ? new Date(apptData.endTime) : new Date(start.getTime() + 30 * 60000);
+
   const payload = {
     calendarId: apptData.calendarId,
     contactId: apptData.contactId,
-    startTime: apptData.startTime,
-    endTime: apptData.endTime || new Date(new Date(apptData.startTime).getTime() + 30 * 60000).toISOString(),
+    startTime: start.toISOString(),
+    endTime: end.toISOString(),
     title: apptData.title,
     locationId: GHL_LOCATION_ID,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    // Use provided timezone or fallback to UTC to prevent "slot no longer available" validation errors
+    timezone: apptData.timezone || 'UTC',
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {

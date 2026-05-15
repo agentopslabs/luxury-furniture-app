@@ -156,16 +156,15 @@ export default function CalendarPage() {
 
     setIsSubmitting(true);
     try {
-      // Ensure ISO format with timezone offset
-      const startTimeISO = start.toISOString();
-      const endTimeISO = new Date(start.getTime() + 30 * 60000).toISOString();
+      // Pass the user's current timezone to resolve "slot no longer available" validation errors
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       
       await createAppointment({
         calendarId: bookingForm.calendarId,
         contactId: bookingForm.contactId,
         title: bookingForm.title || "Meeting",
-        startTime: startTimeISO,
-        endTime: endTimeISO
+        startTime: start.toISOString(),
+        timezone: userTimezone
       });
       
       setIsBookingOpen(false);

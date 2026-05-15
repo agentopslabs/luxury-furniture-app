@@ -50,12 +50,12 @@ export function AIContactInsight({
         };
       }).filter(a => selectedTypes.includes(a.type as ActivityType));
 
-      // Fallback if no history matches the requested matrix
+      // Fallback if no history matches the requested matrix to ensure Genkit has context
       if (activities.length === 0 && history.length > 0 && selectedTypes.length > 0) {
         activities.push({
           type: selectedTypes[0],
           date: new Date().toLocaleDateString(),
-          description: `Engagement event for ${contactName}`
+          description: `Engagement marker for ${contactName}`
         });
       }
 
@@ -126,7 +126,7 @@ export function AIContactInsight({
                   isActive ? "bg-primary text-white" : "opacity-40 hover:opacity-100"
                 )}
               >
-                {isActive && <CheckCircle2 size(10) className="mr-1" />}
+                {isActive && <CheckCircle2 size={10} className="mr-1" />}
                 {type.label}
               </Badge>
             );
