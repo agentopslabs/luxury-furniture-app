@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Secure server actions for LeadConnector V2 API.
- * Handles live synchronization for Contacts, Appointments, Conversations, and Pipelines.
+ * Handles live synchronization with enhanced error handling and resiliency.
  */
 
 import { GHLContact, GHLAppointment, GHLCalendar, GHLConversation, GHLPipeline, GHLOpportunity } from './ghl';
@@ -15,21 +15,23 @@ const headers = {
   'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
   'Version': '2021-07-28',
   'Content-Type': 'application/json',
+  'Accept': 'application/json',
 };
 
 /**
- * Helper to safely handle fetch responses and extract meaningful error messages.
+ * Resilient response handler to provide clear diagnostics for Sync Errors.
  */
-async function handleResponse(response: Response, defaultError: string) {
+async function handleResponse(response: Response, actionName: string) {
   if (!response.ok) {
-    let message = defaultError;
+    let errorMessage = `GHL API Error [${response.status}] during ${actionName}`;
     try {
       const errorData = await response.json();
-      message = errorData.message || (errorData.errors && errorData.errors[0]?.message) || message;
+      errorMessage = errorData.message || (errorData.errors && errorData.errors[0]?.message) || errorMessage;
     } catch (e) {
-      message = `${response.status} ${response.statusText}`;
+      errorMessage = `${errorMessage}: ${response.statusText}`;
     }
-    throw new Error(message);
+    console.error(`[SYNC FAILURE] ${errorMessage}`);
+    throw new Error(errorMessage);
   }
   
   try {
@@ -37,7 +39,7 @@ async function handleResponse(response: Response, defaultError: string) {
     return text ? JSON.parse(text) : null;
   } catch (e) {
     if (response.status === 204) return null;
-    throw new Error('Server returned an invalid response format.');
+    throw new Error(`[PARSE ERROR] Invalid JSON from GHL in ${actionName}`);
   }
 }
 
@@ -45,83 +47,68 @@ async function handleResponse(response: Response, defaultError: string) {
 
 export async function getContacts(limit: number = 50): Promise<GHLContact[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/contacts`);
+    const url = new URL(`${GHL_API_BASE_URL}/contacts/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', limit.toString());
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'Failed to fetch contacts');
+    const data = await handleResponse(response, 'fetching contacts');
     return data?.contacts || [];
   } catch (error) {
-    console.error('getContacts error:', error);
     return [];
   }
 }
 
 export async function searchContacts(query: string = ""): Promise<GHLContact[]> {
   try {
-    if (query) {
-      const searchUrl = new URL(`${GHL_API_BASE_URL}/contacts/search`);
-      searchUrl.searchParams.append('locationId', GHL_LOCATION_ID);
-      searchUrl.searchParams.append('query', query);
-      const response = await fetch(searchUrl.toString(), { headers, next: { revalidate: 0 } });
-      const data = await handleResponse(response, 'Search failed');
-      return data?.contacts || [];
-    }
-    return getContacts(20);
+    const url = new URL(`${GHL_API_BASE_URL}/contacts/`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    if (query) url.searchParams.append('query', query);
+    
+    const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+    const data = await handleResponse(response, 'searching contacts');
+    return data?.contacts || [];
   } catch (error) {
     return [];
   }
 }
 
 export async function createContact(contactData: Partial<GHLContact>): Promise<GHLContact> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/contacts`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        ...contactData,
-        locationId: GHL_LOCATION_ID,
-      }),
-    });
-    const data = await handleResponse(response, 'Failed to create contact');
-    return data.contact;
-  } catch (error: any) {
-    throw new Error(error.message || 'Could not create contact in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/contacts/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ...contactData,
+      locationId: GHL_LOCATION_ID,
+    }),
+  });
+  const data = await handleResponse(response, 'creating contact');
+  return data.contact;
 }
 
 export async function updateContact(id: string, contactData: Partial<GHLContact>): Promise<GHLContact> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(contactData),
-    });
-    const data = await handleResponse(response, 'Failed to update contact');
-    return data.contact;
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to update contact in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(contactData),
+  });
+  const data = await handleResponse(response, 'updating contact');
+  return data.contact;
 }
 
 export async function deleteContact(id: string): Promise<void> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    await handleResponse(response, 'Failed to delete contact');
-  } catch (error) {
-    throw new Error('Failed to delete contact in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/contacts/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+  await handleResponse(response, 'deleting contact');
 }
 
 // --- APPOINTMENTS ---
 
 export async function getAllAppointments(): Promise<GHLAppointment[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/appointments`);
+    const url = new URL(`${GHL_API_BASE_URL}/appointments/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     
     const now = new Date();
@@ -132,7 +119,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
     url.searchParams.append('endTime', endTime.toString());
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'Failed to fetch appointments');
+    const data = await handleResponse(response, 'fetching appointments');
     return (data?.appointments || []).sort((a: any, b: any) => 
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
@@ -147,41 +134,33 @@ export async function createAppointment(apptData: {
   startTime: string; 
   title: string;
 }): Promise<GHLAppointment> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/appointments`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        ...apptData,
-        locationId: GHL_LOCATION_ID,
-      }),
-    });
-    const data = await handleResponse(response, 'Failed to book appointment');
-    return data.appointment;
-  } catch (error: any) {
-    throw new Error(error.message || 'Could not sync appointment with GHL backend');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/appointments/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ...apptData,
+      locationId: GHL_LOCATION_ID,
+    }),
+  });
+  const data = await handleResponse(response, 'booking appointment');
+  return data.appointment;
 }
 
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/appointments/${id}/status`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ status }),
-    });
-    await handleResponse(response, 'Failed to update status');
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to update appointment status in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/appointments/${id}/status`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ status }),
+  });
+  await handleResponse(response, 'updating appointment status');
 }
 
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/calendars`);
+    const url = new URL(`${GHL_API_BASE_URL}/calendars/`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers });
-    const data = await handleResponse(response, 'Failed to fetch calendars');
+    const data = await handleResponse(response, 'fetching calendars');
     return data?.calendars || [];
   } catch (error) {
     return [];
@@ -197,7 +176,7 @@ export async function getConversations(): Promise<GHLConversation[]> {
     url.searchParams.append('limit', '50');
 
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'Failed to fetch conversations');
+    const data = await handleResponse(response, 'fetching conversations');
     return data?.conversations || [];
   } catch (error) {
     return [];
@@ -205,20 +184,16 @@ export async function getConversations(): Promise<GHLConversation[]> {
 }
 
 export async function sendMessage(conversationId: string, body: string, type: 'email' | 'sms' = 'sms'): Promise<void> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        type,
-        body,
-        locationId: GHL_LOCATION_ID,
-      }),
-    });
-    await handleResponse(response, 'Failed to send message');
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to send message via GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      type,
+      body,
+      locationId: GHL_LOCATION_ID,
+    }),
+  });
+  await handleResponse(response, 'sending message');
 }
 
 // --- PIPELINES & OPPORTUNITIES ---
@@ -228,7 +203,7 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
     const url = new URL(`${GHL_API_BASE_URL}/opportunities/pipelines`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     const response = await fetch(url.toString(), { headers });
-    const data = await handleResponse(response, 'Failed to fetch pipelines');
+    const data = await handleResponse(response, 'fetching pipelines');
     return data?.pipelines || [];
   } catch (error) {
     return [];
@@ -237,16 +212,14 @@ export async function getPipelines(): Promise<GHLPipeline[]> {
 
 export async function getOpportunities(): Promise<GHLOpportunity[]> {
   try {
-    // V2 uses GET /opportunities with locationId for listing
-    const url = new URL(`${GHL_API_BASE_URL}/opportunities`);
+    const url = new URL(`${GHL_API_BASE_URL}/opportunities/search`);
     url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('limit', '100');
     
     const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
-    const data = await handleResponse(response, 'Failed to fetch opportunities');
+    const data = await handleResponse(response, 'fetching opportunities');
     return data?.opportunities || [];
   } catch (error) {
-    console.error('getOpportunities error:', error);
     return [];
   }
 }
@@ -259,74 +232,52 @@ export async function createOpportunity(oppData: {
   monetaryValue?: number;
   contactId?: string;
 }): Promise<GHLOpportunity> {
-  try {
-    // Payload cleanup for GHL V2 strict schema
-    const payload: any = {
-      name: oppData.name,
-      pipelineId: oppData.pipelineId,
-      pipelineStageId: oppData.pipelineStageId,
-      status: oppData.status || 'open',
-      locationId: GHL_LOCATION_ID,
-      monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
-    };
-    
-    // Only include contactId if it's a valid string
-    if (oppData.contactId && oppData.contactId.trim()) {
-      payload.contactId = oppData.contactId;
-    }
-
-    // GHL V2 creation endpoint
-    const url = new URL(`${GHL_API_BASE_URL}/opportunities`);
-
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const data = await handleResponse(response, 'GHL rejected the opportunity creation');
-    return data.opportunity;
-  } catch (error: any) {
-    console.error('createOpportunity error:', error);
-    throw new Error(error.message || 'Could not sync opportunity record with GHL backend');
+  const payload: any = {
+    name: oppData.name,
+    pipelineId: oppData.pipelineId,
+    pipelineStageId: oppData.pipelineStageId,
+    status: oppData.status || 'open',
+    locationId: GHL_LOCATION_ID,
+    monetaryValue: oppData.monetaryValue ? Number(oppData.monetaryValue) : 0,
+  };
+  
+  if (oppData.contactId && oppData.contactId.trim()) {
+    payload.contactId = oppData.contactId;
   }
+
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await handleResponse(response, 'creating opportunity');
+  return data.opportunity;
 }
 
 export async function updateOpportunity(id: string, oppData: Partial<GHLOpportunity>): Promise<GHLOpportunity> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(oppData),
-    });
-    const data = await handleResponse(response, 'Failed to update opportunity');
-    return data.opportunity;
-  } catch (error: any) {
-    throw new Error(error.message || 'Could not update opportunity in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(oppData),
+  });
+  const data = await handleResponse(response, 'updating opportunity');
+  return data.opportunity;
 }
 
 export async function updateOpportunityStatus(id: string, status: string): Promise<void> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}/status`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ status }),
-    });
-    await handleResponse(response, 'Failed to update status');
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to update opportunity status in GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}/status`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ status }),
+  });
+  await handleResponse(response, 'updating opportunity status');
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
-  try {
-    const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    await handleResponse(response, 'Failed to delete opportunity');
-  } catch (error: any) {
-    throw new Error(error.message || 'Could not delete opportunity from GHL');
-  }
+  const response = await fetch(`${GHL_API_BASE_URL}/opportunities/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+  await handleResponse(response, 'deleting opportunity');
 }
