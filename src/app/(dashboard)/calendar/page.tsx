@@ -149,8 +149,13 @@ export default function CalendarPage() {
     }
 
     const start = new Date(bookingForm.startTime);
+    // GHL is very sensitive to past dates, we ensure it's at least in the future
     if (start < new Date()) {
-      toast({ variant: "destructive", title: "Invalid Time", description: "Cannot book appointments in the past." });
+      toast({ 
+        variant: "destructive", 
+        title: "Invalid Time", 
+        description: "GHL V2 prevents booking appointments in the past. Please select a future time slot." 
+      });
       return;
     }
 
@@ -162,7 +167,7 @@ export default function CalendarPage() {
       await createAppointment({
         calendarId: bookingForm.calendarId,
         contactId: bookingForm.contactId,
-        title: bookingForm.title || "Meeting",
+        title: bookingForm.title || "Interaction Slot",
         startTime: start.toISOString(),
         timezone: userTimezone
       });
@@ -178,7 +183,7 @@ export default function CalendarPage() {
       toast({
         variant: "destructive",
         title: "Booking Failed",
-        description: error.message || "The slot you have selected is no longer available.",
+        description: error.message || "The slot you have selected is no longer available in the GHL cloud.",
       });
     } finally {
       setIsSubmitting(false);

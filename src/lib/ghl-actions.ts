@@ -140,6 +140,9 @@ export async function createAppointment(apptData: {
   const start = new Date(apptData.startTime);
   const end = apptData.endTime ? new Date(apptData.endTime) : new Date(start.getTime() + 30 * 60000);
 
+  // GHL V2 validation often fails if the start time is too close to "now"
+  // We ensure it's at least in the future by checking it, but we rely on the user selection.
+  
   const payload = {
     calendarId: apptData.calendarId,
     contactId: apptData.contactId,
