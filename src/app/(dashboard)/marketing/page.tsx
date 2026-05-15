@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getSocialPosts, getEmailTemplates, getTriggerLinks } from "@/lib/ghl-actions";
+import { getSocialPosts, getEmailTemplates, getTriggerLinks, createSocialPost } from "@/lib/ghl-actions";
 import { 
   Card, 
   CardContent, 
@@ -32,18 +32,32 @@ import {
   Radio, 
   Clock, 
   ChevronDown,
-  MoreHorizontal,
   RefreshCw,
   Zap,
-  Ticket,
   Palette,
-  Target
+  Target,
+  Loader2,
+  CheckCircle2,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Twitter
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,7 +67,7 @@ const mainTabs = [
   { name: "Snippets", value: "snippets", icon: Zap },
   { name: "Countdown Timers", value: "timers", icon: Clock },
   { name: "Trigger Links", value: "links", icon: LinkIcon },
-  { name: "Affiliate Manager", value: "affiliate", icon: UsersIcon },
+  { name: "Affiliate Manager", value: "affiliate", icon: Target },
   { name: "Brand Boards", value: "brand", icon: Palette },
   { name: "Ad Manager", value: "ads", icon: Target },
 ];
@@ -72,6 +86,11 @@ export default function MarketingPage() {
   const [activeSocialTab, setActiveSocialTab] = useState("planner");
   const [loading, setLoading] = useState(true);
   const [dataList, setDataList] = useState<any[]>([]);
+  const [isPostOpen, setIsPostOpen] = useState(false);
+  const [isSocialsOpen, setIsSocialsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newPost, setNewPost] = useState({ caption: "", type: "Post", status: "Scheduled" });
+  
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -97,11 +116,39 @@ export default function MarketingPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPost.caption.trim()) {
+      toast({ variant: "destructive", title: "Missing Content", description: "Caption is required for social sync." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createSocialPost(newPost);
+      toast({ title: "Post Synchronized", description: "Successfully pushed to GHL Social Planner." });
+      setIsPostOpen(false);
+      setNewPost({ caption: "", type: "Post", status: "Scheduled" });
+      fetchData();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Sync Failure", description: error.message || "Could not push post to cloud." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConnectSocial = (platform: string) => {
+    toast({
+      title: `${platform} Connection`,
+      description: `Initiating OAuth flow for ${platform}. Redirecting to GHL secure portal...`,
+    });
+    setIsSocialsOpen(false);
+  };
+
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Top Hub Navigation (from screenshot) */}
         <header className="border-b border-border bg-card/30 backdrop-blur-md z-20 shrink-0">
           <div className="px-8 flex items-center h-16 gap-2">
             <span className="text-sm font-bold text-muted-foreground pr-4 border-r mr-4">Marketing</span>
@@ -121,7 +168,6 @@ export default function MarketingPage() {
           </div>
         </header>
 
-        {/* Social Planner Content */}
         {activeMainTab === "social" && (
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="px-8 py-6 border-b bg-card/10 flex items-center justify-between shrink-0">
@@ -129,16 +175,15 @@ export default function MarketingPage() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" className="h-9 w-9 rounded-md"><MessageSquare size={18} /></Button>
                 <Button variant="outline" size="icon" className="h-9 w-9 rounded-md"><Settings size={18} /></Button>
-                <Button variant="outline" className="h-9 rounded-md border-border bg-card">
+                <Button variant="outline" className="h-9 rounded-md border-border bg-card" onClick={() => setIsSocialsOpen(true)}>
                   <Plus size={18} className="mr-2" /> Socials
                 </Button>
-                <Button className="h-9 rounded-md bg-primary hover:bg-primary/90 px-6 font-bold shadow-lg">
+                <Button className="h-9 rounded-md bg-primary hover:bg-primary/90 px-6 font-bold shadow-lg" onClick={() => setIsPostOpen(true)}>
                   <Plus size={18} className="mr-2" /> New Post
                 </Button>
               </div>
             </div>
 
-            {/* Social Planner Sub-Tabs */}
             <div className="px-8 border-b bg-card/5 shrink-0">
               <Tabs value={activeSocialTab} onValueChange={setActiveSocialTab}>
                 <TabsList className="bg-transparent h-12 p-0 gap-8">
@@ -156,7 +201,6 @@ export default function MarketingPage() {
               </Tabs>
             </div>
 
-            {/* Planner Filters and Controls */}
             <div className="px-8 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/30 shrink-0">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-card text-xs font-medium">
@@ -164,11 +208,14 @@ export default function MarketingPage() {
                   <ChevronDown size={14} className="opacity-50" />
                 </div>
                 <div className="flex items-center gap-2 px-4 py-1.5 rounded-md border bg-card text-xs font-medium min-w-[280px]">
-                  <span>2025-12-15</span>
-                  <ArrowRightIcon className="mx-2 opacity-30" />
-                  <span>2026-06-15</span>
+                  <span>2025-01-01</span>
+                  <div className="mx-2 opacity-30">→</div>
+                  <span>2025-12-31</span>
                   <CalendarIcon size={14} className="ml-auto opacity-50" />
                 </div>
+                <Button variant="ghost" size="sm" onClick={fetchData} className="h-9 px-3">
+                  <RefreshCw size={14} className={cn(loading && "animate-spin")} />
+                </Button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -181,7 +228,6 @@ export default function MarketingPage() {
               </div>
             </div>
 
-            {/* Search and Main Data Area */}
             <div className="flex-1 overflow-y-auto p-8 no-scrollbar bg-card/5">
               <div className="max-w-[1600px] mx-auto space-y-6">
                 <div className="flex items-center justify-between gap-4">
@@ -226,7 +272,7 @@ export default function MarketingPage() {
                             <TableCell><div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center"><CalendarDays size={18} className="opacity-20" /></div></TableCell>
                             <TableCell><Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter">{item.status || 'Scheduled'}</Badge></TableCell>
                             <TableCell className="text-xs text-muted-foreground">{item.type || 'Post'}</TableCell>
-                            <TableCell className="text-xs font-mono">{new Date().toLocaleDateString()}</TableCell>
+                            <TableCell className="text-xs font-mono">{new Date(item.scheduledDate || Date.now()).toLocaleDateString()}</TableCell>
                             <TableCell><div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[8px] text-white">f</div></TableCell>
                           </TableRow>
                         ))
@@ -249,7 +295,6 @@ export default function MarketingPage() {
           </div>
         )}
 
-        {/* Placeholder Content for other tabs */}
         {activeMainTab !== "social" && (
           <div className="flex-1 flex flex-col items-center justify-center opacity-30">
             <BarChart3 size={64} className="mb-4" />
@@ -258,48 +303,88 @@ export default function MarketingPage() {
           </div>
         )}
       </main>
+
+      {/* New Post Dialog */}
+      <Dialog open={isPostOpen} onOpenChange={setIsPostOpen}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-lg">
+          <form onSubmit={handleCreatePost}>
+            <DialogHeader className="mb-8">
+              <DialogTitle className="text-2xl font-bold">Craft Social Post</DialogTitle>
+              <DialogDescription className="text-muted-foreground">Synchronizing multi-channel outreach to GHL Social Planner.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Caption & Content</Label>
+                <Textarea 
+                  className="glass min-h-[120px] rounded-xl focus:ring-primary" 
+                  placeholder="What's happening in your enterprise today?" 
+                  value={newPost.caption} 
+                  onChange={e => setNewPost({ ...newPost, caption: e.target.value })}
+                  required 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Post Type</Label>
+                  <select 
+                    className="flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={newPost.type}
+                    onChange={e => setNewPost({ ...newPost, type: e.target.value })}
+                  >
+                    <option value="Post">Standard Post</option>
+                    <option value="Reel">Reel / Short</option>
+                    <option value="Story">Story</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Channel Priority</Label>
+                  <div className="flex gap-2 h-12 items-center">
+                    <Facebook size={18} className="text-blue-500 opacity-40" />
+                    <Instagram size={18} className="text-pink-500 opacity-40" />
+                    <Linkedin size={18} className="text-blue-700 opacity-40" />
+                    <Twitter size={18} className="text-sky-400 opacity-40" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="mt-10">
+              <Button type="submit" size="lg" className="w-full h-12 rounded-xl glow-primary font-bold" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                Sync to Planner
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Social Accounts Dialog */}
+      <Dialog open={isSocialsOpen} onOpenChange={setIsSocialsOpen}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-md text-center">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-bold">Connect Accounts</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-center">Authenticate your brand profiles via GHL OAuth.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <Button variant="outline" className="h-20 flex-col gap-2 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10" onClick={() => handleConnectSocial('Facebook')}>
+              <Facebook className="text-blue-500" />
+              <span className="text-[10px] font-bold uppercase">Facebook</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10" onClick={() => handleConnectSocial('Instagram')}>
+              <Instagram className="text-pink-500" />
+              <span className="text-[10px] font-bold uppercase">Instagram</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10" onClick={() => handleConnectSocial('LinkedIn')}>
+              <Linkedin className="text-blue-700" />
+              <span className="text-[10px] font-bold uppercase">LinkedIn</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10" onClick={() => handleConnectSocial('Twitter')}>
+              <Twitter className="text-sky-400" />
+              <span className="text-[10px] font-bold uppercase">X (Twitter)</span>
+            </Button>
+          </div>
+          <p className="mt-8 text-[10px] text-muted-foreground opacity-40 leading-relaxed">By connecting, you authorize GHL to manage and publish content on your behalf across selected enterprise channels.</p>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-function ArrowRightIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M5 12h14" />
-      <path d="m12 5 7 7-7 7" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
   );
 }

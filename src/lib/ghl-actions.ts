@@ -218,6 +218,8 @@ export async function createOrder(orderData: {
   // Mandatory tracking parameters for GHL V2 financial compliance
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
+  url.searchParams.append('fingerprint', `fp_${timestamp}`);
+  url.searchParams.append('trackingId', `tr_${timestamp}`);
 
   const payload = {
     altId: GHL_LOCATION_ID,
@@ -276,6 +278,8 @@ export async function createInvoice(invoiceData: {
   const url = new URL(`${GHL_API_BASE_URL}/invoices/`);
   url.searchParams.append('altId', GHL_LOCATION_ID);
   url.searchParams.append('altType', 'location');
+  url.searchParams.append('fingerprint', `inv_fp_${timestamp}`);
+  url.searchParams.append('trackingId', `inv_tr_${timestamp}`);
 
   const payload = {
     altId: GHL_LOCATION_ID,
@@ -310,6 +314,23 @@ export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   } catch (error) {
     return [];
   }
+}
+
+export async function createSocialPost(postData: {
+  caption: string;
+  type: string;
+  status: string;
+}): Promise<any> {
+  const response = await fetch(`${GHL_API_BASE_URL}/social-planner/posts`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ...postData,
+      locationId: GHL_LOCATION_ID,
+      scheduledDate: new Date().toISOString()
+    }),
+  });
+  return handleResponse(response, 'creating social post');
 }
 
 export async function getEmailTemplates(limit: number = 50): Promise<any[]> {
