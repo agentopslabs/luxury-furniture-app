@@ -270,7 +270,6 @@ export async function updateOpportunity(id: string, oppData: Partial<GHLOpportun
 export async function getOrders(limit: number = 50): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/payments/orders`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
@@ -289,13 +288,13 @@ export async function createOrder(orderData: {
   status: string;
 }): Promise<any> {
   const timestamp = Date.now().toString();
-  // Valid source.type enum value is 'direct' for API creations in GHL V2
+  // Changed source.type to 'api' as 'direct' was invalid in V2 context
   const payload = {
     altId: GHL_LOCATION_ID,
     altType: 'location',
     locationId: GHL_LOCATION_ID,
     contactId: orderData.contactId,
-    source: { type: 'direct' }, 
+    source: { type: 'api' }, 
     products: [
       {
         id: `custom_${timestamp}`,
@@ -369,7 +368,6 @@ export async function createInvoice(invoiceData: {
 export async function getTransactions(limit: number = 50): Promise<any[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/payments/transactions`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
     url.searchParams.append('altId', GHL_LOCATION_ID);
     url.searchParams.append('altType', 'location');
     url.searchParams.append('limit', limit.toString());
