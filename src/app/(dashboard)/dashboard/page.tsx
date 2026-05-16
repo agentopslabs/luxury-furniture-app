@@ -59,22 +59,28 @@ function DonutChart({ percent }: { percent: number }) {
 type ChartGroup = { name: string; total: number; won: number };
 
 function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: ChartGroup[] }) {
-  const chartH = 200;
-  const padT = 16;
-  const padB = 32;
-  const padL = 36;
-  const padR = 16;
-  const barW = 14;
-  const gap = 6;
-  const groupGap = 20;
-
-  const maxVal = groups.length > 0 ? Math.max(...groups.flatMap((g) => [g.total, g.won]), 1) : 1;
-  const yTicks = [0, 25, 50, 75, 100].map((t) => Math.round((t / 100) * maxVal));
+  const chartH = 300;
+  const padT = 20;
+  const padB = 40;
+  const padL = 40;
+  const padR = 20;
+  const svgW = 700;
   const plotH = chartH - padT - padB;
-  const plotW = groups.length * (barW * 2 + gap + groupGap) - groupGap;
-  const totalW = plotW + padL + padR;
+  const plotW = svgW - padL - padR;
 
-  const yPos = (val: number) => padT + plotH - (val / maxVal) * plotH;
+  const rawMax = groups.length > 0 ? Math.max(...groups.flatMap((g) => [g.total, g.won])) : 0;
+  // always show at least 5 on the axis, then round up to next clean step
+  const step = rawMax <= 5 ? 1 : rawMax <= 20 ? 5 : 10;
+  const axisMax = Math.max(Math.ceil((rawMax + 1) / step) * step, 5);
+  const yTicks = Array.from({ length: axisMax / step + 1 }, (_, i) => i * step);
+
+  // distribute groups evenly across the plot width
+  const groupCount = groups.length;
+  const groupW = groupCount > 0 ? plotW / groupCount : 60;
+  const barW = Math.min(20, groupW * 0.28);
+  const gap = Math.min(8, groupW * 0.08);
+
+  const yPos = (val: number) => padT + plotH - (val / axisMax) * plotH;
 
   return (
     <Card className="bg-white border-0 shadow-sm rounded-2xl">
@@ -109,13 +115,12 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
             </div>
 
             {/* Chart */}
-            <div className="overflow-x-auto">
+            <div className="w-full">
               <svg
-                width={Math.max(totalW, 500)}
+                width="100%"
                 height={chartH}
-                className="w-full"
-                viewBox={`0 0 ${Math.max(totalW, 500)} ${chartH}`}
-                preserveAspectRatio="xMinYMid meet"
+                viewBox={`0 0 ${svgW} ${chartH}`}
+                preserveAspectRatio="xMidYMid meet"
               >
                 <defs>
                   <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
@@ -135,13 +140,13 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
                     <g key={`tick-${ti}`}>
                       <line
                         x1={padL} y1={y}
-                        x2={padL + Math.max(plotW, 500 - padL - padR)} y2={y}
+                        x2={svgW - padR} y2={y}
                         stroke="#e5e7eb" strokeWidth={1}
                       />
                       <text
-                        x={padL - 6} y={y + 4}
+                        x={padL - 8} y={y + 4}
                         textAnchor="end"
-                        fontSize={9}
+                        fontSize={10}
                         fill="#9ca3af"
                       >
                         {tick}
@@ -152,11 +157,12 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
 
                 {/* Bars */}
                 {groups.map((g, i) => {
-                  const x = padL + i * (barW * 2 + gap + groupGap);
-                  const totalH = (g.total / maxVal) * plotH;
-                  const wonH = (g.won / maxVal) * plotH;
-                  const labelX = x + barW + gap / 2;
-                  const labelY = padT + plotH + 20;
+                  const centerX = padL + (i + 0.5) * groupW;
+                  const x = centerX - barW - gap / 2;
+                  const totalH = (g.total / axisMax) * plotH;
+                  const wonH = (g.won / axisMax) * plotH;
+                  const labelX = centerX;
+                  const labelY = padT + plotH + 24;
 
                   return (
                     <g key={i}>
