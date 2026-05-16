@@ -673,19 +673,25 @@ export default function CalendarPage() {
                     Available Slot {loadingSlots && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                   </Label>
                   {noSlotsOnDate ? (
-                    <div className="space-y-1">
-                      <Input
-                        type="time"
-                        className="glass h-12 rounded-xl"
-                        onChange={(e) => {
-                          if (!e.target.value || !bookingForm.selectedDate) return;
-                          const [hours, minutes] = e.target.value.split(':');
-                          const dt = new Date(`${bookingForm.selectedDate}T${hours}:${minutes}:00`);
-                          setBookingForm({ ...bookingForm, selectedSlot: dt.toISOString() });
-                        }}
-                      />
-                      <p className="text-[10px] text-muted-foreground pl-1">No preset slots — pick any time</p>
-                    </div>
+                    <Select
+                      value={bookingForm.selectedSlot}
+                      onValueChange={(val) => setBookingForm({ ...bookingForm, selectedSlot: val })}
+                    >
+                      <SelectTrigger className="glass h-12 rounded-xl">
+                        <SelectValue placeholder="Select a time slot" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {Array.from({ length: 13 }, (_, i) => {
+                          const hour = 8 + i;
+                          const dt = new Date(`${bookingForm.selectedDate}T${String(hour).padStart(2, '0')}:00:00`);
+                          return (
+                            <SelectItem key={hour} value={dt.toISOString()}>
+                              {dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Select
                       value={bookingForm.selectedSlot}
