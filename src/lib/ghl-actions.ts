@@ -125,7 +125,11 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
         url.searchParams.append('endTime', endTime.toString());
         const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
         const data = await handleResponse(response, 'fetching calendar events');
-        allEvents.push(...(data?.events || []));
+        const events = (data?.events || []).map((e: any) => ({
+          ...e,
+          status: e.status ?? e.appointmentStatus ?? e.appoinmentStatus ?? 'confirmed',
+        }));
+        allEvents.push(...events);
       } catch {
         // skip calendars that fail
       }
