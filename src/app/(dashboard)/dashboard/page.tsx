@@ -1,88 +1,81 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { AIContactInsight } from "@/components/dashboard/ai-insight";
-import { ghl, GHLContact, GHLAppointment, GHLOpportunity, GHLPipeline } from "@/lib/ghl";
-import { getOrders } from "@/lib/ghl-actions";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from "@/components/ui/card";
-import { 
-  Clock, 
-  ExternalLink,
-  PlusCircle,
-  User,
-  Activity,
-  CheckCircle2,
-  ShieldCheck,
-  Zap,
-  ArrowUpRight,
-  TrendingUp,
-  Users,
-  Calendar,
-  Layers,
-  MoreVertical,
-  DollarSign,
-  Package,
-  CreditCard
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ghl, GHLAppointment, GHLOpportunity, GHLPipeline } from "@/lib/ghl";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import {
+  Calendar,
+  DollarSign,
+  CheckCircle2,
+  Layers,
+  Clock,
+  ThumbsUp,
+} from "lucide-react";
+
+function DonutChart({ percent }: { percent: number }) {
+  const radius = 54;
+  const stroke = 10;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center w-36 h-36">
+      <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
+        <circle
+          cx="72"
+          cy="72"
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx="72"
+          cy="72"
+          r={radius}
+          fill="none"
+          stroke="hsl(var(--primary))"
+          strokeWidth={stroke}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 1s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold">{percent}%</span>
+        <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">Win Rate</span>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<GHLContact | null>(null);
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
   const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'mock'>('syncing');
 
   useEffect(() => {
     setIsMounted(true);
     async function fetchData() {
-      const isMock = ghl.isMockMode();
-      setSyncStatus(isMock ? 'mock' : 'syncing');
-      
       try {
-        const [contactsData, oppsData, allAppts, pipeData, ordersData] = await Promise.all([
-          ghl.getContacts(100),
+        const [oppsData, allAppts, pipeData] = await Promise.all([
           ghl.getOpportunities(),
           ghl.getAllAppointments(),
           ghl.getPipelines(),
-          getOrders(5)
         ]);
-        
-        setContactCount(contactsData.length);
         setOpportunities(oppsData);
         setPipelines(pipeData);
-        setOrders(ordersData || []);
-        
-        const firstContact = contactsData.length > 0 ? contactsData[0] : null;
-        if (firstContact) {
-          setProfile(firstContact);
-          const contactAppts = allAppts.filter(a => a.contactId === firstContact.id);
-          setAppts(contactAppts);
-        } else {
-          setAppts(allAppts.slice(0, 5));
-        }
-        
-        setSyncStatus('synced');
-      } catch (error) {
-        console.error("Dashboard sync error:", error);
-        setSyncStatus('error');
+        setAppts(allAppts);
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -90,309 +83,308 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  const stats = useMemo(() => {
-    const pipelineValue = opportunities.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0);
-    const activeLeads = contactCount;
-    const wonDeals = opportunities.filter(o => o.status === 'won').length;
-    const orderTotal = orders.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+  const respondedYes = useMemo(
+    () => opportunities.filter((o) => o.status === "won"),
+    [opportunities]
+  );
 
-    return [
-      { label: "Pipeline Value", value: `$${(pipelineValue / 1000).toFixed(1)}k`, icon: TrendingUp, color: "text-emerald-400" },
-      { label: "Active Leads", value: activeLeads.toLocaleString(), icon: Users, color: "text-primary" },
-      { label: "Won Deals", value: wonDeals.toString(), icon: Zap, color: "text-amber-400" },
-      { label: "Order Volume", value: `$${(orderTotal / 1000).toFixed(1)}k`, icon: CreditCard, color: "text-blue-400" }
-    ];
-  }, [opportunities, contactCount, orders]);
+  const salesOverviewPercent = useMemo(() => {
+    if (opportunities.length === 0) return 0;
+    return Math.round((respondedYes.length / opportunities.length) * 100);
+  }, [opportunities, respondedYes]);
 
-  const historyForAI = useMemo(() => {
-    return appts.map(a => ({
-      date: isMounted ? new Date(a.startTime).toLocaleDateString() : "",
-      summary: a.title
-    }));
+  const todayAppts = useMemo(() => {
+    if (!isMounted) return [];
+    const today = new Date();
+    return appts.filter((a) => {
+      const d = new Date(a.startTime);
+      return (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+      );
+    });
   }, [appts, isMounted]);
 
   const kanbanData = useMemo(() => {
     if (pipelines.length === 0) return [];
     const mainPipe = pipelines[0];
-    return mainPipe.stages.map(stage => ({
+    return mainPipe.stages.map((stage) => ({
       ...stage,
-      opps: opportunities.filter(o => o.pipelineStageId === stage.id)
+      opps: opportunities.filter((o) => o.pipelineStageId === stage.id),
     }));
   }, [pipelines, opportunities]);
+
+  const todayLabel = isMounted
+    ? new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })
+    : "";
 
   if (!isMounted) return null;
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <DashboardNav />
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto no-scrollbar relative">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-        
-        <div className="max-w-6xl mx-auto space-y-8 relative z-10">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/50">
-                  Luxury Furniture
-                </h1>
-              </div>
-              <p className="text-muted-foreground font-medium flex items-center gap-2">
-                <ShieldCheck size={14} className="text-primary" />
-                Premium Collections Dashboard
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button size="lg" asChild className="glow-primary h-12 rounded-2xl px-6 bg-primary hover:bg-primary/90 transition-all active:scale-95">
-                <Link href="/calendar">
-                  <PlusCircle className="mr-2 h-5 w-5" /> Book Appointment
-                </Link>
-              </Button>
-            </div>
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto no-scrollbar">
+        <div className="max-w-6xl mx-auto space-y-8">
+
+          {/* Header */}
+          <header className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              {isMounted
+                ? new Date().toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : ""}
+            </p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {loading ? (
-              Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
-            ) : stats.map((stat, i) => (
-              <Card key={i} className="glass glass-hover border-border/40 p-6 flex flex-col justify-between h-32 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-                  <stat.icon className={cn("h-4 w-4", stat.color)} />
-                </div>
-                <div className="flex items-end justify-between">
-                  <h3 className="text-2xl font-bold font-headline">{stat.value}</h3>
-                  <Badge variant="outline" className="text-[9px] bg-white/5 border-white/10">Live</Badge>
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-primary" />
-                  Sales Pipeline
-                </h2>
-                <p className="text-sm text-muted-foreground">Visual deal flow synchronization</p>
-              </div>
-              <Button variant="ghost" size="sm" asChild className="text-xs font-bold text-primary">
-                <Link href="/pipeline">
-                  View Full Board <ArrowUpRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
+          {/* ── SALES PIPELINE ───────────────────────────────────────── */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Sales Pipeline</h2>
             </div>
 
-            <ScrollArea className="w-full whitespace-nowrap rounded-3xl border border-white/5 bg-white/[0.01] p-1">
+            <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-white/5 bg-white/[0.01] p-1">
               <div className="flex w-max gap-4 p-4">
-                {loading ? (
-                  Array(4).fill(0).map((_, i) => (
-                    <div key={i} className="w-72 space-y-4">
-                      <Skeleton className="h-8 w-1/2 rounded-lg" />
-                      <Skeleton className="h-40 w-full rounded-2xl" />
+                {/* ── Responded Yes to Offer column ── */}
+                <div className="w-72 shrink-0 space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <ThumbsUp className="h-3.5 w-3.5 text-emerald-400" />
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Responded Yes to Offer
+                      </span>
                     </div>
-                  ))
-                ) : kanbanData.length > 0 ? (
-                  kanbanData.map((stage) => (
-                    <div key={stage.id} className="w-72 shrink-0 space-y-4">
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stage.name}</span>
-                          <Badge variant="secondary" className="text-[10px] px-1.5 h-4 bg-white/5 border-white/5">{stage.opps.length}</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1.5 h-4 bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    >
+                      {loading ? "…" : respondedYes.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {loading
+                      ? Array(3)
+                          .fill(0)
+                          .map((_, i) => (
+                            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                          ))
+                      : respondedYes.length === 0
+                      ? (
+                        <div className="flex flex-col items-center justify-center gap-2 py-10 opacity-40">
+                          <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">No responses yet</p>
                         </div>
-                        <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                          ${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {stage.opps.map((opp) => (
-                          <Card key={opp.id} className="glass glass-hover border-white/5 p-4 rounded-2xl group transition-all cursor-pointer">
-                            <div className="flex justify-between items-start mb-3">
-                              <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors whitespace-normal leading-tight">
-                                {opp.name}
-                              </p>
-                              <MoreVertical size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                      )
+                      : respondedYes.map((opp) => (
+                          <Card
+                            key={opp.id}
+                            className="glass glass-hover border-emerald-500/10 bg-emerald-500/[0.03] p-4 rounded-2xl group transition-all cursor-pointer"
+                          >
+                            <p className="text-sm font-bold text-foreground group-hover:text-emerald-400 transition-colors whitespace-normal leading-tight mb-3">
+                              {opp.name}
+                            </p>
+                            <div className="flex items-center justify-between pt-3 border-t border-white/5">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
-                                  {opp.contact?.name?.[0] || 'L'}
+                                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">
+                                  {opp.contact?.name?.[0] || "?"}
                                 </div>
                                 <span className="text-[10px] font-medium text-muted-foreground truncate w-24">
-                                  {opp.contact?.name || 'Lead Anonymous'}
+                                  {opp.contact?.name || "Unknown"}
                                 </span>
                               </div>
                               <div className="text-[10px] font-bold text-emerald-400 flex items-center">
                                 <DollarSign size={10} />
-                                {opp.monetaryValue?.toLocaleString() || 0}
+                                {opp.monetaryValue?.toLocaleString() || "0"}
                               </div>
                             </div>
                           </Card>
                         ))}
+                  </div>
+                </div>
+
+                {/* ── Regular pipeline stages ── */}
+                {loading
+                  ? Array(3)
+                      .fill(0)
+                      .map((_, i) => (
+                        <div key={i} className="w-72 space-y-4">
+                          <Skeleton className="h-6 w-40 rounded-lg" />
+                          <Skeleton className="h-36 w-full rounded-2xl" />
+                        </div>
+                      ))
+                  : kanbanData.map((stage) => (
+                      <div key={stage.id} className="w-72 shrink-0 space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            {stage.name}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 h-4 bg-white/5 border-white/5"
+                          >
+                            {stage.opps.length}
+                          </Badge>
+                        </div>
+                        <div className="space-y-3">
+                          {stage.opps.length === 0 ? (
+                            <div className="flex items-center justify-center py-10 opacity-30">
+                              <p className="text-xs text-muted-foreground">Empty</p>
+                            </div>
+                          ) : (
+                            stage.opps.map((opp) => (
+                              <Card
+                                key={opp.id}
+                                className="glass glass-hover border-white/5 p-4 rounded-2xl group transition-all cursor-pointer"
+                              >
+                                <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors whitespace-normal leading-tight mb-3">
+                                  {opp.name}
+                                </p>
+                                <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">
+                                      {opp.contact?.name?.[0] || "L"}
+                                    </div>
+                                    <span className="text-[10px] font-medium text-muted-foreground truncate w-24">
+                                      {opp.contact?.name || "Lead Anonymous"}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] font-bold text-emerald-400 flex items-center">
+                                    <DollarSign size={10} />
+                                    {opp.monetaryValue?.toLocaleString() || "0"}
+                                  </div>
+                                </div>
+                              </Card>
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
-                ) : null}
+                    ))}
               </div>
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="glass glass-hover border-border/40 p-8">
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
-                      <User className="h-4 w-4" /> Customer Profile
-                    </h3>
-                  </div>
-                  {loading ? (
-                    <Skeleton className="h-32 w-full rounded-2xl" />
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-6">
-                        <div className="relative group">
-                          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/40 transition-all" />
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-2xl border-4 border-background relative z-10 uppercase">
-                            {profile?.firstName?.[0] || '?'}{profile?.lastName?.[0] || ''}
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-bold text-xl">{profile?.firstName || 'Unknown'} {profile?.lastName || ''}</p>
-                          <p className="text-xs text-muted-foreground font-medium opacity-70 truncate max-w-[150px]">{profile?.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {profile?.tags?.slice(0, 4).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-[10px] bg-white/5 border-white/10 py-1 h-6 hover:bg-white/10 transition-colors">{tag}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Card>
+          {/* ── SALES OVERVIEW + TODAY ────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                <Card className="glass glass-hover border-border/40 p-8 flex flex-col justify-between">
-                   <div className="mb-6">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2 mb-6">
-                      <Zap className="h-4 w-4" /> Quick Actions
-                    </h3>
-                    <div className="space-y-3">
-                      <Button variant="outline" size="sm" className="w-full justify-between h-10 border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-primary/30 transition-all rounded-xl text-xs font-bold" asChild>
-                        <Link href="/conversations">
-                          AI Inbox <ArrowUpRight className="h-3 w-3 text-primary" />
-                        </Link>
-                      </Button>
-                      <Button variant="outline" size="sm" className="w-full justify-between h-10 border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-primary/30 transition-all rounded-xl text-xs font-bold" asChild>
-                        <Link href="/payments">
-                          Finance <ArrowUpRight className="h-3 w-3 text-primary" />
-                        </Link>
-                      </Button>
-                    </div>
+            {/* Sales Overview */}
+            <Card className="glass border-border/40">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  Sales Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center gap-6 py-6">
+                {loading ? (
+                  <Skeleton className="w-36 h-36 rounded-full" />
+                ) : (
+                  <DonutChart percent={salesOverviewPercent} />
+                )}
+                <div className="w-full grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-xl bg-white/[0.04] border border-white/5 p-3">
+                    <p className="text-lg font-bold">
+                      {loading ? "…" : opportunities.length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
+                      Total
+                    </p>
                   </div>
-                  <div className="pt-4 border-t border-white/5">
-                    <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest opacity-50 mb-2">System Status</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
-                      <span className="text-[10px] font-mono text-emerald-500/80">API LINKED</span>
-                    </div>
+                  <div className="rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20 p-3">
+                    <p className="text-lg font-bold text-emerald-400">
+                      {loading ? "…" : respondedYes.length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
+                      Won
+                    </p>
                   </div>
-                </Card>
-              </div>
-
-              <Card className="glass border-border/40 overflow-hidden group">
-                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary animate-shimmer opacity-30 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="p-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        Engagement Stream
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground/80 mt-1">Activity feed including Orders and Appointments</CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">Live</Badge>
+                  <div className="rounded-xl bg-white/[0.04] border border-white/5 p-3">
+                    <p className="text-lg font-bold text-amber-400">
+                      {loading
+                        ? "…"
+                        : opportunities.filter((o) => o.status === "open").length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
+                      Open
+                    </p>
                   </div>
-                </CardHeader>
-                <CardContent className="px-8 pb-8 space-y-4">
-                  {loading ? (
-                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
-                  ) : (
-                    <>
-                      {/* Mix of Orders and Appointments */}
-                      {orders.map((order, i) => (
-                        <div key={`order-${i}`} className="flex items-center justify-between p-5 rounded-2xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-all group animate-in fade-in">
-                          <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                              <Package size={20} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-sm">Order: {order.productName || order.name || (order.products?.[0]?.name) || 'New Transaction'}</p>
-                              <p className="text-[11px] text-muted-foreground mt-1">Status: {order.status || 'Pending'}</p>
-                            </div>
-                          </div>
-                          <p className="text-sm font-mono font-bold text-emerald-400">${order.totalAmount || order.amount || '0.00'}</p>
-                        </div>
-                      ))}
-                      {appts.slice(0, 3).map((appt, i) => (
-                        <div key={`appt-${i}`} className="flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group animate-in fade-in">
-                          <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
-                              <Calendar size={20} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-sm">{appt.title}</p>
-                              <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
-                                {new Date(appt.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="text-[10px]">{appt.status}</Badge>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-8">
-              {!loading && profile && (
-                <div className="animate-in fade-in zoom-in-95 duration-700">
-                  <AIContactInsight contactName={`${profile.firstName || ''} ${profile.lastName || ''}`} history={historyForAI} />
                 </div>
-              )}
-              
-              <Card className="glass border-primary/20 bg-gradient-to-br from-primary/[0.05] to-accent/[0.05] overflow-hidden relative group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
-                <CardHeader className="p-8 pb-4">
-                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
-                    <ShieldCheck size={14} /> Store Status
+              </CardContent>
+            </Card>
+
+            {/* Today's Appointments */}
+            <Card className="glass border-border/40">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    Today
                   </CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 pt-0 space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center py-2 border-b border-white/5">
-                      <span className="text-[11px] text-muted-foreground font-medium">System</span>
-                      <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={12} /> ONLINE
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/5">
-                      <span className="text-[11px] text-muted-foreground font-medium">Inventory</span>
-                      <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={12} /> IN STOCK
-                      </span>
-                    </div>
+                  <span className="text-[11px] text-muted-foreground font-medium">{todayLabel}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="py-3 space-y-2">
+                {loading ? (
+                  Array(3)
+                    .fill(0)
+                    .map((_, i) => (
+                      <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                    ))
+                ) : todayAppts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 opacity-40">
+                    <Calendar className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">No appointments today</p>
                   </div>
-                  <Button variant="outline" className="w-full h-12 text-xs border-primary/20 bg-primary/5 hover:bg-primary/20 hover:text-white transition-all group rounded-2xl font-bold" asChild>
-                    <Link href="/settings">
-                      View Pipelines <ExternalLink className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                ) : (
+                  todayAppts.map((appt) => {
+                    const start = new Date(appt.startTime);
+                    const statusColor =
+                      appt.status === "confirmed" || appt.status === "booked"
+                        ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                        : appt.status === "cancelled"
+                        ? "text-red-400 bg-red-500/10 border-red-500/20"
+                        : "text-amber-400 bg-amber-500/10 border-amber-500/20";
+                    return (
+                      <div
+                        key={appt.id}
+                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                            <Clock size={15} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold leading-tight">{appt.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {start.toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[10px] capitalize border", statusColor)}
+                        >
+                          {appt.status}
+                        </Badge>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+
           </div>
         </div>
       </main>
