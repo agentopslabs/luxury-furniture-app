@@ -181,7 +181,7 @@ export default function ContactsPage() {
       setContacts(contacts.filter(c => c.id !== id));
       toast({
         title: "Record Purged",
-        description: "Contact permanently removed from GHL sub-account.",
+        description: "Contact has been permanently removed.",
       });
     } catch (error) {
       toast({
@@ -213,7 +213,7 @@ export default function ContactsPage() {
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 <Users size={16} className="text-primary" />
-                Live contact management • V2 Cloud Sync
+                Manage and organize your customer contacts
               </p>
             </div>
             <div className="flex gap-3">
@@ -345,7 +345,7 @@ export default function ContactsPage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-2xl font-bold text-muted-foreground">Reservoir Empty</p>
-                    <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed font-medium">No contact records were detected in the GHL synchronicity window.</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-[300px] mx-auto leading-relaxed font-medium">No contacts found. Add your first contact to get started.</p>
                   </div>
                 </div>
               )}
@@ -360,7 +360,7 @@ export default function ContactsPage() {
           <form onSubmit={handleCreate}>
             <DialogHeader className="mb-8">
               <DialogTitle className="text-2xl font-bold">New Contact</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Inbound record injection for LeadConnector V2.</DialogDescription>
+              <DialogDescription className="text-muted-foreground">Add a new contact to your account.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="grid grid-cols-2 gap-4">
@@ -424,7 +424,7 @@ export default function ContactsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-2xl font-bold">Modify Metadata</DialogTitle>
-                  <DialogDescription className="text-muted-foreground">Override contact record in the GHL V2 repository.</DialogDescription>
+                  <DialogDescription className="text-muted-foreground">Update contact details and information.</DialogDescription>
                 </div>
                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">V2 Live</Badge>
               </div>

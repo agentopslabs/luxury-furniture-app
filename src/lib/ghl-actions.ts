@@ -719,7 +719,7 @@ export async function createSocialPost(postData: {
     }),
   });
   if (response.status === 404) {
-    throw new Error('Social Planner is not enabled on this GHL account. Please create posts directly in GoHighLevel.');
+    throw new Error('Social posting is not available. Please check your account settings and connected social accounts.');
   }
   return await handleResponse(response, 'creating social post');
 }

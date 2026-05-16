@@ -25,6 +25,9 @@ export default function ProfilePage() {
   const handleUpdate = async () => {
     setSaving(true);
     await new Promise(r => setTimeout(r, 800));
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    localStorage.setItem("profile_name", fullName);
+    window.dispatchEvent(new Event("profileUpdated"));
     setSaving(false);
     toast({
       title: "Profile Updated",

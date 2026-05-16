@@ -68,17 +68,14 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
   const plotH = chartH - padT - padB;
   const plotW = svgW - padL - padR;
 
-  const rawMax = groups.length > 0 ? Math.max(...groups.flatMap((g) => [g.total, g.won])) : 0;
-  // always show at least 5 on the axis, then round up to next clean step
+  const rawMax = groups.length > 0 ? Math.max(...groups.map((g) => g.total)) : 0;
   const step = rawMax <= 5 ? 1 : rawMax <= 20 ? 5 : 10;
   const axisMax = Math.max(Math.ceil((rawMax + 1) / step) * step, 5);
   const yTicks = Array.from({ length: axisMax / step + 1 }, (_, i) => i * step);
 
-  // distribute groups evenly across the plot width
   const groupCount = groups.length;
   const groupW = groupCount > 0 ? plotW / groupCount : 60;
-  const barW = Math.min(20, groupW * 0.28);
-  const gap = Math.min(8, groupW * 0.08);
+  const barW = Math.min(32, groupW * 0.45);
 
   const yPos = (val: number) => padT + plotH - (val / axisMax) * plotH;
 
@@ -102,15 +99,9 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
             {/* Legend */}
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-bold text-gray-800">Sales Pipeline</span>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#7dd3fc]" />
-                  <span className="text-xs text-gray-500">Opportunities</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#3730a3]" />
-                  <span className="text-xs text-gray-500">Won</span>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#7dd3fc]" />
+                <span className="text-xs text-gray-500">Opportunities</span>
               </div>
             </div>
 
@@ -158,9 +149,8 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
                 {/* Bars */}
                 {groups.map((g, i) => {
                   const centerX = padL + (i + 0.5) * groupW;
-                  const x = centerX - barW - gap / 2;
+                  const x = centerX - barW / 2;
                   const totalH = (g.total / axisMax) * plotH;
-                  const wonH = (g.won / axisMax) * plotH;
                   const labelX = centerX;
                   const labelY = padT + plotH + 24;
 
@@ -172,17 +162,8 @@ function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: Chart
                         y={yPos(g.total)}
                         width={barW}
                         height={Math.max(totalH, 2)}
-                        rx={3} ry={3}
+                        rx={4} ry={4}
                         fill="url(#blueGrad)"
-                      />
-                      {/* Won bar (dark purple) */}
-                      <rect
-                        x={x + barW + gap}
-                        y={yPos(g.won)}
-                        width={barW}
-                        height={Math.max(wonH, 2)}
-                        rx={3} ry={3}
-                        fill="url(#purpleGrad)"
                       />
                       {/* X-axis label */}
                       <text

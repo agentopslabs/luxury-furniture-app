@@ -77,12 +77,12 @@ export default function ConversationsPage() {
     setSending(true);
     try {
       await sendMessage(selectedConvo.id, messageText);
-      toast({ title: "Message Sent", description: "Your reply was synced to GHL." });
+      toast({ title: "Message Sent", description: "Your reply has been delivered." });
       setMessageText("");
       fetchMessages(selectedConvo.id);
       fetchConversations();
     } catch (error) {
-      toast({ variant: "destructive", title: "Delivery Failed", description: "Check your GHL sub-account SMS/Email settings." });
+      toast({ variant: "destructive", title: "Delivery Failed", description: "Message could not be sent. Check your SMS/Email settings." });
     } finally {
       setSending(false);
     }
@@ -227,7 +227,7 @@ export default function ConversationsPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Badge variant="outline" className="text-[10px] font-bold px-2 h-6 border-primary/20 text-primary bg-primary/5">
-                  GHL V2
+                  Live
                 </Badge>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fetchMessages(selectedConvo.id)}>
                   <RefreshCw className={cn("h-4 w-4 text-muted-foreground", loadingMessages && "animate-spin")} />

@@ -148,7 +148,7 @@ export default function MarketingPage() {
       setNewPost({ caption: "", type: "Post", status: "Scheduled", channels: [] });
       fetchData();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Sync Failure", description: error.message || "Could not push post to cloud." });
+      toast({ variant: "destructive", title: "Post Failed", description: "Could not publish the post. Please check your connected accounts and try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -326,7 +326,7 @@ export default function MarketingPage() {
           <div className="flex-1 flex flex-col items-center justify-center opacity-30">
             <BarChart3 size={64} className="mb-4" />
             <h2 className="text-2xl font-bold">{mainTabs.find(t => t.value === activeMainTab)?.name} Module</h2>
-            <p className="text-sm">Synchronizing live records from GHL cloud...</p>
+            <p className="text-sm">Loading records...</p>
           </div>
         )}
       </main>
@@ -337,7 +337,7 @@ export default function MarketingPage() {
           <form onSubmit={handleCreatePost}>
             <DialogHeader className="mb-8">
               <DialogTitle className="text-2xl font-bold">Craft Social Post</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Synchronizing multi-channel outreach to GHL Social Planner.</DialogDescription>
+              <DialogDescription className="text-muted-foreground">Create and schedule posts across your social channels.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="space-y-2">
@@ -407,7 +407,7 @@ export default function MarketingPage() {
         <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-md text-center">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-2xl font-bold">Connect Accounts</DialogTitle>
-            <DialogDescription className="text-muted-foreground text-center">Authenticate your brand profiles via GHL OAuth.</DialogDescription>
+            <DialogDescription className="text-muted-foreground text-center">Connect your social media accounts to start posting.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             <Button variant="outline" className="h-20 flex-col gap-2 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10" onClick={() => handleConnectSocial('Facebook')}>
@@ -427,7 +427,7 @@ export default function MarketingPage() {
               <span className="text-[10px] font-bold uppercase">X (Twitter)</span>
             </Button>
           </div>
-          <p className="mt-8 text-[10px] text-muted-foreground opacity-40 leading-relaxed">By connecting, you authorize GHL to manage and publish content on your behalf across selected enterprise channels.</p>
+          <p className="mt-8 text-[10px] text-muted-foreground opacity-40 leading-relaxed">By connecting, you authorize publishing content on your behalf across selected social channels.</p>
         </DialogContent>
       </Dialog>
     </div>

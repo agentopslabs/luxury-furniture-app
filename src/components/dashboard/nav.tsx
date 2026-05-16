@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -45,6 +46,17 @@ export function DashboardNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  const [profileName, setProfileName] = useState("Alex Sterling");
+
+  useEffect(() => {
+    const load = () => {
+      const saved = localStorage.getItem("profile_name");
+      if (saved) setProfileName(saved);
+    };
+    load();
+    window.addEventListener("profileUpdated", load);
+    return () => window.removeEventListener("profileUpdated", load);
+  }, []);
 
   return (
     <div className="flex h-screen w-64 flex-col border-r border-white/[0.06] bg-[#0F1117] relative z-50 shrink-0">
@@ -113,7 +125,7 @@ export function DashboardNav() {
                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#0F1117] rounded-full" />
               </div>
               <div className="flex flex-col items-start overflow-hidden">
-                <span className="text-sm font-semibold text-white truncate w-full">Alex Sterling</span>
+                <span className="text-sm font-semibold text-white truncate w-full">{profileName}</span>
                 <span className="text-[10px] text-white/30 font-medium">Store Manager</span>
               </div>
             </Button>

@@ -154,14 +154,14 @@ export default function PaymentsPage() {
           contactId: createFormData.contactId,
           status: 'pending'
         });
-        toast({ title: "Order Synchronized", description: "Order committed to GHL backend." });
+        toast({ title: "Order Created", description: "Order has been saved successfully." });
       } else if (activeSubNav === 'docs') {
         await createInvoice({
           title: createFormData.title,
           amount: Number(createFormData.amount),
           contactId: createFormData.contactId
         });
-        toast({ title: "Document Created", description: "Contract injected into GHL repository." });
+        toast({ title: "Document Created", description: "Contract has been saved successfully." });
       } else {
         toast({ title: "Module Locked", description: "This payment type is in read-only mode." });
       }
@@ -173,7 +173,7 @@ export default function PaymentsPage() {
       toast({
         variant: "destructive",
         title: "Sync Failure",
-        description: error.message || "LeadConnector validation failed.",
+        description: error.message || "An error occurred. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -268,7 +268,7 @@ export default function PaymentsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1">
               <h2 className="text-3xl font-bold tracking-tight">{currentNav.name}</h2>
-              <p className="text-muted-foreground text-sm">Synchronized records from LeadConnector V2.</p>
+              <p className="text-muted-foreground text-sm">Your payment records and financial activity.</p>
             </div>
             <div className="flex items-center gap-3">
               <Button 
@@ -347,7 +347,7 @@ export default function PaymentsPage() {
           <form onSubmit={handleCreateSubmit}>
             <DialogHeader className="mb-8">
               <DialogTitle className="text-2xl font-bold">New {currentNav.name.replace(/s$/, '')}</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Synchronizing financial record with GHL sub-account.</DialogDescription>
+              <DialogDescription className="text-muted-foreground">Create a new financial record for a contact.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="space-y-2">

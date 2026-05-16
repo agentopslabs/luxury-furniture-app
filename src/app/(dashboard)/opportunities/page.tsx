@@ -185,7 +185,7 @@ export default function OpportunitiesPage() {
     try {
       await createOpportunity(formData);
       setIsCreateOpen(false);
-      toast({ title: "Opportunity Created", description: "Successfully pushed to GHL cloud." });
+      toast({ title: "Opportunity Created", description: "Deal has been added to your pipeline." });
       fetchData(true);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Sync Failure", description: error.message });
@@ -522,7 +522,7 @@ export default function OpportunitiesPage() {
           <form onSubmit={handleCreate}>
             <DialogHeader className="mb-6">
               <DialogTitle className="text-xl font-bold">New Opportunity</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">Add a deal to your GHL pipeline.</DialogDescription>
+              <DialogDescription className="text-sm text-muted-foreground">Add a new deal to your pipeline.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="space-y-1.5">

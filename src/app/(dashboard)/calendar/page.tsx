@@ -26,7 +26,8 @@ import {
   Calendar as CalendarIcon,
   X,
   Trello,
-  User
+  User,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +98,10 @@ export default function CalendarPage() {
   const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
   const [gmtLabel, setGmtLabel] = useState('+00:00');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [isNewCalendarOpen, setIsNewCalendarOpen] = useState(false);
+  const [editingCalendar, setEditingCalendar] = useState<GHLCalendar | null>(null);
+  const [newCalendarName, setNewCalendarName] = useState("");
+  const [newCalendarDesc, setNewCalendarDesc] = useState("");
 
   const { toast } = useToast();
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -128,7 +133,7 @@ export default function CalendarPage() {
       if (isManualRefresh) {
         toast({
           title: "Schedule Refreshed",
-          description: `Loaded ${apptsData.length} events from GHL cloud.`,
+          description: `Loaded ${apptsData.length} appointments.`,
         });
       }
     } catch (error) {
@@ -136,7 +141,7 @@ export default function CalendarPage() {
         toast({
           variant: "destructive",
           title: "Sync Error",
-          description: "Could not reach GHL servers.",
+          description: "Could not load appointments. Please try again.",
         });
       }
     } finally {
@@ -182,7 +187,7 @@ export default function CalendarPage() {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "Could not sync status change to GHL.",
+        description: "Could not update appointment status.",
       });
     }
   };
@@ -265,12 +270,12 @@ export default function CalendarPage() {
         setAppointments(prev => [...prev, result.appointment]);
       }
 
-      toast({ title: "Appointment Booked", description: "Successfully saved to GHL." });
+      toast({ title: "Appointment Booked", description: "Your appointment has been saved." });
 
       // Wait 2 s for GHL to fully persist the record, then pull the authoritative data
       setTimeout(() => fetchData(false, true), 2000);
     } catch (error: any) {
-      const msg = error.message || "Could not commit slot to GHL.";
+      const msg = error.message || "Could not book the appointment. Please try again.";
       toast({ variant: "destructive", title: "Booking Failed", description: msg });
     } finally {
       setIsSubmitting(false);
@@ -401,7 +406,6 @@ export default function CalendarPage() {
                 <TabsTrigger value="calendars" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Calendars</TabsTrigger>
                 <TabsTrigger value="view" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Calendar View</TabsTrigger>
                 <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100">Appointment List View</TabsTrigger>
-                <TabsTrigger value="settings" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-0 h-full text-xs font-bold transition-all opacity-60 data-[state=active]:opacity-100 flex items-center gap-2"><Settings size={14} /> Calendar Settings</TabsTrigger>
               </TabsList>
             </div>
           </header>
@@ -474,7 +478,7 @@ export default function CalendarPage() {
                       ? `${appointments.length} events · ${lastSynced.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`
                       : 'Syncing…'}
                   </span>
-                  <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="h-9 w-9" title="Sync from GHL">
+                  <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="h-9 w-9" title="Refresh">
                     <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
                   </Button>
                 </div>
@@ -690,6 +694,16 @@ export default function CalendarPage() {
 
                 <TabsContent value="calendars" className="m-0 p-8">
                   <div className="max-w-6xl mx-auto">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-bold">Your Calendars</h2>
+                      <Button
+                        size="sm"
+                        className="h-9 px-4 rounded-lg bg-primary hover:bg-primary/90 font-bold"
+                        onClick={() => setIsNewCalendarOpen(true)}
+                      >
+                        <Plus size={15} className="mr-2" /> New Calendar
+                      </Button>
+                    </div>
                     {loading ? (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
@@ -698,10 +712,30 @@ export default function CalendarPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {calendars.map(cal => (
                           <Card key={cal.id} className="glass glass-hover border-border/40 p-6 flex flex-col gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">{cal.name[0]}</div>
+                            <div className="flex items-start justify-between">
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">{cal.name[0]}</div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-white/10 -mr-2 -mt-1">
+                                    <MoreVertical size={15} />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40 rounded-xl p-1.5">
+                                  <DropdownMenuItem className="rounded-lg cursor-pointer gap-2" onClick={() => setEditingCalendar({ ...cal })}>
+                                    <Settings size={13} /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="rounded-lg cursor-pointer gap-2 text-destructive focus:text-destructive" onClick={() => {
+                                    setCalendars(prev => prev.filter(c => c.id !== cal.id));
+                                    toast({ title: "Calendar Removed", description: `"${cal.name}" has been deleted.` });
+                                  }}>
+                                    <Trash2 size={13} /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                             <div>
                               <h3 className="font-bold">{cal.name}</h3>
-                              <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Enterprise Calendar'}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{cal.description || 'Calendar'}</p>
                             </div>
                             <Button variant="outline" className="w-full h-9 text-xs rounded-xl font-bold" onClick={() => {
                               setManageCalendarFilter(cal.id);
@@ -713,16 +747,10 @@ export default function CalendarPage() {
                     ) : (
                       <div className="py-40 text-center opacity-30">
                         <Trello size={64} className="mx-auto mb-4" />
-                        <p className="text-xl font-bold">No calendars detected</p>
+                        <p className="text-xl font-bold">No calendars found</p>
+                        <p className="text-sm mt-2">Click "New Calendar" to create one</p>
                       </div>
                     )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="settings" className="m-0 p-8">
-                  <div className="max-w-2xl mx-auto py-20 text-center opacity-30">
-                    <Settings size={64} className="mx-auto mb-4" />
-                    <p className="text-xl font-bold">Calendar Settings</p>
                   </div>
                 </TabsContent>
               </div>
@@ -818,7 +846,7 @@ export default function CalendarPage() {
           <form onSubmit={handleBookingSubmit}>
             <DialogHeader className="mb-8">
               <DialogTitle className="text-2xl font-bold">Book Appointment</DialogTitle>
-              <DialogDescription className="text-muted-foreground">Schedule a new interaction. Synchronized to GHL V2 cloud.</DialogDescription>
+              <DialogDescription className="text-muted-foreground">Book a new appointment for a contact.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6">
               <div className="space-y-2">
@@ -936,6 +964,100 @@ export default function CalendarPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Calendar Dialog */}
+      <Dialog open={isNewCalendarOpen} onOpenChange={v => { setIsNewCalendarOpen(v); setNewCalendarName(""); setNewCalendarDesc(""); }}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-md">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-xl font-bold">New Calendar</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Create a new calendar to organize your appointments.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Calendar Name</Label>
+              <Input
+                className="glass h-11 rounded-xl"
+                placeholder="e.g. Sales Calls"
+                value={newCalendarName}
+                onChange={e => setNewCalendarName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Description (optional)</Label>
+              <Input
+                className="glass h-11 rounded-xl"
+                placeholder="What is this calendar for?"
+                value={newCalendarDesc}
+                onChange={e => setNewCalendarDesc(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-8">
+            <Button variant="outline" onClick={() => setIsNewCalendarOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!newCalendarName.trim()}
+              onClick={() => {
+                const newCal: GHLCalendar = {
+                  id: `local-${Date.now()}`,
+                  name: newCalendarName.trim(),
+                  description: newCalendarDesc.trim() || undefined,
+                };
+                setCalendars(prev => [...prev, newCal]);
+                toast({ title: "Calendar Created", description: `"${newCal.name}" has been added.` });
+                setIsNewCalendarOpen(false);
+                setNewCalendarName("");
+                setNewCalendarDesc("");
+              }}
+            >
+              <Plus size={15} className="mr-1" /> Create Calendar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Calendar Dialog */}
+      <Dialog open={!!editingCalendar} onOpenChange={v => { if (!v) setEditingCalendar(null); }}>
+        <DialogContent className="glass border-white/10 rounded-3xl p-8 max-w-md">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-xl font-bold">Edit Calendar</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Update your calendar details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Calendar Name</Label>
+              <Input
+                className="glass h-11 rounded-xl"
+                value={editingCalendar?.name || ""}
+                onChange={e => setEditingCalendar(prev => prev ? { ...prev, name: e.target.value } : null)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Description (optional)</Label>
+              <Input
+                className="glass h-11 rounded-xl"
+                value={editingCalendar?.description || ""}
+                onChange={e => setEditingCalendar(prev => prev ? { ...prev, description: e.target.value } : null)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-8">
+            <Button variant="outline" onClick={() => setEditingCalendar(null)}>Cancel</Button>
+            <Button
+              disabled={!editingCalendar?.name?.trim()}
+              onClick={() => {
+                if (!editingCalendar) return;
+                setCalendars(prev => prev.map(c => c.id === editingCalendar.id ? editingCalendar : c));
+                toast({ title: "Calendar Updated", description: `"${editingCalendar.name}" has been saved.` });
+                setEditingCalendar(null);
+              }}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
