@@ -260,6 +260,56 @@ export async function getCalendarFreeSlots(calendarId: string, date: string, tim
   return allSlots;
 }
 
+/**
+ * Fetches a single calendar by ID to read its current openHours configuration.
+ */
+export async function getCalendarById(calendarId: string): Promise<any> {
+  const response = await fetch(`${GHL_API_BASE_URL}/calendars/${calendarId}`, {
+    headers,
+    next: { revalidate: 0 },
+  });
+  const data = await handleResponse(response, 'fetching calendar');
+  return data?.calendar || data;
+}
+
+/**
+ * Updates a calendar's openHours to include Saturday (6) and Sunday (0)
+ * so bookings can be made on weekends.
+ */
+export async function enableCalendarWeekends(calendarId: string): Promise<void> {
+  // 1. Fetch current calendar settings
+  const cal = await getCalendarById(calendarId);
+  const existingHours: any[] = cal?.openHours || [];
+
+  const weekendDays = [0, 6]; // Sunday, Saturday
+  const alreadyCovered = new Set(
+    existingHours.flatMap((oh: any) => oh.daysOfTheWeek || [])
+  );
+
+  const newEntries = weekendDays
+    .filter(day => !alreadyCovered.has(day))
+    .map(day => ({
+      daysOfTheWeek: [day],
+      hours: [{ openHour: 9, openMinute: 0, closeHour: 17, closeMinute: 0 }],
+    }));
+
+  if (newEntries.length === 0) return; // weekends already enabled
+
+  const updatedHours = [...existingHours, ...newEntries];
+
+  const response = await fetch(`${GHL_API_BASE_URL}/calendars/${calendarId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ openHours: updatedHours }),
+  });
+
+  if (!response.ok) {
+    let msg = '';
+    try { const e = await response.json(); msg = e.message || ''; } catch {}
+    throw new Error(msg || `Failed to enable weekends (${response.status})`);
+  }
+}
+
 export async function getCalendars(): Promise<GHLCalendar[]> {
   try {
     const url = new URL(`${GHL_API_BASE_URL}/calendars/`);

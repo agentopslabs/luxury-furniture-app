@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment, getCalendarFreeSlots } from "@/lib/ghl-actions";
+import { getAllAppointments, getCalendars, updateAppointmentStatus, getContacts, createAppointment, getCalendarFreeSlots, enableCalendarWeekends } from "@/lib/ghl-actions";
 import { GHLAppointment, GHLCalendar, GHLContact } from "@/lib/ghl";
 import { 
   Card, 
@@ -184,7 +184,22 @@ export default function CalendarPage() {
     setNoSlotsOnDate(false);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
+      let apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
+
+      // If no slots and it's a weekend, try enabling weekends on the calendar then retry
+      if (apiSlots.length === 0) {
+        const dayOfWeek = new Date(date + 'T12:00:00').getDay(); // use noon to avoid TZ edge cases
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        if (isWeekend) {
+          try {
+            await enableCalendarWeekends(calendarId);
+            apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
+          } catch {
+            // enableCalendarWeekends failed — fall through to manual picker
+          }
+        }
+      }
+
       if (apiSlots.length > 0) {
         setAvailableSlots(apiSlots);
         setNoSlotsOnDate(false);
