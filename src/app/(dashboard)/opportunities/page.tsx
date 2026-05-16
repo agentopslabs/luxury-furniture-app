@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { 
   getOpportunities, 
-  updateOpportunity,
   getPipelines,
   getContacts,
   createOpportunity
@@ -14,18 +13,24 @@ import {
   Plus, 
   Search, 
   RefreshCw, 
-  MoreHorizontal, 
   Loader2, 
   Target,
   TrendingUp,
   Eye,
-  Trash2
+  Trash2,
+  Layers,
+  DollarSign,
+  MoreVertical,
+  LayoutList,
+  Columns,
+  CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
   Select, 
   SelectContent, 
@@ -54,6 +59,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 type StatusFilter = 'open' | 'won' | 'lost' | 'abandoned' | 'all';
+type ViewMode = 'list' | 'kanban';
 
 export default function OpportunitiesPage() {
   const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
@@ -64,6 +70,7 @@ export default function OpportunitiesPage() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -126,6 +133,14 @@ export default function OpportunitiesPage() {
     });
   }, [opportunities, searchQuery, statusFilter, selectedPipelineId]);
 
+  const kanbanData = useMemo(() => {
+    if (!activePipeline) return [];
+    return activePipeline.stages.map(stage => ({
+      ...stage,
+      opps: opportunities.filter(o => o.pipelineStageId === stage.id && o.pipelineId === activePipeline.id)
+    }));
+  }, [activePipeline, opportunities]);
+
   const statsBreakdown = useMemo(() => {
     const counts = {
       open: opportunities.filter(o => o.status === 'open').length,
@@ -135,6 +150,22 @@ export default function OpportunitiesPage() {
     };
     return { counts };
   }, [opportunities]);
+
+  const handleOpenCreate = () => {
+    if (activePipeline) {
+      setFormData({
+        name: "",
+        monetaryValue: 0,
+        pipelineId: activePipeline.id,
+        pipelineStageId: activePipeline.stages[0]?.id || "",
+        contactId: "",
+        status: "open"
+      });
+      setIsCreateOpen(true);
+    } else {
+      toast({ variant: "destructive", title: "No Active Pipeline", description: "Please select a pipeline before adding opportunities." });
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,25 +200,37 @@ export default function OpportunitiesPage() {
               <p className="text-sm text-muted-foreground mt-0.5">Track and manage your deal pipeline</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "h-7 px-3 rounded-md text-xs font-semibold gap-1.5",
+                    viewMode === 'list' ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LayoutList size={13} /> List
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                  className={cn(
+                    "h-7 px-3 rounded-md text-xs font-semibold gap-1.5",
+                    viewMode === 'kanban' ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Columns size={13} /> Kanban
+                </Button>
+              </div>
+
               <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing || loading} className="h-9 px-4 rounded-lg">
                 <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
                 {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
-              <Button className="h-9 px-4 rounded-lg bg-primary text-white hover:bg-primary/90" onClick={() => {
-                if (activePipeline) {
-                  setFormData({
-                    name: "",
-                    monetaryValue: 0,
-                    pipelineId: activePipeline.id,
-                    pipelineStageId: activePipeline.stages[0]?.id || "",
-                    contactId: "",
-                    status: "open"
-                  });
-                  setIsCreateOpen(true);
-                } else {
-                  toast({ variant: "destructive", title: "No Active Pipeline", description: "Please select a pipeline before adding opportunities." });
-                }
-              }}>
+              <Button className="h-9 px-4 rounded-lg bg-primary text-white hover:bg-primary/90" onClick={handleOpenCreate}>
                 <Plus size={16} className="mr-2" /> New Opportunity
               </Button>
             </div>
@@ -208,137 +251,235 @@ export default function OpportunitiesPage() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search opportunities..." 
-                className="pl-9 h-9 rounded-lg text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            {viewMode === 'list' && (
+              <>
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search opportunities..." 
+                    className="pl-9 h-9 rounded-lg text-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
 
-            <div className="flex items-center gap-1 ml-auto">
-              {[
-                { id: 'open', label: 'Open' },
-                { id: 'won', label: 'Won' },
-                { id: 'lost', label: 'Lost' },
-                { id: 'abandoned', label: 'Abandoned' },
-                { id: 'all', label: 'All' }
-              ].map((f) => (
-                <Button
-                  key={f.id}
-                  variant={statusFilter === f.id ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setStatusFilter(f.id as StatusFilter)}
-                  className={cn(
-                    "h-8 px-3 rounded-lg text-xs font-semibold",
-                    statusFilter === f.id ? "bg-primary text-white" : "text-muted-foreground"
-                  )}
-                >
-                  {f.label}
-                  <span className={cn(
-                    "ml-1.5 text-[10px] font-bold rounded px-1",
-                    statusFilter === f.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                  )}>
-                    {f.id === 'all' ? opportunities.length : statsBreakdown.counts[f.id as keyof typeof statsBreakdown.counts] || 0}
-                  </span>
-                </Button>
-              ))}
-            </div>
+                <div className="flex items-center gap-1 ml-auto">
+                  {[
+                    { id: 'open', label: 'Open' },
+                    { id: 'won', label: 'Won' },
+                    { id: 'lost', label: 'Lost' },
+                    { id: 'abandoned', label: 'Abandoned' },
+                    { id: 'all', label: 'All' }
+                  ].map((f) => (
+                    <Button
+                      key={f.id}
+                      variant={statusFilter === f.id ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setStatusFilter(f.id as StatusFilter)}
+                      className={cn(
+                        "h-8 px-3 rounded-lg text-xs font-semibold",
+                        statusFilter === f.id ? "bg-primary text-white" : "text-muted-foreground"
+                      )}
+                    >
+                      {f.label}
+                      <span className={cn(
+                        "ml-1.5 text-[10px] font-bold rounded px-1",
+                        statusFilter === f.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                      )}>
+                        {f.id === 'all' ? opportunities.length : statsBreakdown.counts[f.id as keyof typeof statsBreakdown.counts] || 0}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </header>
 
-        {/* Table */}
-        <div className="flex-1 overflow-y-auto p-8">
-          {loading ? (
-            <div className="space-y-3">
-              {Array(6).fill(0).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-xl" />
-              ))}
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'list' ? (
+            /* ── LIST VIEW ── */
+            <div className="h-full overflow-y-auto p-8">
+              {loading ? (
+                <div className="space-y-3">
+                  {Array(6).fill(0).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-border rounded-xl overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/40">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-xs font-semibold text-muted-foreground px-6 py-3 w-[30%]">Opportunity</TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground py-3">Contact</TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground py-3 text-right">Value</TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground py-3">Stage</TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground py-3 text-center">Status</TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-muted-foreground px-6 py-3">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredOpps.length > 0 ? (
+                        filteredOpps.map((opp) => (
+                          <TableRow key={opp.id} className="border-border hover:bg-muted/30 transition-colors">
+                            <TableCell className="px-6 py-4">
+                              <div>
+                                <p className="text-sm font-semibold">{opp.name}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">#{opp.id.slice(0, 12)}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
+                                  {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
+                                </div>
+                                <span className="text-sm text-muted-foreground">{opp.contact?.name || '—'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4 text-right">
+                              <span className="text-sm font-semibold text-emerald-600">
+                                ${opp.monetaryValue?.toLocaleString() || '0'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              <span className="text-xs text-muted-foreground">
+                                {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || '—'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-4 text-center">
+                              <Badge 
+                                className={cn(
+                                  "text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize border",
+                                  opp.status === 'won' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                  opp.status === 'lost' ? "bg-red-50 text-red-600 border-red-200" :
+                                  opp.status === 'abandoned' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                  "bg-blue-50 text-blue-700 border-blue-200"
+                                )}
+                              >
+                                {opp.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-4 text-right px-6">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
+                                  <Eye size={14} />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600">
+                                  <Trash2 size={14} />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-64 text-center">
+                            <div className="flex flex-col items-center justify-center gap-3 opacity-40">
+                              <Target size={36} className="text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-semibold text-muted-foreground">No opportunities found</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Try changing the pipeline or status filter</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
             </div>
           ) : (
-            <Card className="border-border rounded-xl overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/40">
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-xs font-semibold text-muted-foreground px-6 py-3 w-[30%]">Opportunity</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground py-3">Contact</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground py-3 text-right">Value</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground py-3">Stage</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground py-3 text-center">Status</TableHead>
-                    <TableHead className="text-right text-xs font-semibold text-muted-foreground px-6 py-3">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOpps.length > 0 ? (
-                    filteredOpps.map((opp) => (
-                      <TableRow key={opp.id} className="border-border hover:bg-muted/30 transition-colors">
-                        <TableCell className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-semibold">{opp.name}</p>
-                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">#{opp.id.slice(0, 12)}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
-                              {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
-                            </div>
-                            <span className="text-sm text-muted-foreground">{opp.contact?.name || '—'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 text-right">
-                          <span className="text-sm font-semibold text-emerald-600">
-                            ${opp.monetaryValue?.toLocaleString() || '0'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <span className="text-xs text-muted-foreground">
-                            {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-4 text-center">
-                          <Badge 
-                            className={cn(
-                              "text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize border",
-                              opp.status === 'won' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                              opp.status === 'lost' ? "bg-red-50 text-red-600 border-red-200" :
-                              opp.status === 'abandoned' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                              "bg-blue-50 text-blue-700 border-blue-200"
-                            )}
-                          >
-                            {opp.status}
+            /* ── KANBAN VIEW ── */
+            <ScrollArea className="h-full w-full">
+              <div className="flex gap-6 p-8 min-w-full">
+                {loading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="w-80 shrink-0 space-y-6">
+                      <Skeleton className="h-10 w-3/4 rounded-xl" />
+                      <Skeleton className="h-[400px] w-full rounded-3xl" />
+                    </div>
+                  ))
+                ) : kanbanData.length > 0 ? (
+                  kanbanData.map((stage) => (
+                    <div key={stage.id} className="w-72 shrink-0 flex flex-col space-y-4">
+                      {/* Stage header */}
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stage.name}</h3>
+                          <Badge variant="secondary" className="text-[10px] h-5 px-2 bg-muted border-0">
+                            {stage.opps.length}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="py-4 text-right px-6">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
-                              <Eye size={14} />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600">
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-64 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3 opacity-40">
-                          <Target size={36} className="text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-semibold text-muted-foreground">No opportunities found</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Try changing the pipeline or status filter</p>
-                          </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+                        <span className="text-[11px] font-mono text-emerald-600 font-bold">
+                          ${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Stage column */}
+                      <div className="flex-1 space-y-3 min-h-[500px] p-3 rounded-xl bg-muted/30 border border-border">
+                        {stage.opps.map((opp) => (
+                          <Card key={opp.id} className="border-border p-4 rounded-xl group hover:shadow-md transition-all cursor-pointer bg-white">
+                            <div className="flex justify-between items-start mb-3">
+                              <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-tighter text-muted-foreground border-border">
+                                #{opp.id.slice(0, 8)}
+                              </Badge>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreVertical size={13} />
+                              </Button>
+                            </div>
+
+                            <h4 className="font-semibold text-sm group-hover:text-primary transition-colors mb-3 line-clamp-2 leading-snug">
+                              {opp.name}
+                            </h4>
+
+                            <div className="flex items-center justify-between pt-3 border-t border-border">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+                                  {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-semibold text-foreground truncate w-20">{opp.contact?.name || 'Anonymous'}</p>
+                                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Client</p>
+                                </div>
+                              </div>
+                              <div className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                                <DollarSign size={11} />
+                                {opp.monetaryValue?.toLocaleString() || '0'}
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+
+                        {stage.opps.length === 0 && (
+                          <div className="h-28 border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 opacity-30">
+                            <Layers size={20} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Empty Stage</span>
+                          </div>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          onClick={handleOpenCreate}
+                          className="w-full h-10 rounded-xl border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                        >
+                          <Plus size={14} className="mr-1.5 group-hover:scale-110 transition-transform" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">New Deal</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="w-full flex flex-col items-center justify-center gap-4 py-32 opacity-30">
+                    <Layers className="h-14 w-14 text-muted-foreground" />
+                    <p className="text-muted-foreground font-medium text-sm">No active deal flows detected.</p>
+                  </div>
+                )}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           )}
         </div>
       </main>
