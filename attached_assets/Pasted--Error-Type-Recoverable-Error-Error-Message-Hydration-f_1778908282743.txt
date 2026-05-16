@@ -1,0 +1,56 @@
+## Error Type
+Recoverable Error
+
+## Error Message
+Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <Tabs value="view" onValueChange={function bound dispatchSetState} className="flex-1 fle...">
+      <TabsProvider scope={undefined} baseId="radix-_R_a..." value="view" ...>
+        <Primitive.div dir="ltr" data-orientation="horizontal" className="flex-1 fle..." ref={null}>
+          <div dir="ltr" data-orientation="horizontal" className="flex-1 fle..." ref={null}>
+            <header>
+            <div className="flex-1 fle...">
+              <div>
+              <div className="flex-1 fle...">
+                <div className="flex-1 ove...">
+                  <_c4 value="view" className="m-0 h-full...">
+                    <TabsContent ref={null} className="ring-offse..." value="view">
+                      <Presence present={true}>
+                        <Primitive.div data-state="active" data-orientation="horizontal" role="tabpanel" ...>
+                          <div data-state="active" data-orientation="horizontal" role="tabpanel" ...>
+                            <div className="grid grid-...">
+                              <div className="p-4 border...">
++                               +06:00+5:30
+-                               +00:00
+                              ...
+                            ...
+                  ...
+
+
+
+    at <unknown> (+                               +06:00+5:30:null)
+    at <unknown> (-                               +00:0:null)
+    at div (<anonymous>:null:null)
+    at CalendarPage (src/app/(dashboard)/calendar/page.tsx:356:21)
+
+## Code Frame
+  354 |                 <TabsContent value="view" className="m-0 h-full flex flex-col">
+  355 |                   <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
+> 356 |                     <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">
+      |                     ^
+  357 |                       GMT {new Date().toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()?.replace(/[A-Z]+/, m => {
+  358 |                         const off = new Date().getTimezoneOffset();
+  359 |                         const h = Math.abs(Math.floor(off / 60));
+
+Next.js version: 15.5.18 (Turbopack)

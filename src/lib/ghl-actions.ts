@@ -196,7 +196,7 @@ export async function createContactNote(contactId: string, body: string): Promis
   const response = await fetch(`${GHL_API_BASE_URL}/contacts/${contactId}/notes`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ body, locationId: GHL_LOCATION_ID }),
+    body: JSON.stringify({ body }),
   });
   await handleResponse(response, 'creating contact note');
 }

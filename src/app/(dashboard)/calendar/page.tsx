@@ -95,8 +95,17 @@ export default function CalendarPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsFetched, setSlotsFetched] = useState(false);
   const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
+  const [gmtLabel, setGmtLabel] = useState('+00:00');
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const off = new Date().getTimezoneOffset();
+    const h = Math.abs(Math.floor(off / 60));
+    const m = Math.abs(off % 60);
+    const sign = off <= 0 ? '+' : '-';
+    setGmtLabel(`${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }, []);
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -354,12 +363,7 @@ export default function CalendarPage() {
                 <TabsContent value="view" className="m-0 h-full flex flex-col">
                   <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
                     <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">
-                      GMT {new Date().toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()?.replace(/[A-Z]+/, m => {
-                        const off = new Date().getTimezoneOffset();
-                        const h = Math.abs(Math.floor(off / 60));
-                        const sign = off <= 0 ? '+' : '-';
-                        return `${sign}${String(h).padStart(2, '0')}:00`;
-                      }) || '+00:00'}
+                      GMT {gmtLabel}
                     </div>
                     {weekDates.map((date, i) => (
                       <div key={i} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
