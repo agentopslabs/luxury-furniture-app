@@ -171,11 +171,6 @@ export default function CalendarPage() {
     }
   };
 
-  const isWeekend = (dateStr: string) => {
-    const d = new Date(dateStr + 'T12:00:00');
-    return d.getDay() === 0 || d.getDay() === 6;
-  };
-
   const fetchSlotsForDate = useCallback(async (calendarId: string, date: string) => {
     if (!calendarId || !date) {
       setAvailableSlots([]);
@@ -183,21 +178,6 @@ export default function CalendarPage() {
       setNoSlotsOnDate(false);
       return;
     }
-
-    // Immediately warn for weekends — most calendars are weekday-only
-    if (isWeekend(date)) {
-      setAvailableSlots([]);
-      setNoSlotsOnDate(true);
-      setSlotsFetched(true);
-      setLoadingSlots(false);
-      toast({
-        variant: "destructive",
-        title: "Weekend Selected",
-        description: "Most calendars only accept weekday bookings (Mon–Fri). Please pick a weekday.",
-      });
-      return;
-    }
-
     setLoadingSlots(true);
     setAvailableSlots([]);
     setSlotsFetched(false);
@@ -209,18 +189,19 @@ export default function CalendarPage() {
         setAvailableSlots(apiSlots);
         setNoSlotsOnDate(false);
       } else {
+        // No slots returned from GHL — show manual 8AM–8PM picker
         setAvailableSlots([]);
         setNoSlotsOnDate(true);
       }
       setSlotsFetched(true);
-    } catch (error: any) {
+    } catch {
       setAvailableSlots([]);
       setNoSlotsOnDate(true);
       setSlotsFetched(true);
     } finally {
       setLoadingSlots(false);
     }
-  }, [toast]);
+  }, []);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,17 +236,7 @@ export default function CalendarPage() {
       // Refresh in background to get the authoritative GHL record
       fetchData(true);
     } catch (error: any) {
-      let msg = error.message || "Could not commit slot to GHL.";
-      const isWeekendDate = bookingForm.selectedDate ? isWeekend(bookingForm.selectedDate) : false;
-      if (
-        isWeekendDate ||
-        msg.toLowerCase().includes('no longer available') ||
-        msg.toLowerCase().includes('slot')
-      ) {
-        msg = isWeekendDate
-          ? "This calendar doesn't accept bookings on weekends. Please select a Monday–Friday date."
-          : "The selected time slot is no longer available. Please refresh available slots and try a different time.";
-      }
+      const msg = error.message || "Could not commit slot to GHL.";
       toast({ variant: "destructive", title: "Booking Failed", description: msg });
     } finally {
       setIsSubmitting(false);
@@ -852,16 +823,30 @@ export default function CalendarPage() {
                     Available Slot {loadingSlots && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                   </Label>
                   {noSlotsOnDate ? (
-                    <div className={cn(
-                      "h-12 rounded-xl flex items-center px-4 text-sm font-medium border gap-2",
-                      bookingForm.selectedDate && isWeekend(bookingForm.selectedDate)
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-muted/50 border-border text-muted-foreground"
-                    )}>
-                      {bookingForm.selectedDate && isWeekend(bookingForm.selectedDate)
-                        ? "⚠ Weekends unavailable — pick a weekday"
-                        : "No available slots on this date"}
-                    </div>
+                    <Select
+                      value={bookingForm.selectedSlot}
+                      onValueChange={(val) => setBookingForm({ ...bookingForm, selectedSlot: val })}
+                    >
+                      <SelectTrigger className="glass h-12 rounded-xl">
+                        <SelectValue placeholder="Select a time slot" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {bookingForm.selectedDate && Array.from({ length: 25 }, (_, i) => {
+                          const totalMins = i * 30;
+                          const hour = 8 + Math.floor(totalMins / 60);
+                          const min = totalMins % 60;
+                          if (hour > 20 || (hour === 20 && min > 0)) return null;
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          const dt = new Date(`${bookingForm.selectedDate}T${pad(hour)}:${pad(min)}:00`);
+                          if (isNaN(dt.getTime())) return null;
+                          return (
+                            <SelectItem key={i} value={dt.toISOString()}>
+                              {dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Select
                       value={bookingForm.selectedSlot}
