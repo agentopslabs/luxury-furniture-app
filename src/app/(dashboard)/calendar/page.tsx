@@ -96,6 +96,7 @@ export default function CalendarPage() {
   const [slotsFetched, setSlotsFetched] = useState(false);
   const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
   const [gmtLabel, setGmtLabel] = useState('+00:00');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
 
   const { toast } = useToast();
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -108,9 +109,9 @@ export default function CalendarPage() {
     setGmtLabel(`${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   }, []);
 
-  const fetchData = useCallback(async (isManualRefresh = false) => {
+  const fetchData = useCallback(async (isManualRefresh = false, silent = false) => {
     if (isManualRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!silent) setLoading(true);
 
     try {
       const [apptsData, calsData, contsData] = await Promise.all([
@@ -122,6 +123,7 @@ export default function CalendarPage() {
       setAppointments(apptsData);
       setCalendars(calsData);
       setContacts(contsData);
+      setLastSynced(new Date());
       
       if (isManualRefresh) {
         toast({
@@ -130,11 +132,13 @@ export default function CalendarPage() {
         });
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Sync Error",
-        description: "Could not reach GHL servers.",
-      });
+      if (!silent) {
+        toast({
+          variant: "destructive",
+          title: "Sync Error",
+          description: "Could not reach GHL servers.",
+        });
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -145,11 +149,23 @@ export default function CalendarPage() {
     fetchData();
   }, [fetchData]);
 
+  // Auto-poll GHL every 30 seconds for live sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData(false, true); // silent background refresh
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
   useEffect(() => {
     const el = gridScrollRef.current;
     if (el && (calendarView === 'week' || calendarView === 'day')) {
       requestAnimationFrame(() => {
-        if (gridScrollRef.current) gridScrollRef.current.scrollTop = 7 * 64;
+        if (gridScrollRef.current) {
+          const currentHour = new Date().getHours();
+          const targetHour = Math.max(0, currentHour - 2);
+          gridScrollRef.current.scrollTop = targetHour * 64;
+        }
       });
     }
   }, [calendarView]);
@@ -250,8 +266,9 @@ export default function CalendarPage() {
       }
 
       toast({ title: "Appointment Booked", description: "Successfully saved to GHL." });
-      // Refresh in background to get the authoritative GHL record
-      fetchData(true);
+
+      // Wait 2 s for GHL to fully persist the record, then pull the authoritative data
+      setTimeout(() => fetchData(false, true), 2000);
     } catch (error: any) {
       const msg = error.message || "Could not commit slot to GHL.";
       toast({ variant: "destructive", title: "Booking Failed", description: msg });
@@ -451,9 +468,16 @@ export default function CalendarPage() {
                 <Button size="sm" className="h-9 px-6 rounded-md bg-primary hover:bg-primary/90 font-bold shadow-lg" onClick={() => setIsBookingOpen(true)}>
                   <Plus size={16} className="mr-2" /> New
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="h-9 w-9">
-                  <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    {lastSynced
+                      ? `${appointments.length} events · ${lastSynced.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`
+                      : 'Syncing…'}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="h-9 w-9" title="Sync from GHL">
+                    <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -475,30 +499,40 @@ export default function CalendarPage() {
                           </div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-8" style={{ height: `${24 * 64}px` }}>
-                        <div className="border-r bg-muted/10">
-                          {hours.map(h => (
-                            <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
-                              {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+                      <div className="relative">
+                        {loading && (
+                          <div className="absolute inset-0 z-20 bg-background/60 backdrop-blur-[2px] flex items-center justify-center">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              Loading schedule…
+                            </div>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-8" style={{ height: `${24 * 64}px` }}>
+                          <div className="border-r bg-muted/10">
+                            {hours.map(h => (
+                              <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
+                                {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+                              </div>
+                            ))}
+                          </div>
+                          {weekDates.map((date, col) => (
+                            <div key={col} className="border-r last:border-r-0">
+                              {hours.map(h => {
+                                const cellAppts = getAppointmentsForCell(date, h);
+                                return (
+                                  <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(date) && "bg-primary/[0.02]")}
+                                    onClick={() => { const d = new Date(date); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
+                                    {cellAppts.map((appt: any) => (
+                                      <div key={appt.id} className="absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default bg-primary/80"
+                                        onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
+                                    ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ))}
                         </div>
-                        {weekDates.map((date, col) => (
-                          <div key={col} className="border-r last:border-r-0">
-                            {hours.map(h => {
-                              const cellAppts = getAppointmentsForCell(date, h);
-                              return (
-                                <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(date) && "bg-primary/[0.02]")}
-                                  onClick={() => { const d = new Date(date); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
-                                  {cellAppts.map((appt: any) => (
-                                    <div key={appt.id} className="absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default bg-primary/80"
-                                      onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}
@@ -515,6 +549,15 @@ export default function CalendarPage() {
                           {isToday(currentWeekStart) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                         </div>
                       </div>
+                      <div className="relative">
+                        {loading && (
+                          <div className="absolute inset-0 z-20 bg-background/60 backdrop-blur-[2px] flex items-center justify-center">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              Loading schedule…
+                            </div>
+                          </div>
+                        )}
                       <div className="grid grid-cols-2" style={{ height: `${24 * 64}px` }}>
                         <div className="border-r bg-muted/10">
                           {hours.map(h => (
@@ -537,6 +580,7 @@ export default function CalendarPage() {
                             );
                           })}
                         </div>
+                      </div>
                       </div>
                     </div>
                   )}

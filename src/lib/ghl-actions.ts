@@ -123,15 +123,28 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
         url.searchParams.append('calendarId', calendar.id);
         url.searchParams.append('startTime', startTime.toString());
         url.searchParams.append('endTime', endTime.toString());
-        const response = await fetch(url.toString(), { headers, next: { revalidate: 0 } });
+        const response = await fetch(url.toString(), {
+          headers: { ...headers, 'Version': '2021-04-15' },
+          next: { revalidate: 0 },
+          cache: 'no-store',
+        });
         const data = await handleResponse(response, 'fetching calendar events');
-        const events = (data?.events || []).map((e: any) => ({
+
+        // GHL v2 may return events under different keys — handle all variants
+        const rawEvents: any[] =
+          data?.events ||
+          data?.data ||
+          data?.appointments ||
+          (Array.isArray(data) ? data : []);
+
+        const events = rawEvents.map((e: any) => ({
           ...e,
+          calendarId: e.calendarId || calendar.id,
           status: e.status ?? e.appointmentStatus ?? e.appoinmentStatus ?? 'confirmed',
         }));
         allEvents.push(...events);
-      } catch {
-        // skip calendars that fail
+      } catch (err) {
+        console.error(`[GHL] Failed to fetch events for calendar "${calendar.name}":`, err);
       }
     }
 
@@ -139,7 +152,7 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
   } catch (error) {
-    console.error("GHL Sync Error:", error);
+    console.error("GHL Sync Error (getAllAppointments):", error);
     return [];
   }
 }
