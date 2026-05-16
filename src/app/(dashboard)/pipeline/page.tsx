@@ -149,22 +149,24 @@ export default function PipelinePage() {
                 {pipelines.map((pipeline) => {
                   const isSelected = selectedPipelineId === pipeline.id;
                   return (
-                    <li key={pipeline.id} className="relative">
+                    <li
+                      key={pipeline.id}
+                      className={cn(
+                        "flex items-center transition-colors",
+                        isSelected ? "bg-primary" : "hover:bg-muted/50"
+                      )}
+                    >
+                      {/* Pipeline select button */}
                       <button
                         onClick={() => setSelectedPipelineId(pipeline.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-5 py-4 text-left transition-colors pr-14",
-                          isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted/50 text-foreground"
-                        )}
+                        className="flex-1 flex items-center justify-between px-5 py-4 text-left min-w-0"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           {isSelected && (
                             <CheckCircle2 size={16} className="shrink-0 text-primary-foreground" />
                           )}
                           <span className={cn(
-                            "text-sm font-medium",
+                            "text-sm font-medium truncate",
                             isSelected ? "text-primary-foreground" : "text-foreground"
                           )}>
                             {pipeline.name}
@@ -172,7 +174,7 @@ export default function PipelinePage() {
                         </div>
                         <Badge
                           className={cn(
-                            "text-[10px] font-semibold rounded-md px-2 py-0.5 border-0",
+                            "text-[10px] font-semibold rounded-md px-2 py-0.5 border-0 ml-3 shrink-0",
                             isSelected
                               ? "bg-white/20 text-primary-foreground"
                               : "bg-muted text-muted-foreground"
@@ -182,8 +184,8 @@ export default function PipelinePage() {
                         </Badge>
                       </button>
 
-                      {/* 3-dot menu */}
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                      {/* 3-dot menu — sits next to the row button, never overlapping */}
+                      <div className="pr-3 shrink-0">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -195,17 +197,13 @@ export default function PipelinePage() {
                                   ? "text-primary-foreground hover:bg-white/20 hover:text-primary-foreground"
                                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
                               )}
-                              onClick={e => e.stopPropagation()}
                             >
                               <MoreHorizontal size={15} />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
                             <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openAddStage(pipeline.id);
-                              }}
+                              onClick={() => openAddStage(pipeline.id)}
                               className="gap-2 cursor-pointer"
                             >
                               <Plus size={14} />
@@ -213,10 +211,7 @@ export default function PipelinePage() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteStage(pipeline.id);
-                              }}
+                              onClick={() => openDeleteStage(pipeline.id)}
                               className="gap-2 cursor-pointer text-destructive focus:text-destructive"
                               disabled={pipeline.stages.length === 0}
                             >
