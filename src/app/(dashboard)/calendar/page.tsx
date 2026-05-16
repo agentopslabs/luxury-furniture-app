@@ -673,9 +673,18 @@ export default function CalendarPage() {
                     Available Slot {loadingSlots && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                   </Label>
                   {noSlotsOnDate ? (
-                    <div className="h-12 rounded-xl border border-destructive/30 bg-destructive/5 flex items-center px-3 gap-2">
-                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
-                      <span className="text-xs text-destructive font-medium">No availability — try a weekday</span>
+                    <div className="space-y-1">
+                      <Input
+                        type="time"
+                        className="glass h-12 rounded-xl"
+                        onChange={(e) => {
+                          if (!e.target.value || !bookingForm.selectedDate) return;
+                          const [hours, minutes] = e.target.value.split(':');
+                          const dt = new Date(`${bookingForm.selectedDate}T${hours}:${minutes}:00`);
+                          setBookingForm({ ...bookingForm, selectedSlot: dt.toISOString() });
+                        }}
+                      />
+                      <p className="text-[10px] text-muted-foreground pl-1">No preset slots — pick any time</p>
                     </div>
                   ) : (
                     <Select
