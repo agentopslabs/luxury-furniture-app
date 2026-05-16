@@ -689,9 +689,10 @@ export default function CalendarPage() {
                         <SelectValue placeholder="Select a time slot" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
-                        {Array.from({ length: 13 }, (_, i) => {
+                        {bookingForm.selectedDate && Array.from({ length: 13 }, (_, i) => {
                           const hour = 8 + i;
                           const dt = new Date(`${bookingForm.selectedDate}T${String(hour).padStart(2, '0')}:00:00`);
+                          if (isNaN(dt.getTime())) return null;
                           return (
                             <SelectItem key={hour} value={dt.toISOString()}>
                               {dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
