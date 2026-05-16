@@ -6,7 +6,8 @@ import {
   getOpportunities, 
   getPipelines,
   getContacts,
-  createOpportunity
+  createOpportunity,
+  updateOpportunity
 } from "@/lib/ghl-actions";
 import { GHLOpportunity, GHLPipeline, GHLContact } from "@/lib/ghl";
 import { 
@@ -19,11 +20,8 @@ import {
   Eye,
   Trash2,
   Layers,
-  DollarSign,
-  MoreVertical,
   LayoutList,
-  Columns,
-  CheckCircle2
+  Columns
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,9 +55,25 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 type StatusFilter = 'open' | 'won' | 'lost' | 'abandoned' | 'all';
 type ViewMode = 'list' | 'kanban';
+
+const AVATAR_COLORS = [
+  "bg-blue-100 text-blue-600",
+  "bg-purple-100 text-purple-600",
+  "bg-emerald-100 text-emerald-600",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-600",
+  "bg-cyan-100 text-cyan-600",
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 export default function OpportunitiesPage() {
   const [pipelines, setPipelines] = useState<GHLPipeline[]>([]);
@@ -70,8 +84,8 @@ export default function OpportunitiesPage() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -95,19 +109,16 @@ export default function OpportunitiesPage() {
         getOpportunities(),
         getContacts(100)
       ]);
-      
       setPipelines(pipes);
       setOpportunities(opps);
       setContacts(conts);
-      
       if (pipes.length > 0 && !selectedPipelineId) {
         setSelectedPipelineId(pipes[0].id);
       }
-      
       if (isManual) {
         toast({ title: "Deal Flow Synced", description: `Synchronized ${opps.length} records across ${pipes.length} pipelines.` });
       }
-    } catch (error) {
+    } catch {
       toast({ variant: "destructive", title: "Sync Error", description: "Could not reach LeadConnector cloud." });
     } finally {
       setLoading(false);
@@ -115,23 +126,11 @@ export default function OpportunitiesPage() {
     }
   }, [toast, selectedPipelineId]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const activePipeline = useMemo(() => 
+  const activePipeline = useMemo(() =>
     pipelines.find(p => p.id === selectedPipelineId) || pipelines[0]
   , [pipelines, selectedPipelineId]);
-
-  const filteredOpps = useMemo(() => {
-    return opportunities.filter(o => {
-      const matchesSearch = o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           o.contact?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
-      const matchesPipeline = !selectedPipelineId || o.pipelineId === selectedPipelineId;
-      return matchesSearch && matchesStatus && matchesPipeline;
-    });
-  }, [opportunities, searchQuery, statusFilter, selectedPipelineId]);
 
   const kanbanData = useMemo(() => {
     if (!activePipeline) return [];
@@ -141,36 +140,45 @@ export default function OpportunitiesPage() {
     }));
   }, [activePipeline, opportunities]);
 
-  const statsBreakdown = useMemo(() => {
-    const counts = {
+  const filteredOpps = useMemo(() => {
+    return opportunities.filter(o => {
+      const matchesSearch = o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           o.contact?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+      const matchesPipeline = !selectedPipelineId || o.pipelineId === selectedPipelineId;
+      return matchesSearch && matchesStatus && matchesPipeline;
+    });
+  }, [opportunities, searchQuery, statusFilter, selectedPipelineId]);
+
+  const statsBreakdown = useMemo(() => ({
+    counts: {
       open: opportunities.filter(o => o.status === 'open').length,
       won: opportunities.filter(o => o.status === 'won').length,
       lost: opportunities.filter(o => o.status === 'lost').length,
       abandoned: opportunities.filter(o => o.status === 'abandoned').length,
-    };
-    return { counts };
-  }, [opportunities]);
+    }
+  }), [opportunities]);
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = (stageId?: string) => {
     if (activePipeline) {
       setFormData({
         name: "",
         monetaryValue: 0,
         pipelineId: activePipeline.id,
-        pipelineStageId: activePipeline.stages[0]?.id || "",
+        pipelineStageId: stageId || activePipeline.stages[0]?.id || "",
         contactId: "",
         status: "open"
       });
       setIsCreateOpen(true);
     } else {
-      toast({ variant: "destructive", title: "No Active Pipeline", description: "Please select a pipeline before adding opportunities." });
+      toast({ variant: "destructive", title: "No Active Pipeline", description: "Please select a pipeline." });
     }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.contactId) {
-      toast({ variant: "destructive", title: "Contact Required", description: "GHL requires every opportunity to be linked to a contact. Please select one." });
+      toast({ variant: "destructive", title: "Contact Required", description: "Please select a contact." });
       return;
     }
     setIsActionLoading(true);
@@ -186,15 +194,35 @@ export default function OpportunitiesPage() {
     }
   };
 
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const newStageId = destination.droppableId;
+    const oppId = draggableId;
+
+    // Optimistic update in UI
+    setOpportunities(prev =>
+      prev.map(o => o.id === oppId ? { ...o, pipelineStageId: newStageId } : o)
+    );
+
+    try {
+      await updateOpportunity(oppId, { pipelineStageId: newStageId });
+    } catch {
+      toast({ variant: "destructive", title: "Move Failed", description: "Could not update deal stage. Reverting." });
+      fetchData();
+    }
+  };
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex min-h-screen bg-[#f5f6fa] text-foreground overflow-hidden">
       <DashboardNav />
       <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
         {/* Header */}
-        <header className="border-b border-border px-8 pt-8 pb-6 shrink-0 bg-white z-10">
-          <div className="flex items-center justify-between mb-6">
+        <header className="border-b border-border px-8 pt-7 pb-5 shrink-0 bg-white z-10">
+          <div className="flex items-center justify-between mb-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Opportunities</h1>
               <p className="text-sm text-muted-foreground mt-0.5">Track and manage your deal pipeline</p>
@@ -230,24 +258,22 @@ export default function OpportunitiesPage() {
                 <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
                 {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
-              <Button className="h-9 px-4 rounded-lg bg-primary text-white hover:bg-primary/90" onClick={handleOpenCreate}>
+              <Button className="h-9 px-4 rounded-lg bg-primary text-white hover:bg-primary/90" onClick={() => handleOpenCreate()}>
                 <Plus size={16} className="mr-2" /> New Opportunity
               </Button>
             </div>
           </div>
 
-          {/* Filters bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-              <SelectTrigger className="w-[240px] h-9 rounded-lg">
+              <SelectTrigger className="w-[220px] h-9 rounded-lg">
                 <SelectValue placeholder="Select Pipeline" />
               </SelectTrigger>
               <SelectContent>
-                {pipelines.length > 0 ? pipelines.map(p => (
+                {pipelines.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                )) : (
-                  <div className="p-4 text-center text-xs text-muted-foreground">No pipelines detected</div>
-                )}
+                ))}
               </SelectContent>
             </Select>
 
@@ -255,38 +281,31 @@ export default function OpportunitiesPage() {
               <>
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search opportunities..." 
+                  <Input
+                    placeholder="Search opportunities..."
                     className="pl-9 h-9 rounded-lg text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-
                 <div className="flex items-center gap-1 ml-auto">
-                  {[
-                    { id: 'open', label: 'Open' },
-                    { id: 'won', label: 'Won' },
-                    { id: 'lost', label: 'Lost' },
-                    { id: 'abandoned', label: 'Abandoned' },
-                    { id: 'all', label: 'All' }
-                  ].map((f) => (
+                  {(['open','won','lost','abandoned','all'] as const).map((f) => (
                     <Button
-                      key={f.id}
-                      variant={statusFilter === f.id ? "default" : "ghost"}
+                      key={f}
+                      variant={statusFilter === f ? "default" : "ghost"}
                       size="sm"
-                      onClick={() => setStatusFilter(f.id as StatusFilter)}
+                      onClick={() => setStatusFilter(f)}
                       className={cn(
-                        "h-8 px-3 rounded-lg text-xs font-semibold",
-                        statusFilter === f.id ? "bg-primary text-white" : "text-muted-foreground"
+                        "h-8 px-3 rounded-lg text-xs font-semibold capitalize",
+                        statusFilter === f ? "bg-primary text-white" : "text-muted-foreground"
                       )}
                     >
-                      {f.label}
+                      {f}
                       <span className={cn(
                         "ml-1.5 text-[10px] font-bold rounded px-1",
-                        statusFilter === f.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                        statusFilter === f ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                       )}>
-                        {f.id === 'all' ? opportunities.length : statsBreakdown.counts[f.id as keyof typeof statsBreakdown.counts] || 0}
+                        {f === 'all' ? opportunities.length : statsBreakdown.counts[f] || 0}
                       </span>
                     </Button>
                   ))}
@@ -303,12 +322,10 @@ export default function OpportunitiesPage() {
             <div className="h-full overflow-y-auto p-8">
               {loading ? (
                 <div className="space-y-3">
-                  {Array(6).fill(0).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                  ))}
+                  {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
                 </div>
               ) : (
-                <Card className="border-border rounded-xl overflow-hidden">
+                <Card className="border-border rounded-xl overflow-hidden bg-white">
                   <Table>
                     <TableHeader className="bg-muted/40">
                       <TableRow className="border-border hover:bg-transparent">
@@ -321,67 +338,54 @@ export default function OpportunitiesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOpps.length > 0 ? (
-                        filteredOpps.map((opp) => (
-                          <TableRow key={opp.id} className="border-border hover:bg-muted/30 transition-colors">
-                            <TableCell className="px-6 py-4">
-                              <div>
-                                <p className="text-sm font-semibold">{opp.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">#{opp.id.slice(0, 12)}</p>
+                      {filteredOpps.length > 0 ? filteredOpps.map((opp) => (
+                        <TableRow key={opp.id} className="border-border hover:bg-muted/30 transition-colors">
+                          <TableCell className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-semibold">{opp.name}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">#{opp.id.slice(0, 12)}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", getAvatarColor(opp.contact?.name || 'L'))}>
+                                {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
                               </div>
-                            </TableCell>
-                            <TableCell className="py-4">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
-                                  {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
-                                </div>
-                                <span className="text-sm text-muted-foreground">{opp.contact?.name || '—'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-4 text-right">
-                              <span className="text-sm font-semibold text-emerald-600">
-                                ${opp.monetaryValue?.toLocaleString() || '0'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="py-4">
-                              <span className="text-xs text-muted-foreground">
-                                {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || '—'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="py-4 text-center">
-                              <Badge 
-                                className={cn(
-                                  "text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize border",
-                                  opp.status === 'won' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                                  opp.status === 'lost' ? "bg-red-50 text-red-600 border-red-200" :
-                                  opp.status === 'abandoned' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                  "bg-blue-50 text-blue-700 border-blue-200"
-                                )}
-                              >
-                                {opp.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-4 text-right px-6">
-                              <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
-                                  <Eye size={14} />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600">
-                                  <Trash2 size={14} />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
+                              <span className="text-sm text-muted-foreground">{opp.contact?.name || '—'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 text-right">
+                            <span className="text-sm font-semibold text-emerald-600">${opp.monetaryValue?.toLocaleString() || '0'}</span>
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <span className="text-xs text-muted-foreground">
+                              {activePipeline?.stages.find(s => s.id === opp.pipelineStageId)?.name || '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-4 text-center">
+                            <Badge className={cn(
+                              "text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize border",
+                              opp.status === 'won' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              opp.status === 'lost' ? "bg-red-50 text-red-600 border-red-200" :
+                              opp.status === 'abandoned' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                              "bg-blue-50 text-blue-700 border-blue-200"
+                            )}>
+                              {opp.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 text-right px-6">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted"><Eye size={14} /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600"><Trash2 size={14} /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )) : (
                         <TableRow>
                           <TableCell colSpan={6} className="h-64 text-center">
                             <div className="flex flex-col items-center justify-center gap-3 opacity-40">
                               <Target size={36} className="text-muted-foreground" />
-                              <div>
-                                <p className="text-sm font-semibold text-muted-foreground">No opportunities found</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">Try changing the pipeline or status filter</p>
-                              </div>
+                              <p className="text-sm font-semibold text-muted-foreground">No opportunities found</p>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -394,88 +398,116 @@ export default function OpportunitiesPage() {
           ) : (
             /* ── KANBAN VIEW ── */
             <ScrollArea className="h-full w-full">
-              <div className="flex gap-6 p-8 min-w-full">
+              <div className="flex gap-5 p-6 min-w-full items-start">
                 {loading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <div key={i} className="w-80 shrink-0 space-y-6">
-                      <Skeleton className="h-10 w-3/4 rounded-xl" />
-                      <Skeleton className="h-[400px] w-full rounded-3xl" />
-                    </div>
-                  ))
-                ) : kanbanData.length > 0 ? (
-                  kanbanData.map((stage) => (
-                    <div key={stage.id} className="w-72 shrink-0 flex flex-col space-y-4">
-                      {/* Stage header */}
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stage.name}</h3>
-                          <Badge variant="secondary" className="text-[10px] h-5 px-2 bg-muted border-0">
-                            {stage.opps.length}
-                          </Badge>
-                        </div>
-                        <span className="text-[11px] font-mono text-emerald-600 font-bold">
-                          ${stage.opps.reduce((acc, curr) => acc + (curr.monetaryValue || 0), 0).toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Stage column */}
-                      <div className="flex-1 space-y-3 min-h-[500px] p-3 rounded-xl bg-muted/30 border border-border">
-                        {stage.opps.map((opp) => (
-                          <Card key={opp.id} className="border-border p-4 rounded-xl group hover:shadow-md transition-all cursor-pointer bg-white">
-                            <div className="flex justify-between items-start mb-3">
-                              <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-tighter text-muted-foreground border-border">
-                                #{opp.id.slice(0, 8)}
-                              </Badge>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical size={13} />
-                              </Button>
-                            </div>
-
-                            <h4 className="font-semibold text-sm group-hover:text-primary transition-colors mb-3 line-clamp-2 leading-snug">
-                              {opp.name}
-                            </h4>
-
-                            <div className="flex items-center justify-between pt-3 border-t border-border">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                                  {opp.contact?.name?.[0]?.toUpperCase() || 'L'}
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-semibold text-foreground truncate w-20">{opp.contact?.name || 'Anonymous'}</p>
-                                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Client</p>
-                                </div>
-                              </div>
-                              <div className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                                <DollarSign size={11} />
-                                {opp.monetaryValue?.toLocaleString() || '0'}
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-
-                        {stage.opps.length === 0 && (
-                          <div className="h-28 border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 opacity-30">
-                            <Layers size={20} />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Empty Stage</span>
-                          </div>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          onClick={handleOpenCreate}
-                          className="w-full h-10 rounded-xl border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all group"
-                        >
-                          <Plus size={14} className="mr-1.5 group-hover:scale-110 transition-transform" />
-                          <span className="text-[10px] font-bold uppercase tracking-widest">New Deal</span>
-                        </Button>
-                      </div>
+                  Array(4).fill(0).map((_, i) => (
+                    <div key={i} className="w-72 shrink-0 space-y-4">
+                      <Skeleton className="h-8 w-full rounded-lg" />
+                      <Skeleton className="h-40 w-full rounded-xl" />
+                      <Skeleton className="h-40 w-full rounded-xl" />
                     </div>
                   ))
                 ) : (
-                  <div className="w-full flex flex-col items-center justify-center gap-4 py-32 opacity-30">
-                    <Layers className="h-14 w-14 text-muted-foreground" />
-                    <p className="text-muted-foreground font-medium text-sm">No active deal flows detected.</p>
-                  </div>
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    {kanbanData.map((stage) => {
+                      const stageTotal = stage.opps.reduce((acc, o) => acc + (o.monetaryValue || 0), 0);
+                      return (
+                        <div key={stage.id} className="w-72 shrink-0 flex flex-col">
+                          {/* Stage header */}
+                          <div className="flex items-center justify-between mb-3 px-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {stage.name}
+                              </span>
+                              <span className="text-[11px] font-bold text-muted-foreground">
+                                {stage.opps.length}
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-emerald-500">
+                              ${stageTotal.toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Drop zone */}
+                          <Droppable droppableId={stage.id}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={cn(
+                                  "flex-1 min-h-[200px] flex flex-col gap-3 rounded-xl p-2 transition-colors",
+                                  snapshot.isDraggingOver ? "bg-primary/5" : "bg-transparent"
+                                )}
+                              >
+                                {stage.opps.map((opp, index) => {
+                                  const contactName = opp.contact?.name || 'Anonymous';
+                                  const initial = contactName[0]?.toLowerCase() || 'a';
+                                  const avatarColor = getAvatarColor(contactName);
+                                  return (
+                                    <Draggable key={opp.id} draggableId={opp.id} index={index}>
+                                      {(provided, snapshot) => (
+                                        <div
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                          className={cn(
+                                            "bg-white rounded-2xl border border-border p-5 select-none transition-shadow",
+                                            snapshot.isDragging ? "shadow-xl rotate-1" : "shadow-sm hover:shadow-md"
+                                          )}
+                                        >
+                                          <h4 className="font-bold text-base text-foreground mb-4 leading-snug">
+                                            {opp.name}
+                                          </h4>
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <div className={cn(
+                                                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                                                avatarColor
+                                              )}>
+                                                {initial}
+                                              </div>
+                                              <span className="text-sm text-muted-foreground">{contactName}</span>
+                                            </div>
+                                            <span className="text-sm font-bold text-emerald-500">
+                                              ${opp.monetaryValue?.toLocaleString() || '0'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })}
+
+                                {provided.placeholder}
+
+                                {stage.opps.length === 0 && !snapshot.isDraggingOver && (
+                                  <div className="h-24 border border-dashed border-border rounded-xl flex items-center justify-center opacity-30">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Empty</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Droppable>
+
+                          {/* Add deal */}
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleOpenCreate(stage.id)}
+                            className="mt-2 w-full h-9 rounded-xl border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all group text-xs font-semibold"
+                          >
+                            <Plus size={13} className="mr-1.5" /> Add Deal
+                          </Button>
+                        </div>
+                      );
+                    })}
+
+                    {kanbanData.length === 0 && (
+                      <div className="flex-1 flex flex-col items-center justify-center gap-4 py-32 opacity-30">
+                        <Layers className="h-14 w-14 text-muted-foreground" />
+                        <p className="text-sm font-medium text-muted-foreground">No active deal flows detected.</p>
+                      </div>
+                    )}
+                  </DragDropContext>
                 )}
               </div>
               <ScrollBar orientation="horizontal" />
@@ -490,32 +522,17 @@ export default function OpportunitiesPage() {
           <form onSubmit={handleCreate}>
             <DialogHeader className="mb-6">
               <DialogTitle className="text-xl font-bold">New Opportunity</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-sm">
-                Add a deal to your GHL pipeline.
-              </DialogDescription>
+              <DialogDescription className="text-sm text-muted-foreground">Add a deal to your GHL pipeline.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Deal Name</Label>
-                <Input 
-                  placeholder="e.g. Enterprise Package"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="h-10 rounded-lg"
-                />
+                <Input placeholder="e.g. Enterprise Package" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="h-10 rounded-lg" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Value ($)</Label>
-                  <Input 
-                    type="number"
-                    placeholder="0"
-                    value={formData.monetaryValue || ""}
-                    onChange={(e) => setFormData({ ...formData, monetaryValue: parseFloat(e.target.value) || 0 })}
-                    className="h-10 rounded-lg"
-                  />
+                  <Input type="number" placeholder="0" value={formData.monetaryValue || ""} onChange={(e) => setFormData({ ...formData, monetaryValue: parseFloat(e.target.value) || 0 })} className="h-10 rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</Label>
@@ -530,7 +547,6 @@ export default function OpportunitiesPage() {
                   </Select>
                 </div>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contact</Label>
                 <Select value={formData.contactId} onValueChange={(v) => setFormData({ ...formData, contactId: v })}>
@@ -542,7 +558,6 @@ export default function OpportunitiesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pipeline</Label>
                 <Select value={formData.pipelineId} onValueChange={(v) => {
@@ -551,13 +566,10 @@ export default function OpportunitiesPage() {
                 }}>
                   <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="Select pipeline" /></SelectTrigger>
                   <SelectContent>
-                    {pipelines.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
+                    {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-
               {formData.pipelineId && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stage</Label>
@@ -572,7 +584,6 @@ export default function OpportunitiesPage() {
                 </div>
               )}
             </div>
-
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-lg">Cancel</Button>
               <Button type="submit" disabled={isActionLoading} className="rounded-lg bg-primary text-white hover:bg-primary/90">
