@@ -147,18 +147,14 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 export async function createAppointment(apptData: {
   calendarId: string;
   contactId: string;
-  startTime: string; 
+  startTime: string;
   endTime?: string;
   title: string;
   timezone?: string;
-}): Promise<GHLAppointment> {
-  // Ensure we have a strictly defined end time (default 30 mins)
+}): Promise<{ appointment?: GHLAppointment; fallback?: boolean }> {
   const start = new Date(apptData.startTime);
-  const end = apptData.endTime ? new Date(apptData.endTime) : new Date(start.getTime() + 30 * 60000);
+  const end = apptData.endTime ? new Date(apptData.endTime) : new Date(start.getTime() + 60 * 60000);
 
-  // GHL V2 validation often fails if the start time is too close to "now"
-  // We ensure it's at least in the future by checking it, but we rely on the user selection.
-  
   const payload = {
     calendarId: apptData.calendarId,
     contactId: apptData.contactId,
@@ -166,17 +162,43 @@ export async function createAppointment(apptData: {
     endTime: end.toISOString(),
     title: apptData.title,
     locationId: GHL_LOCATION_ID,
-    // Use provided timezone or fallback to UTC to prevent "slot no longer available" validation errors
     timezone: apptData.timezone || 'UTC',
+    toNotify: false,
   };
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/events/appointments`, {
     method: 'POST',
-    headers,
+    headers: {
+      ...headers,
+      'Version': '2021-04-15',
+    },
     body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    let errMsg = '';
+    try { const e = await response.json(); errMsg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    if (errMsg.toLowerCase().includes('slot') || errMsg.toLowerCase().includes('available') || errMsg.toLowerCase().includes('no longer')) {
+      // Fallback: log as a contact note when the slot isn't in the calendar's configured hours
+      const dateLabel = start.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const noteBody = `📅 Appointment Request\nTitle: ${apptData.title}\nScheduled: ${dateLabel}\nCalendar ID: ${apptData.calendarId}\n\n(Booked outside calendar hours — logged as note)`;
+      await createContactNote(apptData.contactId, noteBody);
+      return { fallback: true };
+    }
+    throw new Error(errMsg || `Booking failed (${response.status})`);
+  }
+
   const data = await handleResponse(response, 'booking appointment');
-  return data.appointment;
+  return { appointment: data.appointment };
+}
+
+export async function createContactNote(contactId: string, body: string): Promise<void> {
+  const response = await fetch(`${GHL_API_BASE_URL}/contacts/${contactId}/notes`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ body, locationId: GHL_LOCATION_ID }),
+  });
+  await handleResponse(response, 'creating contact note');
 }
 
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {

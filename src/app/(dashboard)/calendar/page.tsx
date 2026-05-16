@@ -193,7 +193,7 @@ export default function CalendarPage() {
     setIsSubmitting(true);
     try {
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      await createAppointment({
+      const result = await createAppointment({
         calendarId: bookingForm.calendarId,
         contactId: bookingForm.contactId,
         title: bookingForm.title || "Interaction Slot",
@@ -204,7 +204,11 @@ export default function CalendarPage() {
       setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
       setAvailableSlots([]);
       setSlotsFetched(false);
-      toast({ title: "Appointment Booked", description: "Successfully added to GHL calendar." });
+      if (result.fallback) {
+        toast({ title: "Appointment Logged", description: "This time is outside the calendar's configured hours — saved as a contact note in GHL." });
+      } else {
+        toast({ title: "Appointment Booked", description: "Successfully added to GHL calendar." });
+      }
       fetchData(true);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Booking Failed", description: error.message || "Could not commit slot to GHL." });
