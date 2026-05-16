@@ -52,7 +52,7 @@ export default function LoginPage() {
       
       toast({
         title: "Welcome back",
-        description: "Successfully authenticated. Your CRM profile is synchronized.",
+        description: "Successfully authenticated.",
       });
     } catch (error: any) {
       toast({
