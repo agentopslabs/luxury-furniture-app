@@ -20,8 +20,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'KoreAuth | Enterprise Identity Hub',
-  description: 'Secure authentication and CRM synchronization platform.',
+  title: 'Luxury Furniture',
+  description: 'Premium furniture collections for home and office.',
 };
 
 export default function RootLayout({

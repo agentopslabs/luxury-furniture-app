@@ -119,7 +119,7 @@ export default function OpportunitiesPage() {
         toast({ title: "Deal Flow Synced", description: `Synchronized ${opps.length} records across ${pipes.length} pipelines.` });
       }
     } catch {
-      toast({ variant: "destructive", title: "Sync Error", description: "Could not reach LeadConnector cloud." });
+      toast({ variant: "destructive", title: "Error", description: "Could not load opportunities. Please try again." });
     } finally {
       setLoading(false);
       setRefreshing(false);

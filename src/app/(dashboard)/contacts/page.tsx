@@ -89,14 +89,14 @@ export default function ContactsPage() {
       if (isManual) {
         toast({
           title: "Contacts Refreshed",
-          description: "Latest LeadConnector V2 contact records pulled.",
+          description: "Latest contact records loaded successfully.",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Connection Error",
-        description: "Failed to reach LeadConnector V2 servers.",
+        description: "Failed to load contacts. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -131,14 +131,14 @@ export default function ContactsPage() {
       setNewContact({ firstName: "", lastName: "", email: "", phone: "" });
       toast({
         title: "Contact Created",
-        description: `${created.firstName} ${created.lastName} added to GHL cloud.`,
+        description: `${created.firstName} ${created.lastName} has been added.`,
       });
       fetchContacts(true);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Creation Failed",
-        description: error.message || "Could not push new contact to GHL.",
+        description: error.message || "Could not create contact. Please try again.",
       });
     } finally {
       setIsActionLoading(false);
@@ -168,7 +168,7 @@ export default function ContactsPage() {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "Could not push changes to GHL.",
+        description: "Could not save changes. Please try again.",
       });
     } finally {
       setIsActionLoading(false);

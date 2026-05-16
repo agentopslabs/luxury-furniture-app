@@ -133,25 +133,12 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/50">
-                  Intelligence Hub
+                  Luxury Furniture
                 </h1>
-                <div className="flex items-center">
-                  {syncStatus === 'synced' ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5 h-6">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Live Sync Active
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5 h-6 animate-pulse">
-                      <Activity size={10} className="animate-spin" />
-                      Syncing GHL...
-                    </Badge>
-                  )}
-                </div>
               </div>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 <ShieldCheck size={14} className="text-primary" />
-                V2 Backend • nBYJTjYbHTIsJGiqT0W4
+                Premium Collections Dashboard
               </p>
             </div>
             <div className="flex gap-3">
@@ -258,9 +245,8 @@ export default function DashboardPage() {
                 <Card className="glass glass-hover border-border/40 p-8">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
-                      <User className="h-4 w-4" /> Identity Intelligence
+                      <User className="h-4 w-4" /> Customer Profile
                     </h3>
-                    <Badge variant="outline" className="border-white/10 text-[9px] uppercase tracking-tighter">Verified V2</Badge>
                   </div>
                   {loading ? (
                     <Skeleton className="h-32 w-full rounded-2xl" />
@@ -381,22 +367,28 @@ export default function DashboardPage() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary animate-shimmer" />
                 <CardHeader className="p-8 pb-4">
                   <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
-                    <ShieldCheck size={14} /> GHL System Link
+                    <ShieldCheck size={14} /> Store Status
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8 pt-0 space-y-6">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center py-2 border-b border-white/5">
-                      <span className="text-[11px] text-muted-foreground font-medium">Auth Core</span>
+                      <span className="text-[11px] text-muted-foreground font-medium">System</span>
                       <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={12} /> PIT_ACTIVE
+                        <CheckCircle2 size={12} /> ONLINE
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-white/5">
+                      <span className="text-[11px] text-muted-foreground font-medium">Inventory</span>
+                      <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
+                        <CheckCircle2 size={12} /> IN STOCK
                       </span>
                     </div>
                   </div>
                   <Button variant="outline" className="w-full h-12 text-xs border-primary/20 bg-primary/5 hover:bg-primary/20 hover:text-white transition-all group rounded-2xl font-bold" asChild>
-                    <a href="https://app.gohighlevel.com/" target="_blank" rel="noopener noreferrer">
-                      Launch GHL <ExternalLink className="ml-2 h-4 w-4" />
-                    </a>
+                    <Link href="/settings">
+                      View Pipelines <ExternalLink className="ml-2 h-4 w-4" />
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

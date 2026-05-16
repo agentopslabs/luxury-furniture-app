@@ -34,10 +34,10 @@ export default function ConversationsPage() {
       const data = await getConversations();
       setConversations(data);
       if (isManual) {
-        toast({ title: "Inbox Refreshed", description: `Loaded ${data.length} threads from GHL.` });
+        toast({ title: "Inbox Refreshed", description: `Loaded ${data.length} conversations.` });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Sync Error", description: "Failed to connect to GHL messaging hub." });
+      toast({ variant: "destructive", title: "Error", description: "Failed to load conversations. Please try again." });
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -143,7 +143,7 @@ export default function MarketingPage() {
     setIsSubmitting(true);
     try {
       await createSocialPost(newPost);
-      toast({ title: "Post Synchronized", description: "Successfully pushed to GHL Social Planner." });
+      toast({ title: "Post Scheduled", description: "Your post has been scheduled successfully." });
       setIsPostOpen(false);
       setNewPost({ caption: "", type: "Post", status: "Scheduled", channels: [] });
       fetchData();
@@ -157,7 +157,7 @@ export default function MarketingPage() {
   const handleConnectSocial = (platform: string) => {
     toast({
       title: `${platform} Connection`,
-      description: `Initiating OAuth flow for ${platform}. Redirecting to GHL secure portal...`,
+      description: `Connecting ${platform} account. Please follow the prompts...`,
     });
     setIsSocialsOpen(false);
   };
