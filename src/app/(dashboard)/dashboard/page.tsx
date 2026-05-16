@@ -8,16 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
   Calendar,
-  DollarSign,
   Layers,
   Clock,
-  ThumbsUp,
-  CheckCircle2,
   TrendingUp,
   Users,
   Zap,
@@ -60,6 +56,59 @@ function DonutChart({ percent }: { percent: number }) {
   );
 }
 
+type BarRow = { name: string; count: number; isWon: boolean };
+
+function PipelineBarGraph({ loading, barData }: { loading: boolean; barData: BarRow[] }) {
+  const maxCount = barData.length > 0 ? Math.max(...barData.map((d) => d.count), 1) : 1;
+  return (
+    <Card className="bg-white border-0 shadow-sm rounded-2xl">
+      <CardContent className="px-6 pt-6 pb-4">
+        {loading ? (
+          <div className="space-y-4">
+            {Array(4).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : barData.length === 0 ? (
+          <div className="flex items-center justify-center py-12 opacity-40">
+            <p className="text-sm text-gray-400">No pipeline data</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {barData.map((row, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <span className="w-36 shrink-0 text-[11px] font-semibold text-gray-500 truncate text-right">
+                  {row.name}
+                </span>
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-lg transition-all duration-700",
+                        row.isWon ? "bg-emerald-500" : "bg-primary"
+                      )}
+                      style={{
+                        width: `${(row.count / maxCount) * 100}%`,
+                        minWidth: row.count > 0 ? "2rem" : "0",
+                      }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "w-6 text-sm font-bold text-right shrink-0",
+                    row.isWon ? "text-emerald-600" : "text-gray-700"
+                  )}>
+                    {row.count}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const [appts, setAppts] = useState<GHLAppointment[]>([]);
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
@@ -72,24 +121,19 @@ export default function DashboardPage() {
   useEffect(() => {
     setIsMounted(true);
     async function fetchData() {
-      try {
-        const [contactsData, oppsData, allAppts, pipeData, ordersData] = await Promise.all([
-          ghl.getContacts(100),
-          ghl.getOpportunities(),
-          ghl.getAllAppointments(),
-          ghl.getPipelines(),
-          getOrders(5),
-        ]);
-        setContactCount(contactsData.length);
-        setOpportunities(oppsData);
-        setPipelines(pipeData);
-        setOrders(ordersData || []);
-        setAppts(allAppts);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
+      const [contactsRes, oppsRes, apptsRes, pipeRes, ordersRes] = await Promise.allSettled([
+        ghl.getContacts(100),
+        ghl.getOpportunities(),
+        ghl.getAllAppointments(),
+        ghl.getPipelines(),
+        getOrders(5),
+      ]);
+      if (contactsRes.status === "fulfilled") setContactCount(contactsRes.value.length);
+      if (oppsRes.status === "fulfilled") setOpportunities(oppsRes.value);
+      if (apptsRes.status === "fulfilled") setAppts(apptsRes.value);
+      if (pipeRes.status === "fulfilled") setPipelines(pipeRes.value);
+      if (ordersRes.status === "fulfilled") setOrders(ordersRes.value || []);
+      setLoading(false);
     }
     fetchData();
   }, []);
@@ -129,13 +173,19 @@ export default function DashboardPage() {
     });
   }, [appts, isMounted]);
 
-  const kanbanData = useMemo(() => {
-    if (pipelines.length === 0) return [];
-    const mainPipe = pipelines[0];
-    return mainPipe.stages.map((stage) => ({
-      ...stage,
-      opps: opportunities.filter((o) => o.pipelineStageId === stage.id),
-    }));
+  const barData = useMemo(() => {
+    const wonCount = opportunities.filter((o) => o.status === "won").length;
+    const stageRows = pipelines.length > 0
+      ? pipelines[0].stages.map((stage) => ({
+          name: stage.name,
+          count: opportunities.filter((o) => o.pipelineStageId === stage.id).length,
+          isWon: false,
+        }))
+      : [];
+    return [
+      { name: "Responded Yes", count: wonCount, isWon: true },
+      ...stageRows,
+    ];
   }, [pipelines, opportunities]);
 
   const todayLabel = isMounted
@@ -202,123 +252,14 @@ export default function DashboardPage() {
                 ))}
           </div>
 
-          {/* ── SALES PIPELINE ───────────────────────────────────────── */}
+          {/* ── SALES PIPELINE BAR GRAPH ─────────────────────────────── */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-bold text-gray-900">Sales Pipeline</h2>
             </div>
 
-            <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-gray-200 bg-white/60 p-1">
-              <div className="flex w-max gap-4 p-4">
-
-                {/* Responded Yes to Offer column */}
-                <div className="w-72 shrink-0 space-y-4">
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2">
-                      <ThumbsUp className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                        Responded Yes to Offer
-                      </span>
-                    </div>
-                    <Badge className="text-[10px] px-1.5 h-4 bg-emerald-100 text-emerald-600 border-0">
-                      {loading ? "…" : respondedYes.length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-3">
-                    {loading
-                      ? Array(3).fill(0).map((_, i) => (
-                          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
-                        ))
-                      : respondedYes.length === 0
-                      ? (
-                        <div className="flex flex-col items-center justify-center gap-2 py-10 opacity-40">
-                          <CheckCircle2 className="h-8 w-8 text-gray-400" />
-                          <p className="text-xs text-gray-400">No responses yet</p>
-                        </div>
-                      )
-                      : respondedYes.map((opp) => (
-                          <Card
-                            key={opp.id}
-                            className="bg-white border border-emerald-100 shadow-sm p-4 rounded-2xl cursor-pointer hover:border-emerald-300 transition-all"
-                          >
-                            <p className="text-sm font-bold text-gray-800 whitespace-normal leading-tight mb-3">
-                              {opp.name}
-                            </p>
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] font-bold">
-                                  {opp.contact?.name?.[0] || "?"}
-                                </div>
-                                <span className="text-[10px] font-medium text-gray-400 truncate w-24">
-                                  {opp.contact?.name || "Unknown"}
-                                </span>
-                              </div>
-                              <div className="text-[10px] font-bold text-emerald-600 flex items-center">
-                                <DollarSign size={10} />
-                                {opp.monetaryValue?.toLocaleString() || "0"}
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                  </div>
-                </div>
-
-                {/* Regular pipeline stages */}
-                {loading
-                  ? Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="w-72 space-y-4">
-                        <Skeleton className="h-6 w-40 rounded-lg" />
-                        <Skeleton className="h-36 w-full rounded-2xl" />
-                      </div>
-                    ))
-                  : kanbanData.map((stage) => (
-                      <div key={stage.id} className="w-72 shrink-0 space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                            {stage.name}
-                          </span>
-                          <Badge className="text-[10px] px-1.5 h-4 bg-gray-100 text-gray-500 border-0">
-                            {stage.opps.length}
-                          </Badge>
-                        </div>
-                        <div className="space-y-3">
-                          {stage.opps.length === 0 ? (
-                            <div className="flex items-center justify-center py-10 opacity-30">
-                              <p className="text-xs text-gray-400">Empty</p>
-                            </div>
-                          ) : (
-                            stage.opps.map((opp) => (
-                              <Card
-                                key={opp.id}
-                                className="bg-white border border-gray-100 shadow-sm p-4 rounded-2xl cursor-pointer hover:border-primary/30 transition-all"
-                              >
-                                <p className="text-sm font-bold text-gray-800 whitespace-normal leading-tight mb-3">
-                                  {opp.name}
-                                </p>
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                                      {opp.contact?.name?.[0] || "L"}
-                                    </div>
-                                    <span className="text-[10px] font-medium text-gray-400 truncate w-24">
-                                      {opp.contact?.name || "Lead Anonymous"}
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] font-bold text-emerald-600 flex items-center">
-                                    <DollarSign size={10} />
-                                    {opp.monetaryValue?.toLocaleString() || "0"}
-                                  </div>
-                                </div>
-                              </Card>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            <PipelineBarGraph loading={loading} barData={barData} />
           </section>
 
           {/* ── SALES OVERVIEW + TODAY ────────────────────────────────── */}
