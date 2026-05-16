@@ -3,16 +3,6 @@ import Image from "next/image";
 
 const furnitureImages = [
   {
-    src: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80",
-    alt: "Modern luxury sofa in a premium living room",
-    label: "Living Spaces",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80",
-    alt: "Contemporary designer furniture",
-    label: "Designer Pieces",
-  },
-  {
     src: "https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=800&q=80",
     alt: "Elegant bedroom furniture setup",
     label: "Bedroom Suites",
@@ -31,6 +21,36 @@ const furnitureImages = [
     src: "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=800&q=80",
     alt: "Elegant master bedroom design",
     label: "Master Bedrooms",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?w=800&q=80",
+    alt: "Luxury dining table with designer chairs",
+    label: "Dining Tables",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
+    alt: "Elegant formal dining room setup",
+    label: "Dining Rooms",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800&q=80",
+    alt: "Luxurious double bed with premium linen",
+    label: "Double Beds",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80",
+    alt: "Modern double bed in a styled bedroom",
+    label: "King Beds",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800&q=80",
+    alt: "Premium divan with soft upholstery",
+    label: "Divans",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80",
+    alt: "Chaise lounge divan in a luxury room",
+    label: "Chaise Lounges",
   },
 ];
 
@@ -163,24 +183,6 @@ export default function WelcomePage() {
               Discover timeless furniture crafted for modern living. Where exceptional
               design meets unmatched comfort — transform every room into a masterpiece.
             </p>
-
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/signup"
-                className="group flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-300 hover:scale-[1.03] text-sm"
-              >
-                Explore Collections
-                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
-              <Link
-                href="/login"
-                className="px-7 py-3.5 rounded-xl border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-white font-semibold backdrop-blur-sm transition-all duration-300 text-sm"
-              >
-                Sign In
-              </Link>
-            </div>
 
             {/* Stats row */}
             <div className="flex gap-10 pt-4 border-t border-white/8">
