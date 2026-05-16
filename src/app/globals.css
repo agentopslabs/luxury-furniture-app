@@ -89,6 +89,15 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.33%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
 .auth-gradient {
   background: radial-gradient(circle at top left, hsla(217, 91%, 55%, 0.12), transparent 40%),
               radial-gradient(circle at bottom right, hsla(217, 91%, 55%, 0.08), transparent 40%);
