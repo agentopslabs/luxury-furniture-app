@@ -54,6 +54,39 @@ const furnitureImages = [
   },
 ];
 
+const officeImages = [
+  {
+    src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
+    alt: "Modern executive office with premium furniture",
+    label: "Executive Offices",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
+    alt: "Contemporary workspace with ergonomic desk setup",
+    label: "Workstations",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
+    alt: "Ergonomic office chair in a professional setting",
+    label: "Office Chairs",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80",
+    alt: "Modern collaborative open office space",
+    label: "Open Workspaces",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=800&q=80",
+    alt: "Sleek office desk with storage solutions",
+    label: "Office Desks",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800&q=80",
+    alt: "Professional conference room with premium table",
+    label: "Conference Rooms",
+  },
+];
+
 const features = [
   {
     icon: (
@@ -328,6 +361,115 @@ export default function WelcomePage() {
         </div>
       </section>
 
+      {/* ── OFFICE FURNITURE ── */}
+      <section id="office" className="py-16 px-6 md:px-14 max-w-7xl mx-auto">
+        {/* Header + description */}
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-14">
+          <div className="space-y-4 max-w-2xl">
+            <p className="text-blue-400 text-xs font-bold tracking-[0.25em] uppercase">Office Collections</p>
+            <h2 className="text-4xl md:text-5xl font-bold text-white font-headline">
+              Elevate Your{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Workspace
+              </span>
+            </h2>
+            <p className="text-white/50 text-base leading-relaxed">
+              A great workspace starts with the right furniture. Our office collection blends
+              ergonomic precision with sleek, professional aesthetics — designed to boost
+              productivity and make a lasting impression on every client and colleague.
+            </p>
+          </div>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end lg:gap-2">
+            {[
+              "Ergonomic Design",
+              "Custom Configurations",
+              "Bulk Orders Welcome",
+              "Corporate Pricing",
+            ].map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/8 text-blue-300 text-xs font-medium"
+              >
+                <span className="w-1 h-1 rounded-full bg-blue-400" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Office highlights row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          {[
+            {
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
+                </svg>
+              ),
+              title: "Executive Desks & Suites",
+              desc: "Command your space with solid-wood executive desks, credenzas, and full office suite sets built for leaders.",
+            },
+            {
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              ),
+              title: "Ergonomic Chairs",
+              desc: "Hours of comfort with lumbar-support seating — mesh, leather, and fabric finishes tailored to your role.",
+            },
+            {
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg>
+              ),
+              title: "Conference & Collaboration",
+              desc: "Impress in every meeting with premium conference tables, boardroom chairs, and modular lounge pods.",
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="group p-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.05] hover:border-blue-500/25 transition-all duration-300"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/15 to-indigo-500/15 border border-blue-500/15 flex items-center justify-center text-blue-400 mb-4">
+                {item.icon}
+              </div>
+              <h3 className="text-white font-semibold mb-2 font-headline text-sm">{item.title}</h3>
+              <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Office gallery grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {officeImages.map((img, i) => (
+            <div
+              key={i}
+              className={`group relative overflow-hidden rounded-2xl border border-white/[0.07] hover:border-blue-500/25 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/40 cursor-pointer ${i === 0 ? "lg:row-span-2" : ""}`}
+            >
+              <div className={`relative overflow-hidden ${i === 0 ? "h-64 lg:h-full lg:min-h-[500px]" : "h-56"}`}>
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  fill
+                  className="object-cover object-center group-hover:scale-[1.06] transition-transform duration-700 ease-out"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#06090f]/90 via-[#06090f]/20 to-transparent" />
+                <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute bottom-0 left-0 right-0 p-5 translate-y-1 group-hover:translate-y-0 transition-transform duration-300">
+                  <span className="block text-xs font-bold text-white/40 tracking-widest uppercase mb-1">{img.label}</span>
+                  <div className="w-0 group-hover:w-8 h-0.5 bg-blue-400 rounded-full transition-all duration-500" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── CTA BANNER ── */}
       <section className="py-16 px-6 md:px-14 max-w-7xl mx-auto">
         <div className="relative rounded-3xl overflow-hidden border border-blue-500/15 shadow-2xl shadow-blue-900/20">
@@ -339,8 +481,9 @@ export default function WelcomePage() {
               className="object-cover"
               unoptimized
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#06090f]/97 via-[#06090f]/85 to-[#06090f]/60" />
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-700/15 to-transparent" />
+            <div className="absolute inset-0 bg-[#06090f]/75" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#06090f]/98 via-[#06090f]/90 to-[#06090f]/70" />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-700/20 to-transparent" />
           </div>
           <div className="relative z-10 px-8 md:px-16 py-16 text-center md:text-left">
             <div className="space-y-4">
