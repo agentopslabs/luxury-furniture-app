@@ -145,8 +145,9 @@ export async function getAllAppointments(): Promise<GHLAppointment[]> {
 }
 
 /**
- * Creates a new appointment using the specific GHL V2 calendar events endpoint.
- * Optimized with mandatory locationId and timezone to resolve "slot no longer available" errors.
+ * Creates a new appointment using the GHL V2 calendar events endpoint.
+ * Sends the slot time exactly as received from the free-slots API to avoid
+ * timezone double-conversion issues that cause "slot no longer available" errors.
  */
 export async function createAppointment(apptData: {
   calendarId: string;
@@ -155,15 +156,18 @@ export async function createAppointment(apptData: {
   endTime?: string;
   title: string;
   timezone?: string;
-}): Promise<{ appointment?: GHLAppointment; fallback?: boolean }> {
-  const start = new Date(apptData.startTime);
-  const end = apptData.endTime ? new Date(apptData.endTime) : new Date(start.getTime() + 60 * 60000);
+}): Promise<{ appointment: GHLAppointment }> {
+  // Use the slot ISO string directly — do NOT re-parse through new Date().toISOString()
+  // because that converts to UTC and GHL rejects it when the timezone doesn't match.
+  const startTime = apptData.startTime;
+  const startMs = new Date(startTime).getTime();
+  const endTime = apptData.endTime || new Date(startMs + 60 * 60000).toISOString();
 
   const payload = {
     calendarId: apptData.calendarId,
     contactId: apptData.contactId,
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
+    startTime,
+    endTime,
     title: apptData.title,
     locationId: GHL_LOCATION_ID,
     timezone: apptData.timezone || 'UTC',
@@ -181,19 +185,15 @@ export async function createAppointment(apptData: {
 
   if (!response.ok) {
     let errMsg = '';
-    try { const e = await response.json(); errMsg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
-    if (errMsg.toLowerCase().includes('slot') || errMsg.toLowerCase().includes('available') || errMsg.toLowerCase().includes('no longer')) {
-      // Fallback: log as a contact note when the slot isn't in the calendar's configured hours
-      const dateLabel = start.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const noteBody = `📅 Appointment Request\nTitle: ${apptData.title}\nScheduled: ${dateLabel}\nCalendar ID: ${apptData.calendarId}\n\n(Booked outside calendar hours — logged as note)`;
-      await createContactNote(apptData.contactId, noteBody);
-      return { fallback: true };
-    }
+    try {
+      const e = await response.json();
+      errMsg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || '');
+    } catch {}
     throw new Error(errMsg || `Booking failed (${response.status})`);
   }
 
   const data = await handleResponse(response, 'booking appointment');
-  return { appointment: data.appointment };
+  return { appointment: data.appointment || data };
 }
 
 export async function createContactNote(contactId: string, body: string): Promise<void> {

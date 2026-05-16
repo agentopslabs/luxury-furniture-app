@@ -96,9 +96,6 @@ export default function CalendarPage() {
   const [slotsFetched, setSlotsFetched] = useState(false);
   const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
   const [gmtLabel, setGmtLabel] = useState('+00:00');
-  const [localAppointments, setLocalAppointments] = useState<Array<{
-    id: string; title: string; startTime: string; contactId: string; calendarId: string; status: string; isLocal: boolean;
-  }>>([]);
 
   const { toast } = useToast();
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -222,29 +219,28 @@ export default function CalendarPage() {
         startTime: bookingForm.selectedSlot,
         timezone: userTimezone
       });
-      const bookedTitle = bookingForm.title || "Interaction Slot";
-      const bookedSlot = bookingForm.selectedSlot;
-      const bookedContact = bookingForm.contactId;
-      const bookedCalendar = bookingForm.calendarId;
+
+      // Close form and reset state
       setIsBookingOpen(false);
       setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
       setAvailableSlots([]);
       setSlotsFetched(false);
-      if (result.fallback) {
-        setLocalAppointments(prev => [...prev, {
-          id: `local_${Date.now()}`,
-          title: bookedTitle,
-          startTime: bookedSlot,
-          contactId: bookedContact,
-          calendarId: bookedCalendar,
-          status: 'confirmed',
-          isLocal: true,
-        }]);
+
+      // Optimistically add the returned appointment so it shows on the calendar immediately
+      if (result.appointment) {
+        setAppointments(prev => [...prev, result.appointment]);
       }
-      toast({ title: "Appointment Booked", description: "Successfully committed to GHL." });
+
+      toast({ title: "Appointment Booked", description: "Successfully saved to GHL." });
+      // Refresh in background to get the authoritative GHL record
       fetchData(true);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Booking Failed", description: error.message || "Could not commit slot to GHL." });
+      const msg = error.message || "Could not commit slot to GHL.";
+      toast({
+        variant: "destructive",
+        title: "Booking Failed",
+        description: msg,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -327,9 +323,7 @@ export default function CalendarPage() {
   const weekDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const hours = Array.from({ length: 24 }).map((_, i) => i);
 
-  const allAppointments = useMemo(() => {
-    return [...appointments, ...localAppointments as any[]];
-  }, [appointments, localAppointments]);
+  const allAppointments = useMemo(() => appointments, [appointments]);
 
   const getAppointmentsForCell = (date: Date, hour: number) => {
     return allAppointments.filter(appt => {
@@ -483,7 +477,7 @@ export default function CalendarPage() {
                                 <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(date) && "bg-primary/[0.02]")}
                                   onClick={() => { const d = new Date(date); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
                                   {cellAppts.map((appt: any) => (
-                                    <div key={appt.id} className={cn("absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default", appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80")}
+                                    <div key={appt.id} className="absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default bg-primary/80"
                                       onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
                                   ))}
                                 </div>
@@ -522,7 +516,7 @@ export default function CalendarPage() {
                               <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(currentWeekStart) && "bg-primary/[0.02]")}
                                 onClick={() => { const d = new Date(currentWeekStart); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
                                 {cellAppts.map((appt: any) => (
-                                  <div key={appt.id} className={cn("absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default", appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80")}
+                                  <div key={appt.id} className="absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default bg-primary/80"
                                     onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
                                 ))}
                               </div>
@@ -560,7 +554,7 @@ export default function CalendarPage() {
                               )}>{date.getDate()}</span>
                               <div className="flex flex-col gap-0.5 overflow-hidden">
                                 {dayAppts.slice(0, 3).map((appt: any) => (
-                                  <div key={appt.id} className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded truncate text-white", appt.isLocal ? "bg-amber-500/80" : "bg-primary/80")}
+                                  <div key={appt.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded truncate text-white bg-primary/80"
                                     onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
                                 ))}
                                 {dayAppts.length > 3 && <div className="text-[9px] text-muted-foreground font-medium pl-1">+{dayAppts.length - 3} more</div>}
@@ -585,10 +579,10 @@ export default function CalendarPage() {
                     ) : filteredAppointments.length > 0 ? (
                       <div className="grid gap-4">
                         {filteredAppointments.map((appt: any) => (
-                          <Card key={appt.id} className={cn("glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden", appt.isLocal && "border-amber-500/30")}>
+                          <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
                             <CardContent className="p-5 flex items-center justify-between">
                               <div className="flex items-center gap-5">
-                                <div className={cn("w-14 h-14 rounded-2xl flex flex-col items-center justify-center border transition-all", appt.isLocal ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-primary/10 text-primary border-primary/20 group-hover:glow-primary")}>
+                                <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center border transition-all bg-primary/10 text-primary border-primary/20 group-hover:glow-primary">
                                   <span className="text-[9px] font-bold uppercase tracking-widest">{new Date(appt.startTime).toLocaleString('en-US', { month: 'short' })}</span>
                                   <span className="text-2xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
                                 </div>
@@ -602,11 +596,8 @@ export default function CalendarPage() {
                               </div>
                               
                               <div className="flex items-center gap-4">
-                                {appt.isLocal
-                                  ? <Badge className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2 bg-amber-500/20 text-amber-400 border-amber-500/30">Logged</Badge>
-                                  : <Badge variant="outline" className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2">{appt.status}</Badge>
-                                }
-                                {!appt.isLocal && (
+                                <Badge variant="outline" className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2">{appt.status}</Badge>
+                                {(
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
