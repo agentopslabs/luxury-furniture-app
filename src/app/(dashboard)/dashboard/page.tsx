@@ -56,52 +56,144 @@ function DonutChart({ percent }: { percent: number }) {
   );
 }
 
-type BarRow = { name: string; count: number; isWon: boolean };
+type ChartGroup = { name: string; total: number; won: number };
 
-function PipelineBarGraph({ loading, barData }: { loading: boolean; barData: BarRow[] }) {
-  const maxCount = barData.length > 0 ? Math.max(...barData.map((d) => d.count), 1) : 1;
+function PipelineBarGraph({ loading, groups }: { loading: boolean; groups: ChartGroup[] }) {
+  const chartH = 200;
+  const padT = 16;
+  const padB = 32;
+  const padL = 36;
+  const padR = 16;
+  const barW = 14;
+  const gap = 6;
+  const groupGap = 20;
+
+  const maxVal = groups.length > 0 ? Math.max(...groups.flatMap((g) => [g.total, g.won]), 1) : 1;
+  const yTicks = [0, 25, 50, 75, 100].map((t) => Math.round((t / 100) * maxVal));
+  const plotH = chartH - padT - padB;
+  const plotW = groups.length * (barW * 2 + gap + groupGap) - groupGap;
+  const totalW = plotW + padL + padR;
+
+  const yPos = (val: number) => padT + plotH - (val / maxVal) * plotH;
+
   return (
     <Card className="bg-white border-0 shadow-sm rounded-2xl">
-      <CardContent className="px-6 pt-6 pb-4">
+      <CardContent className="px-6 pt-5 pb-4">
         {loading ? (
-          <div className="space-y-4">
-            {Array(4).fill(0).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-xl" />
-            ))}
+          <div className="space-y-3 pt-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-32 rounded" />
+              <Skeleton className="h-5 w-24 rounded" />
+            </div>
+            <Skeleton className="h-52 w-full rounded-xl" />
           </div>
-        ) : barData.length === 0 ? (
-          <div className="flex items-center justify-center py-12 opacity-40">
+        ) : groups.length === 0 ? (
+          <div className="flex items-center justify-center h-52 opacity-40">
             <p className="text-sm text-gray-400">No pipeline data</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {barData.map((row, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <span className="w-36 shrink-0 text-[11px] font-semibold text-gray-500 truncate text-right">
-                  {row.name}
-                </span>
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-lg transition-all duration-700",
-                        row.isWon ? "bg-emerald-500" : "bg-primary"
-                      )}
-                      style={{
-                        width: `${(row.count / maxCount) * 100}%`,
-                        minWidth: row.count > 0 ? "2rem" : "0",
-                      }}
-                    />
-                  </div>
-                  <span className={cn(
-                    "w-6 text-sm font-bold text-right shrink-0",
-                    row.isWon ? "text-emerald-600" : "text-gray-700"
-                  )}>
-                    {row.count}
-                  </span>
+          <div>
+            {/* Legend */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-gray-800">Sales Pipeline</span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#7dd3fc]" />
+                  <span className="text-xs text-gray-500">Opportunities</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#3730a3]" />
+                  <span className="text-xs text-gray-500">Won</span>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Chart */}
+            <div className="overflow-x-auto">
+              <svg
+                width={Math.max(totalW, 500)}
+                height={chartH}
+                className="w-full"
+                viewBox={`0 0 ${Math.max(totalW, 500)} ${chartH}`}
+                preserveAspectRatio="xMinYMid meet"
+              >
+                <defs>
+                  <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7dd3fc" />
+                    <stop offset="100%" stopColor="#38bdf8" />
+                  </linearGradient>
+                  <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="100%" stopColor="#3730a3" />
+                  </linearGradient>
+                </defs>
+
+                {/* Y-axis gridlines & labels */}
+                {yTicks.map((tick, ti) => {
+                  const y = yPos(tick);
+                  return (
+                    <g key={`tick-${ti}`}>
+                      <line
+                        x1={padL} y1={y}
+                        x2={padL + Math.max(plotW, 500 - padL - padR)} y2={y}
+                        stroke="#e5e7eb" strokeWidth={1}
+                      />
+                      <text
+                        x={padL - 6} y={y + 4}
+                        textAnchor="end"
+                        fontSize={9}
+                        fill="#9ca3af"
+                      >
+                        {tick}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Bars */}
+                {groups.map((g, i) => {
+                  const x = padL + i * (barW * 2 + gap + groupGap);
+                  const totalH = (g.total / maxVal) * plotH;
+                  const wonH = (g.won / maxVal) * plotH;
+                  const labelX = x + barW + gap / 2;
+                  const labelY = padT + plotH + 20;
+
+                  return (
+                    <g key={i}>
+                      {/* Total bar (light blue) */}
+                      <rect
+                        x={x}
+                        y={yPos(g.total)}
+                        width={barW}
+                        height={Math.max(totalH, 2)}
+                        rx={3} ry={3}
+                        fill="url(#blueGrad)"
+                      />
+                      {/* Won bar (dark purple) */}
+                      <rect
+                        x={x + barW + gap}
+                        y={yPos(g.won)}
+                        width={barW}
+                        height={Math.max(wonH, 2)}
+                        rx={3} ry={3}
+                        fill="url(#purpleGrad)"
+                      />
+                      {/* X-axis label */}
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        textAnchor="middle"
+                        fontSize={9}
+                        fill="#6b7280"
+                        fontWeight="500"
+                      >
+                        {g.name.length > 10 ? g.name.slice(0, 9) + "…" : g.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
           </div>
         )}
       </CardContent>
@@ -173,18 +265,17 @@ export default function DashboardPage() {
     });
   }, [appts, isMounted]);
 
-  const barData = useMemo(() => {
-    const wonCount = opportunities.filter((o) => o.status === "won").length;
-    const stageRows = pipelines.length > 0
-      ? pipelines[0].stages.map((stage) => ({
-          name: stage.name,
-          count: opportunities.filter((o) => o.pipelineStageId === stage.id).length,
-          isWon: false,
-        }))
-      : [];
+  const chartGroups = useMemo<ChartGroup[]>(() => {
+    if (pipelines.length === 0) return [];
+    const wonOpps = opportunities.filter((o) => o.status === "won");
+    const stages = pipelines[0].stages.map((stage) => {
+      const stageOpps = opportunities.filter((o) => o.pipelineStageId === stage.id);
+      const stageWon = stageOpps.filter((o) => o.status === "won").length;
+      return { name: stage.name, total: stageOpps.length, won: stageWon };
+    });
     return [
-      { name: "Responded Yes", count: wonCount, isWon: true },
-      ...stageRows,
+      { name: "Responded Yes", total: wonOpps.length, won: wonOpps.length },
+      ...stages,
     ];
   }, [pipelines, opportunities]);
 
@@ -259,7 +350,7 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold text-gray-900">Sales Pipeline</h2>
             </div>
 
-            <PipelineBarGraph loading={loading} barData={barData} />
+            <PipelineBarGraph loading={loading} groups={chartGroups} />
           </section>
 
           {/* ── SALES OVERVIEW + TODAY ────────────────────────────────── */}
