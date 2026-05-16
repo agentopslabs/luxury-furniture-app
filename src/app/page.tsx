@@ -342,8 +342,8 @@ export default function WelcomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-[#06090f]/97 via-[#06090f]/85 to-[#06090f]/60" />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-700/15 to-transparent" />
           </div>
-          <div className="relative z-10 px-8 md:px-16 py-16 flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="space-y-4 text-center md:text-left">
+          <div className="relative z-10 px-8 md:px-16 py-16 text-center md:text-left">
+            <div className="space-y-4">
               <h2 className="text-3xl md:text-4xl font-bold text-white font-headline leading-snug">
                 Ready to Transform <br className="hidden md:block" />Your Home?
               </h2>
@@ -351,20 +351,6 @@ export default function WelcomePage() {
                 Join thousands of homeowners who have elevated their living spaces
                 with LuxeHome's premium collections.
               </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-              <Link
-                href="/signup"
-                className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-xl shadow-blue-600/25 transition-all duration-300 hover:scale-[1.03] text-sm text-center"
-              >
-                Create Free Account
-              </Link>
-              <Link
-                href="/login"
-                className="px-8 py-3.5 rounded-xl border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-white font-semibold transition-all duration-300 text-sm text-center"
-              >
-                Log In
-              </Link>
             </div>
           </div>
         </div>
