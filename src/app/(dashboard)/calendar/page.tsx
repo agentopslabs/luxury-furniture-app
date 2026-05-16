@@ -248,34 +248,64 @@ export default function CalendarPage() {
     });
   }, [currentWeekStart]);
 
-  const weekLabel = useMemo(() => {
-    const start = weekDates[0];
-    const end = weekDates[6];
-    const sameMonth = start.getMonth() === end.getMonth();
-    if (sameMonth) {
-      return `${start.toLocaleString('en-US', { month: 'short' })} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`;
-    }
-    return `${start.toLocaleString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-  }, [weekDates]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
 
-  const goToPrevWeek = () => {
+  const dateLabel = useMemo(() => {
+    return currentWeekStart.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  }, [currentWeekStart]);
+
+  const monthDates = useMemo(() => {
+    const y = currentWeekStart.getFullYear();
+    const m = currentWeekStart.getMonth();
+    const firstDay = new Date(y, m, 1);
+    const startPad = firstDay.getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const dates: { date: Date; isCurrentMonth: boolean }[] = [];
+    for (let i = startPad - 1; i >= 0; i--) {
+      dates.push({ date: new Date(y, m, -i), isCurrentMonth: false });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      dates.push({ date: new Date(y, m, d), isCurrentMonth: true });
+    }
+    while (dates.length % 7 !== 0) {
+      const last = dates[dates.length - 1].date;
+      const next = new Date(last);
+      next.setDate(next.getDate() + 1);
+      dates.push({ date: next, isCurrentMonth: false });
+    }
+    return dates;
+  }, [currentWeekStart]);
+
+  const goToPrev = () => {
     setCurrentWeekStart(prev => {
       const d = new Date(prev);
-      d.setDate(d.getDate() - 7);
+      if (calendarView === 'day') d.setDate(d.getDate() - 1);
+      else if (calendarView === 'month') d.setMonth(d.getMonth() - 1);
+      else d.setDate(d.getDate() - 7);
       return d;
     });
   };
 
-  const goToNextWeek = () => {
+  const goToNext = () => {
     setCurrentWeekStart(prev => {
       const d = new Date(prev);
-      d.setDate(d.getDate() + 7);
+      if (calendarView === 'day') d.setDate(d.getDate() + 1);
+      else if (calendarView === 'month') d.setMonth(d.getMonth() + 1);
+      else d.setDate(d.getDate() + 7);
       return d;
     });
   };
 
   const goToToday = () => {
     setCurrentWeekStart(getWeekStart(new Date()));
+  };
+
+  const handleDatePickerApply = () => {
+    const d = new Date(pickerYear, pickerMonth, 1);
+    setCurrentWeekStart(calendarView === 'week' ? getWeekStart(d) : d);
+    setShowDatePicker(false);
   };
 
   const today = new Date();
@@ -345,21 +375,55 @@ export default function CalendarPage() {
             <div className="px-8 py-4 border-b flex items-center justify-between bg-card/5 shrink-0">
               <div className="flex items-center gap-4">
                 <Button variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold" onClick={goToToday}>Today</Button>
-                <div className="flex items-center border rounded-md">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-r" onClick={goToPrevWeek}><ChevronLeft size={16} /></Button>
-                  <div className="px-4 py-1 text-sm font-bold min-w-[180px] text-center">{weekLabel}</div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-l" onClick={goToNextWeek}><ChevronRight size={16} /></Button>
+                <div className="flex items-center border rounded-md relative">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-r" onClick={goToPrev}><ChevronLeft size={16} /></Button>
+                  <button
+                    className="px-4 py-1 text-sm font-bold min-w-[160px] text-center hover:text-primary transition-colors"
+                    onClick={() => { setPickerMonth(currentWeekStart.getMonth()); setPickerYear(currentWeekStart.getFullYear()); setShowDatePicker(v => !v); }}
+                  >
+                    {dateLabel}
+                  </button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-l" onClick={goToNext}><ChevronRight size={16} /></Button>
+                  {showDatePicker && (
+                    <div className="absolute top-10 left-0 z-50 bg-card border border-border rounded-xl shadow-xl p-4 flex flex-col gap-3 w-64">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Jump to</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          className="h-9 rounded-lg border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                          value={pickerMonth}
+                          onChange={e => setPickerMonth(Number(e.target.value))}
+                        >
+                          {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
+                            <option key={i} value={i}>{m}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          className="h-9 rounded-lg border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                          value={pickerYear}
+                          min={2000}
+                          max={2100}
+                          onChange={e => setPickerYear(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 h-8 rounded-lg text-xs" onClick={handleDatePickerApply}>Go</Button>
+                        <Button size="sm" variant="ghost" className="flex-1 h-8 rounded-lg text-xs" onClick={() => setShowDatePicker(false)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <Select value={calendarView} onValueChange={setCalendarView}>
-                  <SelectTrigger className="w-[130px] h-9 rounded-md font-bold">
-                    <SelectValue placeholder="View" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="day">Day View</SelectItem>
-                    <SelectItem value="week">Week View</SelectItem>
-                    <SelectItem value="month">Month View</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border">
+                  {(['day','week','month'] as const).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setCalendarView(v)}
+                      className={cn("px-3 h-7 rounded text-xs font-bold capitalize transition-all", calendarView === v ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
@@ -378,70 +442,121 @@ export default function CalendarPage() {
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 overflow-y-auto no-scrollbar p-0 bg-white/[0.01]">
                 <TabsContent value="view" className="m-0 h-full flex flex-col">
-                  <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
-                    <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">
-                      GMT {gmtLabel}
-                    </div>
-                    {weekDates.map((date, i) => (
-                      <div key={i} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
-                        <span className={cn(
-                          "text-lg font-bold",
-                          isToday(date) ? "text-primary" : i === 0 ? "text-destructive" : ""
-                        )}>
-                          {date.getDate()} {weekDayNames[i]}
-                        </span>
-                        {isToday(date) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex-1 grid grid-cols-8 relative">
-                    <div className="border-r bg-muted/10">
-                      {hours.map((h) => (
-                        <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
-                          {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+
+                  {/* ── WEEK VIEW ── */}
+                  {calendarView === 'week' && (<>
+                    <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
+                      <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">GMT {gmtLabel}</div>
+                      {weekDates.map((date, i) => (
+                        <div key={i} className="p-4 border-r last:border-r-0 flex flex-col items-center gap-1">
+                          <span className={cn("text-lg font-bold", isToday(date) ? "text-primary" : i === 0 ? "text-destructive" : "")}>
+                            {date.getDate()} {weekDayNames[i]}
+                          </span>
+                          {isToday(date) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                         </div>
                       ))}
                     </div>
-                    {weekDates.map((date, col) => (
-                      <div key={col} className="border-r last:border-r-0 relative">
-                        {hours.map((h) => {
-                          const cellAppts = getAppointmentsForCell(date, h);
+                    <div className="flex-1 grid grid-cols-8 relative">
+                      <div className="border-r bg-muted/10">
+                        {hours.map(h => (
+                          <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
+                            {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+                          </div>
+                        ))}
+                      </div>
+                      {weekDates.map((date, col) => (
+                        <div key={col} className="border-r last:border-r-0 relative">
+                          {hours.map(h => {
+                            const cellAppts = getAppointmentsForCell(date, h);
+                            return (
+                              <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(date) && "bg-primary/[0.02]")}
+                                onClick={() => { const d = new Date(date); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
+                                {cellAppts.map((appt: any) => (
+                                  <div key={appt.id} className={cn("absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default", appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80")}
+                                    onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </>)}
+
+                  {/* ── DAY VIEW ── */}
+                  {calendarView === 'day' && (<>
+                    <div className="grid grid-cols-2 border-b bg-muted/30 sticky top-0 z-10">
+                      <div className="p-4 border-r text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-end justify-center">GMT {gmtLabel}</div>
+                      <div className="p-4 flex flex-col items-center gap-1">
+                        <span className={cn("text-lg font-bold", isToday(currentWeekStart) ? "text-primary" : "")}>
+                          {currentWeekStart.getDate()} {weekDayNames[currentWeekStart.getDay()]}
+                        </span>
+                        {isToday(currentWeekStart) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                      </div>
+                    </div>
+                    <div className="flex-1 grid grid-cols-2 relative">
+                      <div className="border-r bg-muted/10">
+                        {hours.map(h => (
+                          <div key={h} className="h-16 border-b p-2 text-right text-[10px] font-bold text-muted-foreground opacity-50">
+                            {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="relative">
+                        {hours.map(h => {
+                          const cellAppts = getAppointmentsForCell(currentWeekStart, h);
                           return (
-                            <div
-                              key={h}
-                              className={cn(
-                                "h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative",
-                                isToday(date) && "bg-primary/[0.02]"
-                              )}
-                              onClick={() => {
-                                const d = new Date(date);
-                                d.setHours(h);
-                                setBookingForm(f => ({
-                                  ...f,
-                                  selectedDate: d.toISOString().split('T')[0]
-                                }));
-                                setIsBookingOpen(true);
-                              }}
-                            >
+                            <div key={h} className={cn("h-16 border-b hover:bg-primary/5 transition-colors cursor-pointer relative", isToday(currentWeekStart) && "bg-primary/[0.02]")}
+                              onClick={() => { const d = new Date(currentWeekStart); d.setHours(h); setBookingForm(f => ({ ...f, selectedDate: d.toISOString().split('T')[0] })); setIsBookingOpen(true); }}>
                               {cellAppts.map((appt: any) => (
-                                <div
-                                  key={appt.id}
-                                  className={cn(
-                                    "absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default",
-                                    appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80"
-                                  )}
-                                  onClick={e => e.stopPropagation()}
-                                  title={appt.title}
-                                >
-                                  {appt.title}
-                                </div>
+                                <div key={appt.id} className={cn("absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default", appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80")}
+                                  onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
                               ))}
                             </div>
                           );
                         })}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  </>)}
+
+                  {/* ── MONTH VIEW ── */}
+                  {calendarView === 'month' && (
+                    <div className="flex-1 flex flex-col overflow-auto">
+                      <div className="grid grid-cols-7 border-b bg-muted/30 sticky top-0 z-10">
+                        {weekDayNames.map(n => (
+                          <div key={n} className="p-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r last:border-r-0">{n}</div>
+                        ))}
+                      </div>
+                      <div className="flex-1 grid grid-cols-7" style={{ gridAutoRows: 'minmax(100px, 1fr)' }}>
+                        {monthDates.map(({ date, isCurrentMonth }, idx) => {
+                          const dayAppts = allAppointments.filter((a: any) => {
+                            const ad = new Date(a.startTime);
+                            return ad.getDate() === date.getDate() && ad.getMonth() === date.getMonth() && ad.getFullYear() === date.getFullYear();
+                          });
+                          return (
+                            <div key={idx}
+                              className={cn("border-r border-b last:border-r-0 p-2 cursor-pointer hover:bg-primary/5 transition-colors relative flex flex-col gap-1",
+                                !isCurrentMonth && "opacity-30 bg-muted/10",
+                                isToday(date) && "bg-primary/[0.03]"
+                              )}
+                              onClick={() => { setBookingForm(f => ({ ...f, selectedDate: date.toISOString().split('T')[0] })); setIsBookingOpen(true); }}
+                            >
+                              <span className={cn("text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full shrink-0",
+                                isToday(date) ? "bg-primary text-primary-foreground" : ""
+                              )}>{date.getDate()}</span>
+                              <div className="flex flex-col gap-0.5 overflow-hidden">
+                                {dayAppts.slice(0, 3).map((appt: any) => (
+                                  <div key={appt.id} className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded truncate text-white", appt.isLocal ? "bg-amber-500/80" : "bg-primary/80")}
+                                    onClick={e => e.stopPropagation()} title={appt.title}>{appt.title}</div>
+                                ))}
+                                {dayAppts.length > 3 && <div className="text-[9px] text-muted-foreground font-medium pl-1">+{dayAppts.length - 3} more</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="list" className="m-0 p-8">
