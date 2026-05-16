@@ -139,7 +139,7 @@ export default function WelcomePage() {
             </svg>
           </div>
           <span className="text-xl font-bold tracking-tight text-white font-headline">
-            KoreAuth
+            LuxuryFurniture
           </span>
         </Link>
 
@@ -492,7 +492,7 @@ export default function WelcomePage() {
               </h2>
               <p className="text-white/50 max-w-md leading-relaxed">
                 Join thousands of homeowners who have elevated their living spaces
-                with KoreAuth's premium collections.
+                with LuxuryFurniture's premium collections.
               </p>
             </div>
           </div>
@@ -508,9 +508,9 @@ export default function WelcomePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
               </svg>
             </div>
-            <span className="font-semibold text-white/50">KoreAuth</span>
+            <span className="font-semibold text-white/50">LuxuryFurniture</span>
           </div>
-          <p>© 2025 KoreAuth. All rights reserved.</p>
+          <p>© 2025 LuxuryFurniture. All rights reserved.</p>
           <div className="flex gap-6">
             {["Privacy", "Terms", "Contact"].map((item) => (
               <Link key={item} href="#" className="hover:text-white/60 transition-colors">
