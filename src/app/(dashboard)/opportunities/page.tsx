@@ -355,7 +355,7 @@ export default function OpportunitiesPage() {
                             </div>
                           </TableCell>
                           <TableCell className="py-4 text-right">
-                            <span className="text-sm font-semibold text-emerald-600">${opp.monetaryValue?.toLocaleString() || '0'}</span>
+                            <span className="text-sm font-semibold text-emerald-600">₹{opp.monetaryValue?.toLocaleString('en-IN') || '0'}</span>
                           </TableCell>
                           <TableCell className="py-4">
                             <span className="text-xs text-muted-foreground">
@@ -424,7 +424,7 @@ export default function OpportunitiesPage() {
                               </span>
                             </div>
                             <span className="text-sm font-bold text-emerald-500">
-                              ${stageTotal.toLocaleString()}
+                              ₹{stageTotal.toLocaleString('en-IN')}
                             </span>
                           </div>
 
@@ -469,7 +469,7 @@ export default function OpportunitiesPage() {
                                               <span className="text-sm text-muted-foreground">{contactName}</span>
                                             </div>
                                             <span className="text-sm font-bold text-emerald-500">
-                                              ${opp.monetaryValue?.toLocaleString() || '0'}
+                                              ₹{opp.monetaryValue?.toLocaleString('en-IN') || '0'}
                                             </span>
                                           </div>
                                         </div>

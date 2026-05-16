@@ -227,10 +227,10 @@ export default function DashboardPage() {
     const wonDeals = respondedYes.length;
     const orderTotal = orders.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
     return [
-      { label: "Pipeline Value", value: `$${(pipelineValue / 1000).toFixed(1)}k`, icon: TrendingUp, color: "text-emerald-500" },
+      { label: "Pipeline Value", value: `₹${(pipelineValue / 1000).toFixed(1)}k`, icon: TrendingUp, color: "text-emerald-500" },
       { label: "Active Leads", value: contactCount.toLocaleString(), icon: Users, color: "text-primary" },
       { label: "Won Deals", value: wonDeals.toString(), icon: Zap, color: "text-amber-500" },
-      { label: "Order Volume", value: `$${(orderTotal / 1000).toFixed(1)}k`, icon: CreditCard, color: "text-blue-500" },
+      { label: "Order Volume", value: `₹${(orderTotal / 1000).toFixed(1)}k`, icon: CreditCard, color: "text-blue-500" },
     ];
   }, [opportunities, contactCount, orders, respondedYes]);
 

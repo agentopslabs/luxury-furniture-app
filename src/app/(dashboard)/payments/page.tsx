@@ -320,7 +320,7 @@ export default function PaymentsPage() {
                       </TableCell>
                       <TableCell className="text-xs text-left">{item.customerName || item.contactName || 'Anonymous'}</TableCell>
                       <TableCell className="text-xs opacity-50 text-left">{item.dateAdded || item.createdAt ? new Date(item.dateAdded || item.createdAt).toLocaleDateString('en-US') : '—'}</TableCell>
-                      <TableCell className="font-mono text-emerald-400 font-bold text-left">${(item.totalAmount || item.amount || 0).toLocaleString('en-US')}</TableCell>
+                      <TableCell className="font-mono text-emerald-400 font-bold text-left">₹{(item.totalAmount || item.amount || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="px-8 text-right">
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><MoreVertical size={14} /></Button>
                       </TableCell>
@@ -362,7 +362,7 @@ export default function PaymentsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Value ($)</Label>
+                  <Label className="text-[11px] font-bold uppercase tracking-widest opacity-60">Value (₹)</Label>
                   <Input 
                     className="glass h-12 rounded-xl" 
                     type="number" 

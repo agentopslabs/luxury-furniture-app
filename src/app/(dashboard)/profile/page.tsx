@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
@@ -19,6 +18,11 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("alex@sterling.io");
   const [phone, setPhone] = useState("+1 (555) 012-3456");
   const [saving, setSaving] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const initials = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase() || "LF";
 
@@ -40,6 +44,28 @@ export default function ProfilePage() {
     setLastName("Sterling");
     setEmail("alex@sterling.io");
     setPhone("+1 (555) 012-3456");
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword) {
+      toast({ variant: "destructive", title: "Missing Field", description: "Please enter your current password." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ variant: "destructive", title: "Weak Password", description: "New password must be at least 6 characters." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ variant: "destructive", title: "Mismatch", description: "New passwords do not match." });
+      return;
+    }
+    setSavingPassword(true);
+    await new Promise(r => setTimeout(r, 800));
+    setSavingPassword(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    toast({ title: "Password Updated", description: "Your password has been changed successfully." });
   };
 
   return (
@@ -126,27 +152,47 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
-              <Card className="glass border-primary/20 bg-primary/5">
+              <Card className="glass">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" /> Security & Account
-                  </CardTitle>
+                  <CardTitle className="text-xl">Update Password</CardTitle>
+                  <CardDescription>Change your account password regularly for security.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Two-Factor Authentication</p>
-                      <p className="text-xs text-muted-foreground">Add an extra layer of security to your account.</p>
-                    </div>
-                    <Button variant="outline" size="sm">Enable</Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                    />
                   </div>
-                  <Separator className="bg-primary/10" />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Change Password</p>
-                      <p className="text-xs text-muted-foreground">Update your account password regularly for security.</p>
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary">Update</Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Enter new password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <Separator />
+                  <div className="flex justify-end">
+                    <Button onClick={handleUpdatePassword} disabled={savingPassword}>
+                      {savingPassword ? "Updating..." : "Update Password"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
