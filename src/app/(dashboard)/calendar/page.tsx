@@ -193,6 +193,8 @@ export default function CalendarPage() {
         if (isWeekend) {
           try {
             await enableCalendarWeekends(calendarId);
+            // Give GHL 1.5 s to propagate the openHours change
+            await new Promise(r => setTimeout(r, 1500));
             apiSlots = await getCalendarFreeSlots(calendarId, date, tz);
           } catch {
             // enableCalendarWeekends failed — fall through to manual picker

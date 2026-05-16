@@ -279,11 +279,16 @@ export async function getCalendarById(calendarId: string): Promise<any> {
 export async function enableCalendarWeekends(calendarId: string): Promise<void> {
   // 1. Fetch current calendar settings
   const cal = await getCalendarById(calendarId);
-  const existingHours: any[] = cal?.openHours || [];
 
-  const weekendDays = [0, 6]; // Sunday, Saturday
+  // GHL may return openHours as an array OR as a non-array object — normalise defensively
+  const rawHours = cal?.openHours;
+  const existingHours: any[] = Array.isArray(rawHours) ? rawHours : [];
+
+  const weekendDays = [0, 6]; // 0 = Sunday, 6 = Saturday
   const alreadyCovered = new Set(
-    existingHours.flatMap((oh: any) => oh.daysOfTheWeek || [])
+    existingHours.flatMap((oh: any) =>
+      Array.isArray(oh.daysOfTheWeek) ? oh.daysOfTheWeek : []
+    )
   );
 
   const newEntries = weekendDays
@@ -295,7 +300,17 @@ export async function enableCalendarWeekends(calendarId: string): Promise<void> 
 
   if (newEntries.length === 0) return; // weekends already enabled
 
-  const updatedHours = [...existingHours, ...newEntries];
+  // If we couldn't read existing hours (non-array structure from GHL),
+  // bootstrap a full Mon–Fri + weekend schedule so we don't wipe anything.
+  const baseHours =
+    existingHours.length > 0
+      ? existingHours
+      : [1, 2, 3, 4, 5].map(day => ({
+          daysOfTheWeek: [day],
+          hours: [{ openHour: 9, openMinute: 0, closeHour: 17, closeMinute: 0 }],
+        }));
+
+  const updatedHours = [...baseHours, ...newEntries];
 
   const response = await fetch(`${GHL_API_BASE_URL}/calendars/${calendarId}`, {
     method: 'PUT',
