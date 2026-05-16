@@ -69,9 +69,9 @@ export default function LoginPage() {
     <div className="min-h-screen auth-gradient flex items-center justify-center p-4">
       <div className="absolute top-8 left-8 flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <span className="text-white font-bold text-xs">K</span>
+          <span className="text-white font-bold text-xs">L</span>
         </div>
-        <span className="font-headline font-bold text-xl text-foreground">KoreAuth</span>
+        <span className="font-headline font-bold text-xl text-foreground">LuxuryFurniture</span>
       </div>
 
       <AuthCard 
@@ -136,7 +136,7 @@ export default function LoginPage() {
           </form>
         </Form>
         <div className="mt-8 pt-6 border-t border-border/50 text-center text-sm">
-          <span className="text-muted-foreground">New to KoreAuth? </span>
+          <span className="text-muted-foreground">New to LuxuryFurniture? </span>
           <Link href="/signup" className="text-primary hover:underline font-medium">
             Create an account
           </Link>

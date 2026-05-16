@@ -57,10 +57,10 @@ export default function SignupPage() {
     setIsLoading(true);
     // Simulate GHL contact creation + account setup
     setTimeout(() => {
-      document.cookie = "koreauth_session=mock_token; path=/";
+      document.cookie = "luxuryfurniture_session=mock_token; path=/";
       toast({
         title: "Account Created",
-        description: "Welcome to KoreAuth. Your CRM profile is synced.",
+        description: "Welcome to LuxuryFurniture. Your CRM profile is synced.",
       });
       setIsLoading(false);
       router.push("/dashboard");
