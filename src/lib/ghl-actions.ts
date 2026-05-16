@@ -700,26 +700,52 @@ export async function getSocialPosts(limit: number = 50): Promise<any[]> {
   }
 }
 
+export async function getSocialAccounts(): Promise<any[]> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/oauth/facebook/accounts`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('reconnect', 'false');
+    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, next: { revalidate: 0 } });
+    if (!response.ok) return [];
+    const data = await handleResponse(response, 'fetching social accounts');
+    const accounts = data?.accounts || data?.pages || [];
+    return accounts;
+  } catch {
+    return [];
+  }
+}
+
 export async function createSocialPost(postData: {
   caption: string;
   type: string;
   status: string;
   channels?: string[];
+  mediaUrls?: string[];
+  mediaType?: 'image' | 'video' | 'none';
 }): Promise<any> {
+  const payload: any = {
+    summary: postData.caption,
+    postType: postData.type,
+    status: postData.status,
+    channels: postData.channels || [],
+    locationId: GHL_LOCATION_ID,
+    scheduledDate: new Date(Date.now() + 5 * 60000).toISOString(),
+  };
+
+  if (postData.mediaUrls && postData.mediaUrls.length > 0) {
+    payload.media = postData.mediaUrls.map(url => ({
+      url,
+      type: postData.mediaType === 'video' ? 'video' : 'photo',
+    }));
+  }
+
   const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
     method: 'POST',
     headers: socialPlannerHeaders,
-    body: JSON.stringify({
-      summary: postData.caption,
-      postType: postData.type,
-      status: postData.status,
-      channels: postData.channels || [],
-      locationId: GHL_LOCATION_ID,
-      scheduledDate: new Date(Date.now() + 5 * 60000).toISOString(),
-    }),
+    body: JSON.stringify(payload),
   });
   if (response.status === 404) {
-    throw new Error('Social posting is not available. Please check your account settings and connected social accounts.');
+    throw new Error('Social posting is not available. Please connect your social accounts first.');
   }
   return await handleResponse(response, 'creating social post');
 }
