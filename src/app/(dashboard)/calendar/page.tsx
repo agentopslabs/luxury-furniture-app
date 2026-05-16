@@ -96,6 +96,9 @@ export default function CalendarPage() {
   const [slotsFetched, setSlotsFetched] = useState(false);
   const [noSlotsOnDate, setNoSlotsOnDate] = useState(false);
   const [gmtLabel, setGmtLabel] = useState('+00:00');
+  const [localAppointments, setLocalAppointments] = useState<Array<{
+    id: string; title: string; startTime: string; contactId: string; calendarId: string; status: string; isLocal: boolean;
+  }>>([]);
 
   const { toast } = useToast();
 
@@ -209,10 +212,25 @@ export default function CalendarPage() {
         startTime: bookingForm.selectedSlot,
         timezone: userTimezone
       });
+      const bookedTitle = bookingForm.title || "Interaction Slot";
+      const bookedSlot = bookingForm.selectedSlot;
+      const bookedContact = bookingForm.contactId;
+      const bookedCalendar = bookingForm.calendarId;
       setIsBookingOpen(false);
       setBookingForm({ calendarId: "", contactId: "", title: "", selectedDate: "", selectedSlot: "" });
       setAvailableSlots([]);
       setSlotsFetched(false);
+      if (result.fallback) {
+        setLocalAppointments(prev => [...prev, {
+          id: `local_${Date.now()}`,
+          title: bookedTitle,
+          startTime: bookedSlot,
+          contactId: bookedContact,
+          calendarId: bookedCalendar,
+          status: 'confirmed',
+          isLocal: true,
+        }]);
+      }
       toast({ title: "Appointment Booked", description: "Successfully committed to GHL." });
       fetchData(true);
     } catch (error: any) {
@@ -269,15 +287,18 @@ export default function CalendarPage() {
   const weekDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const hours = Array.from({ length: 24 }).map((_, i) => i);
 
+  const allAppointments = useMemo(() => {
+    return [...appointments, ...localAppointments as any[]];
+  }, [appointments, localAppointments]);
+
   const getAppointmentsForCell = (date: Date, hour: number) => {
-    return appointments.filter(appt => {
+    return allAppointments.filter(appt => {
       const apptDate = new Date(appt.startTime);
       return (
         apptDate.getDate() === date.getDate() &&
         apptDate.getMonth() === date.getMonth() &&
         apptDate.getFullYear() === date.getFullYear() &&
         apptDate.getHours() === hour &&
-        (manageFilter === "all" || true) &&
         (manageCalendarFilter === "all" || appt.calendarId === manageCalendarFilter) &&
         (manageStatusFilter === "all" || appt.status === manageStatusFilter)
       );
@@ -285,12 +306,12 @@ export default function CalendarPage() {
   };
 
   const filteredAppointments = useMemo(() => {
-    return appointments.filter(appt => {
+    return allAppointments.filter(appt => {
       const calOk = manageCalendarFilter === "all" || appt.calendarId === manageCalendarFilter;
       const statusOk = manageStatusFilter === "all" || appt.status === manageStatusFilter;
       return calOk && statusOk;
     });
-  }, [appointments, manageCalendarFilter, manageStatusFilter]);
+  }, [allAppointments, manageCalendarFilter, manageStatusFilter]);
 
   const slotPlaceholder = loadingSlots
     ? "Checking availability..."
@@ -402,10 +423,13 @@ export default function CalendarPage() {
                                 setIsBookingOpen(true);
                               }}
                             >
-                              {cellAppts.map((appt) => (
+                              {cellAppts.map((appt: any) => (
                                 <div
                                   key={appt.id}
-                                  className="absolute inset-x-0.5 top-0.5 rounded-md bg-primary/80 text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default"
+                                  className={cn(
+                                    "absolute inset-x-0.5 top-0.5 rounded-md text-white text-[10px] font-bold px-1.5 py-0.5 truncate z-10 cursor-default",
+                                    appt.isLocal ? "bg-amber-500/80 border border-amber-400/50" : "bg-primary/80"
+                                  )}
                                   onClick={e => e.stopPropagation()}
                                   title={appt.title}
                                 >
@@ -431,11 +455,11 @@ export default function CalendarPage() {
                       Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                     ) : filteredAppointments.length > 0 ? (
                       <div className="grid gap-4">
-                        {filteredAppointments.map((appt) => (
-                          <Card key={appt.id} className="glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden">
+                        {filteredAppointments.map((appt: any) => (
+                          <Card key={appt.id} className={cn("glass border-border/40 hover:bg-card/60 transition-all group overflow-hidden", appt.isLocal && "border-amber-500/30")}>
                             <CardContent className="p-5 flex items-center justify-between">
                               <div className="flex items-center gap-5">
-                                <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center border border-primary/20 group-hover:glow-primary transition-all">
+                                <div className={cn("w-14 h-14 rounded-2xl flex flex-col items-center justify-center border transition-all", appt.isLocal ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-primary/10 text-primary border-primary/20 group-hover:glow-primary")}>
                                   <span className="text-[9px] font-bold uppercase tracking-widest">{new Date(appt.startTime).toLocaleString('en-US', { month: 'short' })}</span>
                                   <span className="text-2xl font-bold leading-none">{new Date(appt.startTime).getDate()}</span>
                                 </div>
@@ -449,22 +473,27 @@ export default function CalendarPage() {
                               </div>
                               
                               <div className="flex items-center gap-4">
-                                <Badge variant="outline" className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2">{appt.status}</Badge>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
-                                      <MoreVertical size={16} />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="glass border-white/10 rounded-xl p-2">
-                                    <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'completed')}>
-                                      <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-lg focus:bg-destructive/10 text-destructive cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'cancelled')}>
-                                      <XCircle className="mr-2 h-4 w-4" /> Cancel Slot
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                {appt.isLocal
+                                  ? <Badge className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2 bg-amber-500/20 text-amber-400 border-amber-500/30">Logged</Badge>
+                                  : <Badge variant="outline" className="text-[9px] py-0 h-5 uppercase font-bold tracking-widest px-2">{appt.status}</Badge>
+                                }
+                                {!appt.isLocal && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
+                                        <MoreVertical size={16} />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="glass border-white/10 rounded-xl p-2">
+                                      <DropdownMenuItem className="rounded-lg focus:bg-primary/10 cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'completed')}>
+                                        <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Mark Completed
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="rounded-lg focus:bg-destructive/10 text-destructive cursor-pointer" onClick={() => handleStatusUpdate(appt.id, 'cancelled')}>
+                                        <XCircle className="mr-2 h-4 w-4" /> Cancel Slot
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
                               </div>
                             </CardContent>
                           </Card>
