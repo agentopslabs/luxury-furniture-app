@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Layers,
   Target,
-  Sparkles,
   CreditCard,
   Megaphone
 } from "lucide-react";
@@ -99,18 +98,6 @@ export function DashboardNav() {
           );
         })}
 
-        <div className="pt-4 px-3">
-          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/[0.06] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Collections</span>
-              <Sparkles size={12} className="text-primary animate-pulse" />
-            </div>
-            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-primary w-3/4 animate-shimmer" />
-            </div>
-            <p className="text-[9px] text-white/25 leading-relaxed font-medium">Premium furniture management platform.</p>
-          </div>
-        </div>
       </div>
 
       <div className="p-3 border-t border-white/[0.06]">
