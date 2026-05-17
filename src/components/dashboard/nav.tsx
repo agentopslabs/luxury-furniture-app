@@ -45,16 +45,33 @@ export function DashboardNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [profileName, setProfileName] = useState("Alex Sterling");
+  const [profileName, setProfileName] = useState("");
 
   useEffect(() => {
     const load = () => {
       const saved = localStorage.getItem("profile_name");
-      if (saved) setProfileName(saved);
+      if (saved) {
+        setProfileName(saved);
+      } else {
+        fetch("/api/profile")
+          .then(r => r.json())
+          .then(data => {
+            const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+            if (fullName) {
+              setProfileName(fullName);
+              localStorage.setItem("profile_name", fullName);
+            }
+          })
+          .catch(() => {});
+      }
     };
     load();
-    window.addEventListener("profileUpdated", load);
-    return () => window.removeEventListener("profileUpdated", load);
+    const onUpdate = () => {
+      const saved = localStorage.getItem("profile_name");
+      if (saved) setProfileName(saved);
+    };
+    window.addEventListener("profileUpdated", onUpdate);
+    return () => window.removeEventListener("profileUpdated", onUpdate);
   }, []);
 
   return (
