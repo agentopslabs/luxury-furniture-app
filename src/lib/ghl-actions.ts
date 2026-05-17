@@ -715,6 +715,20 @@ export async function getSocialAccounts(): Promise<any[]> {
   }
 }
 
+export async function getSocialOAuthUrl(platform: string): Promise<string | null> {
+  try {
+    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/oauth/${platform}`);
+    url.searchParams.append('locationId', GHL_LOCATION_ID);
+    url.searchParams.append('reconnect', 'false');
+    const response = await fetch(url.toString(), { headers: socialPlannerHeaders });
+    if (!response.ok) return null;
+    const data = await handleResponse(response, `getting ${platform} oauth url`);
+    return data?.url || data?.redirectUrl || data?.authUrl || data?.oauthUrl || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createSocialPost(postData: {
   caption: string;
   type: string;
