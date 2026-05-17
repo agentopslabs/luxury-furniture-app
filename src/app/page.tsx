@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 
 const furnitureImages = [
   {
@@ -497,6 +498,39 @@ export default function WelcomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── ENQUIRY FORM ── */}
+      <section id="enquiry" className="py-20 px-6 md:px-14 max-w-7xl mx-auto">
+        <div className="text-center mb-10">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400 mb-3">Get In Touch</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-white font-headline leading-snug">
+            Furniture Enquiry
+          </h2>
+          <p className="text-white/40 mt-3 max-w-md mx-auto text-sm leading-relaxed">
+            Tell us about your space and we'll help you find the perfect pieces from our premium collections.
+          </p>
+        </div>
+        <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-blue-900/10 bg-white/[0.02]">
+          <iframe
+            src="https://api.leadconnectorhq.com/widget/form/ob1aRlo4HBVHY8oExYV2"
+            style={{ width: "100%", height: "824px", border: "none", borderRadius: "8px" }}
+            id="inline-ob1aRlo4HBVHY8oExYV2"
+            data-layout='{"id":"INLINE"}'
+            data-trigger-type="alwaysShow"
+            data-trigger-value=""
+            data-activation-type="alwaysActivated"
+            data-activation-value=""
+            data-deactivation-type="neverDeactivate"
+            data-deactivation-value=""
+            data-form-name="Furniture-Enquiry-Form"
+            data-height="824"
+            data-layout-iframe-id="inline-ob1aRlo4HBVHY8oExYV2"
+            data-form-id="ob1aRlo4HBVHY8oExYV2"
+            title="Furniture-Enquiry-Form"
+          />
+        </div>
+        <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
       </section>
 
       {/* ── FOOTER ── */}
