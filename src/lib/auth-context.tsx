@@ -32,6 +32,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (newToken: string) => {
     localStorage.setItem('ghl_access_token', newToken);
     document.cookie = `koreauth_session=${newToken}; path=/; SameSite=Strict; Secure`;
+
+    const chatKeysToRemove = Object.keys(localStorage).filter(key =>
+      key.startsWith('lc_') ||
+      key.startsWith('leadconnector') ||
+      key.startsWith('lc-chat') ||
+      key.includes('chat-widget') ||
+      key.includes('6a01ef3b205bf897ae837633') ||
+      key.startsWith('msgsndr') ||
+      key.startsWith('ghl_chat') ||
+      key.startsWith('highlevel_chat')
+    );
+    chatKeysToRemove.forEach(key => localStorage.removeItem(key));
+
+    const chatCookies = ['lc_chat_session', 'lc_visitor_id', 'leadconnector_chat', 'msgsndr_chat'];
+    chatCookies.forEach(name => {
+      document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+    });
+
     setToken(newToken);
     setIsAuthenticated(true);
     router.push('/dashboard');
