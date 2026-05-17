@@ -510,7 +510,7 @@ export default function WelcomePage() {
             </div>
             <span className="font-semibold text-white/50">LuxuryFurniture</span>
           </div>
-          <p>© 2025 LuxuryFurniture. All rights reserved.</p>
+          <p>© 2026 LuxuryFurniture. All rights reserved.</p>
           <div className="flex gap-6">
             {["Privacy", "Terms", "Contact"].map((item) => (
               <Link key={item} href="#" className="hover:text-white/60 transition-colors">
