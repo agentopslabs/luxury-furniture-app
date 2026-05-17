@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Camera } from "lucide-react";
 
 export default function ProfilePage() {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -23,6 +24,8 @@ export default function ProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [avatarSrc, setAvatarSrc] = useState<string>("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -38,9 +41,44 @@ export default function ProfilePage() {
         toast({ variant: "destructive", title: "Error", description: "Could not load profile." });
       })
       .finally(() => setLoading(false));
+
+    const saved = localStorage.getItem("profile_avatar");
+    if (saved) setAvatarSrc(saved);
   }, []);
 
   const initials = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase() || "LF";
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "destructive", title: "Invalid file", description: "Please select an image file." });
+      return;
+    }
+
+    setAvatarUploading(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setAvatarSrc(dataUrl);
+      localStorage.setItem("profile_avatar", dataUrl);
+      window.dispatchEvent(new CustomEvent("profileUpdated", { detail: { avatar: dataUrl } }));
+      setAvatarUploading(false);
+      toast({ title: "Avatar Updated", description: "Your profile photo has been changed." });
+    };
+    reader.onerror = () => {
+      setAvatarUploading(false);
+      toast({ variant: "destructive", title: "Error", description: "Could not read the image file." });
+    };
+    reader.readAsDataURL(file);
+
+    e.target.value = "";
+  };
 
   const handleUpdate = async () => {
     setSaving(true);
@@ -101,10 +139,24 @@ export default function ProfilePage() {
               <Card className="glass overflow-hidden">
                 <div className="h-24 bg-gradient-to-r from-primary/20 to-accent/20" />
                 <CardContent className="pt-0 -mt-10 flex flex-col items-center text-center">
-                  <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
-                    <AvatarImage src="https://picsum.photos/seed/luxefurniture-user/200/200" />
-                    <AvatarFallback className="text-lg font-bold bg-primary/20 text-primary">{initials}</AvatarFallback>
-                  </Avatar>
+                  {/* Clickable avatar */}
+                  <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                    <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
+                      <AvatarImage src={avatarSrc || undefined} />
+                      <AvatarFallback className="text-lg font-bold bg-primary/20 text-primary">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera size={18} className="text-white" />
+                    </div>
+                    {avatarUploading && (
+                      <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-4">
                     {loading ? (
                       <>
@@ -118,8 +170,18 @@ export default function ProfilePage() {
                       </>
                     )}
                   </div>
+
                   <div className="mt-6">
-                    <Button size="sm" variant="outline" className="h-8 text-xs">Change Avatar</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={handleAvatarClick}
+                      disabled={avatarUploading}
+                    >
+                      <Camera size={12} />
+                      {avatarUploading ? "Uploading..." : "Change Avatar"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -217,6 +279,16 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {/* Hidden file input — accepts all image types, opens gallery on mobile */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   );
 }
