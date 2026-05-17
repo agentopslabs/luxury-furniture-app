@@ -149,6 +149,7 @@ export default function WelcomePage() {
             { label: "Collections", href: "#collections" },
             { label: "Why Us", href: "#features" },
             { label: "Gallery", href: "#gallery" },
+            { label: "Contact Us", href: "#enquiry" },
           ].map((item) => (
             <Link
               key={item.label}
@@ -511,10 +512,10 @@ export default function WelcomePage() {
             Tell us about your space and we'll help you find the perfect pieces from our premium collections.
           </p>
         </div>
-        <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-blue-900/10 bg-white/[0.02]">
+        <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden border border-white/[0.06] shadow-xl shadow-black/30 bg-white/[0.02]">
           <iframe
             src="https://api.leadconnectorhq.com/widget/form/ob1aRlo4HBVHY8oExYV2"
-            style={{ width: "100%", height: "824px", border: "none", borderRadius: "8px" }}
+            style={{ width: "100%", height: "824px", border: "none", borderRadius: "8px", filter: "saturate(0.55) brightness(0.92) contrast(0.93)" }}
             id="inline-ob1aRlo4HBVHY8oExYV2"
             data-layout='{"id":"INLINE"}'
             data-trigger-type="alwaysShow"
