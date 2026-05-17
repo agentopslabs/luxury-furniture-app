@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Camera } from "lucide-react";
+import { Eye, EyeOff, Camera, X, ZoomIn } from "lucide-react";
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [avatarSrc, setAvatarSrc] = useState<string>("");
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -139,17 +140,22 @@ export default function ProfilePage() {
               <Card className="glass overflow-hidden">
                 <div className="h-24 bg-gradient-to-r from-primary/20 to-accent/20" />
                 <CardContent className="pt-0 -mt-10 flex flex-col items-center text-center">
-                  {/* Clickable avatar */}
-                  <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                  {/* Avatar — click to preview if photo exists */}
+                  <div
+                    className={`relative group ${avatarSrc ? "cursor-zoom-in" : "cursor-default"}`}
+                    onClick={() => avatarSrc && setShowPreview(true)}
+                  >
                     <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
                       <AvatarImage src={avatarSrc || undefined} />
                       <AvatarFallback className="text-lg font-bold bg-primary/20 text-primary">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera size={18} className="text-white" />
-                    </div>
+                    {avatarSrc && (
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ZoomIn size={18} className="text-white" />
+                      </div>
+                    )}
                     {avatarUploading && (
                       <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -280,15 +286,35 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* Hidden file input — accepts all image types, opens gallery on mobile */}
+      {/* Hidden file input — opens gallery */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFileChange}
       />
+
+      {/* Full-size avatar preview modal */}
+      {showPreview && avatarSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowPreview(false)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            onClick={() => setShowPreview(false)}
+          >
+            <X size={20} className="text-white" />
+          </button>
+          <img
+            src={avatarSrc}
+            alt="Profile photo"
+            className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
