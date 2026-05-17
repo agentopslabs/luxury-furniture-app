@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { gitSync } from "@/lib/git-sync";
 
 const PROFILE_PATH = join(process.cwd(), "data", "profile.json");
 
 const DEFAULT_PROFILE = {
-  firstName: "Alex",
-  lastName: "Sterling",
-  email: "alex@sterling.io",
-  phone: "+1 (555) 012-3456",
+  firstName: "Bharath",
+  lastName: "J",
+  email: "bharathsathyasaijanga@gmail.com",
+  phone: "7670845590",
   password: "password123",
 };
 
@@ -42,6 +43,10 @@ export async function PUT(req: NextRequest) {
       password: body.password ?? current.password,
     };
     writeProfile(updated);
+
+    const fullName = `${updated.firstName} ${updated.lastName}`.trim();
+    gitSync(`Update profile: ${fullName}`, ["data/profile.json"]);
+
     return NextResponse.json({ success: true, profile: updated });
   } catch {
     return NextResponse.json({ success: false, error: "Failed to save profile" }, { status: 500 });
