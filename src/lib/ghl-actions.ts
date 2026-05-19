@@ -934,12 +934,13 @@ export async function getSocialPlannerComments(postId?: string): Promise<any[]> 
 }
 
 export async function sendEmailToContact(contactId: string, emailData: {
+  toEmail: string;
   fromEmail: string;
   fromName: string;
   subject: string;
   body: string;
 }): Promise<void> {
-  // Search for existing conversation
+  // Step 1: Get or create a conversation for this contact
   const searchUrl = new URL(`${GHL_API_BASE_URL}/conversations/search`);
   searchUrl.searchParams.append('locationId', GHL_LOCATION_ID);
   searchUrl.searchParams.append('contactId', contactId);
@@ -966,19 +967,22 @@ export async function sendEmailToContact(contactId: string, emailData: {
     }
   }
 
-  if (!conversationId) throw new Error('Could not get or create conversation for contact');
+  if (!conversationId) throw new Error('Could not get or create conversation');
 
+  // Step 2: Send email via POST /conversations/messages (not /{id}/messages)
   const html = emailData.body
     .split('\n')
     .map(l => l.trim() ? `<p>${l}</p>` : '<br/>')
     .join('');
 
-  const msgRes = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
+  const msgRes = await fetch(`${GHL_API_BASE_URL}/conversations/messages`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       type: 'Email',
+      conversationId,
       contactId,
+      emailTo: emailData.toEmail,
       emailFrom: emailData.fromEmail,
       emailFromName: emailData.fromName,
       emailSubject: emailData.subject,

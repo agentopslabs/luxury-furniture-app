@@ -47,7 +47,6 @@ const GHL_LOCATION_ID = "nBYJTjYbHTIsJGiqT0W4";
 
 const mainTabs = [
   { name: "Social Planner", value: "social" },
-  { name: "Emails", value: "emails" },
 ];
 
 const socialSubTabs = [

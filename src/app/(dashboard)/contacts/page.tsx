@@ -207,6 +207,7 @@ export default function ContactsPage() {
     for (const c of targets) {
       try {
         await sendEmailToContact(c.id, {
+          toEmail: c.email || "",
           fromEmail: emailForm.fromEmail || "noreply@luxuryfurniture.com",
           fromName: emailForm.fromName || "Luxury Furniture",
           subject: emailForm.subject,
