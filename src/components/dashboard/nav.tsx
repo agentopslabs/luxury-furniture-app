@@ -88,7 +88,7 @@ export function DashboardNav() {
         </Link>
       </div>
 
-      <div className="flex-1 px-3 py-5 space-y-1 overflow-y-auto no-scrollbar">
+      <div className="flex-1 px-3 py-5 space-y-1 overflow-hidden">
         <p className="text-[10px] font-bold text-white/25 uppercase tracking-[0.25em] px-3 mb-3">
           Main Menu
         </p>

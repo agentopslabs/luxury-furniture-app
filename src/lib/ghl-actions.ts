@@ -908,3 +908,88 @@ export async function getTriggerLinks(limit: number = 50): Promise<any[]> {
     return [];
   }
 }
+
+export async function getSocialPlannerComments(postId?: string): Promise<any[]> {
+  try {
+    if (postId) {
+      const response = await fetch(`${SOCIAL_BASE}/posts/${postId}/reviews`, {
+        headers: socialPlannerHeaders,
+        cache: 'no-store',
+      });
+      if (!response.ok) return [];
+      const data = await response.json().catch(() => ({}));
+      return data?.reviews || data?.comments || data?.data || [];
+    }
+    // Fetch reviews across all posts
+    const response = await fetch(`${SOCIAL_BASE}/reviews`, {
+      headers: socialPlannerHeaders,
+      cache: 'no-store',
+    });
+    if (!response.ok) return [];
+    const data = await response.json().catch(() => ({}));
+    return data?.reviews || data?.comments || data?.data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function sendEmailToContact(contactId: string, emailData: {
+  fromEmail: string;
+  fromName: string;
+  subject: string;
+  body: string;
+}): Promise<void> {
+  // Search for existing conversation
+  const searchUrl = new URL(`${GHL_API_BASE_URL}/conversations/search`);
+  searchUrl.searchParams.append('locationId', GHL_LOCATION_ID);
+  searchUrl.searchParams.append('contactId', contactId);
+  let conversationId: string | null = null;
+
+  try {
+    const convRes = await fetch(searchUrl.toString(), { headers, cache: 'no-store' });
+    if (convRes.ok) {
+      const convData = await convRes.json();
+      const convs = convData?.conversations || [];
+      if (convs.length > 0) conversationId = convs[0].id;
+    }
+  } catch {}
+
+  if (!conversationId) {
+    const createRes = await fetch(`${GHL_API_BASE_URL}/conversations`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ locationId: GHL_LOCATION_ID, contactId }),
+    });
+    if (createRes.ok) {
+      const d = await createRes.json().catch(() => ({}));
+      conversationId = d?.conversation?.id || d?.id || null;
+    }
+  }
+
+  if (!conversationId) throw new Error('Could not get or create conversation for contact');
+
+  const html = emailData.body
+    .split('\n')
+    .map(l => l.trim() ? `<p>${l}</p>` : '<br/>')
+    .join('');
+
+  const msgRes = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      type: 'Email',
+      contactId,
+      emailFrom: emailData.fromEmail,
+      emailFromName: emailData.fromName,
+      emailSubject: emailData.subject,
+      message: emailData.body,
+      html,
+    }),
+  });
+
+  if (!msgRes.ok) {
+    let msg = '';
+    try { const e = await msgRes.json(); msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    throw new Error(msg || `Failed to send email (${msgRes.status})`);
+  }
+}

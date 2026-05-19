@@ -168,12 +168,6 @@ export default function WelcomePage() {
           >
             Log In
           </Link>
-          <Link
-            href="/signup"
-            className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20 transition-all duration-200 hover:shadow-blue-500/40 hover:scale-[1.03]"
-          >
-            Sign Up Free
-          </Link>
         </div>
       </header>
 

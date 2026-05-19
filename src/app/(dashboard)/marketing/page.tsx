@@ -7,6 +7,7 @@ import {
   createSocialPlannerPost,
   deleteScheduledPost,
   updateScheduledPost,
+  getSocialPlannerComments,
 } from "@/lib/ghl-actions";
 import { Card } from "@/components/ui/card";
 import {
@@ -47,12 +48,6 @@ const GHL_LOCATION_ID = "nBYJTjYbHTIsJGiqT0W4";
 const mainTabs = [
   { name: "Social Planner", value: "social" },
   { name: "Emails", value: "emails" },
-  { name: "Snippets", value: "snippets" },
-  { name: "Countdown Timers", value: "timers" },
-  { name: "Trigger Links", value: "links" },
-  { name: "Affiliate Manager", value: "affiliate" },
-  { name: "Brand Boards", value: "brand" },
-  { name: "Ad Manager", value: "ads" },
 ];
 
 const socialSubTabs = [
@@ -325,6 +320,10 @@ export default function MarketingPage() {
   const [deletePost, setDeletePost] = useState<any>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
 
+  // Comments tab
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
   // Connect Socials modal
   const [connectSocialsOpen, setConnectSocialsOpen] = useState(false);
   const [syncPostsAuto, setSyncPostsAuto] = useState(false);
@@ -397,6 +396,16 @@ export default function MarketingPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Fetch comments when comments tab becomes active
+  useEffect(() => {
+    if (activeSocialTab !== "comments") return;
+    setCommentsLoading(true);
+    getSocialPlannerComments()
+      .then(data => setComments(data))
+      .catch(() => setComments([]))
+      .finally(() => setCommentsLoading(false));
+  }, [activeSocialTab]);
 
   // Close account dropdown on outside click
   useEffect(() => {
@@ -1499,13 +1508,66 @@ export default function MarketingPage() {
 
               {activeSocialTab === "comments" && (
                 <div className="space-y-4">
-                  {loading ? (
+                  {commentsLoading ? (
                     Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+                  ) : comments.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">{comments.length} comment{comments.length !== 1 ? "s" : ""} from your social posts</p>
+                      {comments.map((c: any, i: number) => {
+                        const platform = (c.platform || "").toLowerCase();
+                        const meta = getPlatformMeta(platform);
+                        const Icon = meta.icon;
+                        const author = c.reviewerName || c.name || c.from?.name || c.author || "Anonymous";
+                        const text = c.reviewMessage || c.message || c.text || c.comment || "";
+                        const rating = c.rating ?? null;
+                        const date = c.dateAdded || c.createdAt || c.timestamp || c.created_time || "";
+                        const postCaption = c.postCaption || c.postSummary || "";
+                        return (
+                          <div key={c.id || c._id || i} className="bg-card border border-border/50 rounded-xl p-4 space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold", meta.bg)}>
+                                  {author[0]?.toUpperCase() || "?"}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold">{author}</p>
+                                  {date && <p className="text-[11px] text-muted-foreground">{new Date(date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {rating !== null && (
+                                  <div className="flex items-center gap-0.5">
+                                    {Array(5).fill(0).map((_, s) => (
+                                      <Star key={s} size={12} className={s < rating ? "text-amber-400 fill-amber-400" : "text-muted-foreground/30"} />
+                                    ))}
+                                  </div>
+                                )}
+                                <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-white", meta.bg)}>
+                                  <Icon size={10} />
+                                </span>
+                              </div>
+                            </div>
+                            {text && <p className="text-sm text-foreground/80 leading-relaxed">{text}</p>}
+                            {postCaption && (
+                              <p className="text-[11px] text-muted-foreground border-l-2 border-border pl-2 italic truncate">
+                                Re: {postCaption}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-64 opacity-40 gap-3">
-                      <MessageSquare size={48} />
-                      <p className="font-bold text-base">Comments</p>
-                      <p className="text-sm text-center">Comments are synced from your connected social accounts.</p>
+                    <div className="flex flex-col items-center justify-center h-64 gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
+                        <MessageSquare size={28} className="text-muted-foreground/40" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-sm">No comments yet</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                          Comments and reviews from your social posts will appear here once your accounts are connected and posts are published.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
