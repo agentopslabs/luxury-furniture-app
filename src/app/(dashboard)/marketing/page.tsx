@@ -5,6 +5,8 @@ import { DashboardNav } from "@/components/dashboard/nav";
 import {
   fetchMarketingData,
   createSocialPlannerPost,
+  deleteScheduledPost,
+  updateScheduledPost,
 } from "@/lib/ghl-actions";
 import { Card } from "@/components/ui/card";
 import {
@@ -313,6 +315,15 @@ export default function MarketingPage() {
   // Post preview modal
   const [previewPost, setPreviewPost] = useState<any>(null);
 
+  // Edit / Delete scheduled post
+  const [editPost, setEditPost] = useState<any>(null);
+  const [editCaption, setEditCaption] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletePost, setDeletePost] = useState<any>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+
   // Connect Socials modal
   const [connectSocialsOpen, setConnectSocialsOpen] = useState(false);
   const [syncPostsAuto, setSyncPostsAuto] = useState(false);
@@ -470,6 +481,45 @@ export default function MarketingPage() {
     window.open(base, "_blank", "noopener,noreferrer");
   };
 
+  const openEditPost = (item: any) => {
+    setEditPost(item);
+    setEditCaption(item.caption || item.summary || "");
+    const d = item.date ? new Date(item.date) : new Date();
+    setEditDate(d.toISOString().slice(0, 10));
+    setEditTime(d.toTimeString().slice(0, 5));
+  };
+
+  const handleEditSave = async () => {
+    if (!editPost) return;
+    setEditSaving(true);
+    try {
+      const scheduleDate = new Date(`${editDate}T${editTime}`).toISOString();
+      await updateScheduledPost(editPost.id || editPost._id, { summary: editCaption, scheduleDate });
+      toast({ title: "Post updated!", description: "Scheduled post has been updated." });
+      setEditPost(null);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Update failed", description: err.message });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!deletePost) return;
+    setDeleteConfirming(true);
+    try {
+      await deleteScheduledPost(deletePost.id || deletePost._id);
+      toast({ title: "Post deleted", description: "The scheduled post was removed." });
+      setDeletePost(null);
+      loadData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Delete failed", description: err.message });
+    } finally {
+      setDeleteConfirming(false);
+    }
+  };
+
   const filteredAccounts = ghlAccounts.filter(a =>
     !accountSearchQuery || (a.name || a.displayName || "").toLowerCase().includes(accountSearchQuery.toLowerCase())
   );
@@ -580,13 +630,32 @@ export default function MarketingPage() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-36 rounded-xl shadow-xl">
-                      <DropdownMenuItem
-                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
-                        onClick={() => setPreviewPost(item)}
-                      >
-                        <Eye size={13} className="text-muted-foreground" />
-                        Preview
-                      </DropdownMenuItem>
+                      {item.status === "scheduled" || item.status === "in_progress" ? (
+                        <>
+                          <DropdownMenuItem
+                            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                            onClick={() => openEditPost(item)}
+                          >
+                            <Sparkles size={13} className="text-muted-foreground" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer text-destructive focus:text-destructive"
+                            onClick={() => setDeletePost(item)}
+                          >
+                            <Trash2 size={13} />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                          onClick={() => setPreviewPost(item)}
+                        >
+                          <Eye size={13} className="text-muted-foreground" />
+                          Preview
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -1653,6 +1722,106 @@ export default function MarketingPage() {
 
       {/* Post Preview modal */}
       <PostPreviewModal post={previewPost} accounts={ghlAccounts} onClose={() => setPreviewPost(null)} />
+
+      {/* Edit Scheduled Post modal */}
+      {editPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !editSaving && setEditPost(null)} />
+          <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <span className="text-sm font-bold">Edit Scheduled Post</span>
+              <button onClick={() => setEditPost(null)} disabled={editSaving} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caption</label>
+                <textarea
+                  value={editCaption}
+                  onChange={e => setEditCaption(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={e => setEditDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Time</label>
+                  <input
+                    type="time"
+                    value={editTime}
+                    onChange={e => setEditTime(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 px-5 pb-5">
+              <button
+                onClick={() => setEditPost(null)}
+                disabled={editSaving}
+                className="flex-1 h-9 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving || !editCaption.trim() || !editDate || !editTime}
+                className="flex-1 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {editSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                {editSaving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation modal */}
+      {deletePost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !deleteConfirming && setDeletePost(null)} />
+          <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={20} className="text-destructive" />
+              </div>
+              <h3 className="text-base font-bold mb-1">Delete scheduled post?</h3>
+              <p className="text-sm text-muted-foreground mb-1 line-clamp-2">
+                "{deletePost.caption || deletePost.summary || "This post"}"
+              </p>
+              <p className="text-xs text-muted-foreground mb-6">This cannot be undone.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDeletePost(null)}
+                  disabled={deleteConfirming}
+                  className="flex-1 h-9 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  disabled={deleteConfirming}
+                  className="flex-1 h-9 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleteConfirming ? <Loader2 size={14} className="animate-spin" /> : null}
+                  {deleteConfirming ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

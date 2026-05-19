@@ -801,6 +801,41 @@ export async function createSocialPlannerPost(postData: {
   return await handleResponse(response, 'creating social planner post');
 }
 
+export async function deleteScheduledPost(postId: string): Promise<void> {
+  const response = await fetch(`${SOCIAL_BASE}/posts/${postId}`, {
+    method: 'DELETE',
+    headers: socialPlannerHeaders,
+  });
+  if (!response.ok) {
+    let msg = '';
+    try { const e = await response.json(); msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    throw new Error(msg || `Failed to delete post (${response.status})`);
+  }
+}
+
+export async function updateScheduledPost(postId: string, data: {
+  summary?: string;
+  scheduleDate?: string;
+  accountIds?: string[];
+}): Promise<any> {
+  const payload: any = {};
+  if (data.summary !== undefined) payload.summary = data.summary;
+  if (data.scheduleDate) { payload.scheduleDate = data.scheduleDate; payload.status = 'scheduled'; }
+  if (data.accountIds) payload.accountIds = data.accountIds;
+
+  const response = await fetch(`${SOCIAL_BASE}/posts/${postId}`, {
+    method: 'PATCH',
+    headers: socialPlannerHeaders,
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    let msg = '';
+    try { const e = await response.json(); msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    throw new Error(msg || `Failed to update post (${response.status})`);
+  }
+  return response.json().catch(() => ({}));
+}
+
 // Combined fetch for marketing page — one server action call instead of four
 export async function fetchMarketingData(): Promise<{
   posts: any[];
