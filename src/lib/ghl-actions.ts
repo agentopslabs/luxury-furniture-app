@@ -677,7 +677,7 @@ export async function getProducts(limit: number = 50): Promise<any[]> {
   }
 }
 
-// --- MARKETING ---
+// --- MARKETING / SOCIAL PLANNER ---
 
 const socialPlannerHeaders = {
   'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
@@ -686,82 +686,93 @@ const socialPlannerHeaders = {
   'Accept': 'application/json',
 };
 
-export async function getSocialPosts(limit: number = 50): Promise<any[]> {
-  try {
-    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/posts`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('limit', limit.toString());
-    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, next: { revalidate: 0 } });
-    if (response.status === 404) return [];
-    const data = await handleResponse(response, 'fetching social posts');
-    return data?.posts || [];
-  } catch (error) {
-    return [];
-  }
-}
+const SOCIAL_BASE = `${GHL_API_BASE_URL}/social-media-posting/${GHL_LOCATION_ID}`;
 
-export async function getSocialAccounts(): Promise<any[]> {
+export async function getSocialPlannerPosts(options?: {
+  startDate?: number;
+  endDate?: number;
+  skip?: number;
+  limit?: number;
+}): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/oauth/facebook/accounts`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('reconnect', 'false');
-    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, next: { revalidate: 0 } });
+    const now = Date.now();
+    const url = new URL(`${SOCIAL_BASE}/posts`);
+    url.searchParams.append('startDate', String(options?.startDate ?? now - 180 * 24 * 60 * 60 * 1000));
+    url.searchParams.append('endDate', String(options?.endDate ?? now + 180 * 24 * 60 * 60 * 1000));
+    url.searchParams.append('skip', String(options?.skip ?? 0));
+    url.searchParams.append('limit', String(options?.limit ?? 100));
+    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, cache: 'no-store' });
     if (!response.ok) return [];
-    const data = await handleResponse(response, 'fetching social accounts');
-    const accounts = data?.accounts || data?.pages || [];
-    return accounts;
+    const data = await handleResponse(response, 'fetching social planner posts');
+    return data?.posts || data?.data || [];
   } catch {
     return [];
   }
 }
 
-export async function getSocialOAuthUrl(platform: string): Promise<string | null> {
+export async function getSocialPlannerAccounts(): Promise<any[]> {
   try {
-    const url = new URL(`${GHL_API_BASE_URL}/social-media-planner/oauth/${platform}`);
-    url.searchParams.append('locationId', GHL_LOCATION_ID);
-    url.searchParams.append('reconnect', 'false');
-    const response = await fetch(url.toString(), { headers: socialPlannerHeaders });
-    if (!response.ok) return null;
-    const data = await handleResponse(response, `getting ${platform} oauth url`);
-    return data?.url || data?.redirectUrl || data?.authUrl || data?.oauthUrl || null;
+    const url = new URL(`${SOCIAL_BASE}/accounts`);
+    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, cache: 'no-store' });
+    if (!response.ok) return [];
+    const data = await handleResponse(response, 'fetching social planner accounts');
+    return data?.accounts || data?.data || [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-export async function createSocialPost(postData: {
-  caption: string;
-  type: string;
-  status: string;
-  channels?: string[];
+export async function createSocialPlannerPost(postData: {
+  accountIds: string[];
+  summary: string;
+  type?: string;
+  scheduleDateTime?: string;
   mediaUrls?: string[];
-  mediaType?: 'image' | 'video' | 'none';
 }): Promise<any> {
   const payload: any = {
-    summary: postData.caption,
-    postType: postData.type,
-    status: postData.status,
-    channels: postData.channels || [],
-    locationId: GHL_LOCATION_ID,
-    scheduledDate: new Date(Date.now() + 5 * 60000).toISOString(),
+    accountIds: postData.accountIds,
+    summary: postData.summary,
+    type: postData.type || 'post',
+    status: postData.scheduleDateTime ? 'SCHEDULED' : 'NOW',
   };
+  if (postData.scheduleDateTime) payload.scheduleDateTime = postData.scheduleDateTime;
+  if (postData.mediaUrls?.length) payload.mediaUrls = postData.mediaUrls;
 
-  if (postData.mediaUrls && postData.mediaUrls.length > 0) {
-    payload.media = postData.mediaUrls.map(url => ({
-      url,
-      type: postData.mediaType === 'video' ? 'video' : 'photo',
-    }));
-  }
-
-  const response = await fetch(`${GHL_API_BASE_URL}/social-media-planner/posts`, {
+  const response = await fetch(`${SOCIAL_BASE}/post`, {
     method: 'POST',
     headers: socialPlannerHeaders,
     body: JSON.stringify(payload),
   });
-  if (response.status === 404) {
-    throw new Error('Social posting is not available. Please connect your social accounts first.');
+  if (!response.ok) {
+    let msg = '';
+    try { const e = await response.json(); msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    throw new Error(msg || `Failed to create post (${response.status})`);
   }
-  return await handleResponse(response, 'creating social post');
+  return await handleResponse(response, 'creating social planner post');
+}
+
+// Combined fetch for marketing page — one server action call instead of four
+export async function fetchMarketingData(): Promise<{
+  posts: any[];
+  accounts: any[];
+  emails: any[];
+  links: any[];
+}> {
+  const [posts, accounts, emails, links] = await Promise.all([
+    getSocialPlannerPosts().catch(() => []),
+    getSocialPlannerAccounts().catch(() => []),
+    getEmailTemplates(20).catch(() => []),
+    getTriggerLinks(20).catch(() => []),
+  ]);
+  return { posts: posts || [], accounts: accounts || [], emails: emails || [], links: links || [] };
+}
+
+// Legacy aliases kept for any remaining references
+export async function getSocialPosts(): Promise<any[]> { return getSocialPlannerPosts(); }
+export async function getSocialAccounts(): Promise<any[]> { return getSocialPlannerAccounts(); }
+export async function getSocialOAuthUrl(_platform: string): Promise<string | null> { return null; }
+export async function createSocialPost(postData: any): Promise<any> {
+  return createSocialPlannerPost({ accountIds: postData.channels || [], summary: postData.caption, mediaUrls: postData.mediaUrls });
 }
 
 export async function getEmailTemplates(limit: number = 50): Promise<any[]> {
