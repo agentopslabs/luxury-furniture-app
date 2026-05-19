@@ -455,7 +455,7 @@ export default function MarketingPage() {
       const label = opts.scheduleAt ? "Post Scheduled!" : opts.draft ? "Saved as Draft!" : "Post Published!";
       const desc = opts.scheduleAt
         ? `Scheduled for ${new Date(opts.scheduleAt).toLocaleString()}`
-        : opts.draft ? "Your post has been saved." : "Your post has been sent to GHL Social Planner.";
+        : opts.draft ? "Your post has been saved." : "Your post has been published.";
       toast({ title: label, description: desc });
       setNewPostView(false);
       resetPost();
@@ -675,7 +675,7 @@ export default function MarketingPage() {
                 <div className="flex flex-col items-center gap-3 opacity-40">
                   <CalendarDays size={40} />
                   <p className="text-sm font-semibold">
-                    {searchQuery || filterStatus !== "all" ? "No posts match your filter" : "No posts found in GHL Social Planner"}
+                    {searchQuery || filterStatus !== "all" ? "No posts match your filter" : "No posts found"}
                   </p>
                   <p className="text-xs">Click "New Post" to create your first post</p>
                 </div>
@@ -1359,8 +1359,8 @@ export default function MarketingPage() {
                 <h1 className="text-2xl font-bold tracking-tight">Social Planner</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {ghlAccounts.length > 0
-                    ? `${ghlAccounts.length} account${ghlAccounts.length > 1 ? "s" : ""} connected via GHL`
-                    : "Connect social accounts in GHL to enable live publishing"}
+                    ? `${ghlAccounts.length} account${ghlAccounts.length > 1 ? "s" : ""} connected`
+                    : "Connect social accounts to enable live publishing"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1421,7 +1421,7 @@ export default function MarketingPage() {
             {/* Connected accounts bar from GHL */}
             {ghlAccounts.length > 0 && (
               <div className="px-8 py-2 border-b bg-muted/20 flex items-center gap-3 flex-wrap shrink-0">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">GHL Accounts:</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Accounts:</span>
                 {ghlAccounts.map((acc, i) => {
                   const platform = (acc.platform || acc.type || "").toLowerCase();
                   const meta = getPlatformMeta(platform);
@@ -1505,7 +1505,7 @@ export default function MarketingPage() {
                     <div className="flex flex-col items-center justify-center h-64 opacity-40 gap-3">
                       <MessageSquare size={48} />
                       <p className="font-bold text-base">Comments</p>
-                      <p className="text-sm text-center">Comments are managed directly in GHL. View them in your GHL backend under Marketing → Social Planner → Comments.</p>
+                      <p className="text-sm text-center">Comments are synced from your connected social accounts.</p>
                     </div>
                   )}
                 </div>
@@ -1521,7 +1521,7 @@ export default function MarketingPage() {
                           <s.icon size={16} className={s.color} />
                         </div>
                         <p className="text-2xl font-bold">{typeof s.value === "number" ? s.value.toLocaleString("en-IN") : s.value}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1">From GHL Social Planner</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">From Social Planner</p>
                       </Card>
                     ))}
                   </div>
@@ -1564,7 +1564,7 @@ export default function MarketingPage() {
                   <div className="flex flex-col items-center justify-center h-64 opacity-40 gap-3">
                     <Radio size={48} />
                     <p className="font-bold text-base">Social Listening</p>
-                    <p className="text-sm text-center">Monitor mentions and hashtags via GHL's Social Listening feature.</p>
+                    <p className="text-sm text-center">Monitor mentions and hashtags across your connected social accounts.</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-bold mb-3">Top Hashtags in Your Posts</h3>
@@ -1585,7 +1585,7 @@ export default function MarketingPage() {
                   <div>
                     <h2 className="text-lg font-bold">Connected Social Accounts</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      These accounts are connected in your GHL backend. Manage connections directly in GHL under Marketing → Social Planner → Settings.
+                      Manage your connected social accounts below. Use the "+ Socials" button to add new connections.
                     </p>
                   </div>
                   {loading ? (
@@ -1618,7 +1618,7 @@ export default function MarketingPage() {
                             </div>
                             <div className="flex items-center gap-1.5">
                               <CheckCircle2 size={12} className="text-emerald-500" />
-                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">Connected via GHL</span>
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">Connected</span>
                             </div>
                           </Card>
                         );
@@ -1639,7 +1639,7 @@ export default function MarketingPage() {
                       <AlertCircle size={13} /> Managing Social Accounts
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
-                      Social account connections are managed in GHL. Click the "+ Socials" button to connect Facebook, Instagram, LinkedIn, TikTok, and more.
+                      Click the "+ Socials" button to connect Facebook, Instagram, LinkedIn, TikTok, and more.
                     </p>
                   </Card>
                 </div>
@@ -1673,7 +1673,7 @@ export default function MarketingPage() {
               <div className="flex flex-col items-center justify-center h-64 opacity-30 gap-3">
                 <Mail size={48} />
                 <p className="font-bold">No email templates found</p>
-                <p className="text-sm">Create email templates in your GHL backend</p>
+                <p className="text-sm">No email templates found</p>
               </div>
             )}
           </div>
@@ -1921,8 +1921,8 @@ function ConnectSocialsModal({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">How to connect</p>
             <ol className="space-y-3 mb-5">
               {[
-                "Click the button below — GHL Social Planner opens in a new tab",
-                `In GHL, find the "${sel?.label}" connect button and click it`,
+                "Click the button below — Social Planner opens in a new tab",
+                `Find the "${sel?.label}" connect button and click it`,
                 `Sign in with your ${sel?.label} account when prompted`,
                 "Once signed in, your account is connected — come back here and refresh",
               ].map((step, i) => (
@@ -1938,10 +1938,10 @@ function ConnectSocialsModal({
               className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
             >
               <ExternalLink size={14} />
-              Open GHL Social Planner
+              Open Social Planner
             </button>
             <p className="text-center text-[11px] text-muted-foreground mt-3">
-              Make sure you are already logged into GHL in this browser.
+              Make sure you are already logged in before connecting.
             </p>
           </div>
         )}
