@@ -780,7 +780,7 @@ export async function createSocialPlannerPost(postData: {
     userId: postData.userId || 'system',
   };
   if (postData.scheduleDateTime) {
-    payload.scheduledAt = postData.scheduleDateTime;
+    payload.scheduleDate = postData.scheduleDateTime;
     payload.status = 'scheduled';
   }
 
