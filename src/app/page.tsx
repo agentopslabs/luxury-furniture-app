@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
+import ChatWidget from "@/components/chat-widget";
 
 const furnitureImages = [
   {
@@ -529,12 +530,7 @@ export default function WelcomePage() {
       </section>
 
       {/* ── WEBCHAT WIDGET ── */}
-      <Script
-        src="https://widgets.leadconnectorhq.com/loader.js"
-        data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-        data-widget-id="6a01ef3b205bf897ae837633"
-        strategy="lazyOnload"
-      />
+      <ChatWidget />
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-white/[0.06] py-10 px-6 md:px-14 mt-4">
