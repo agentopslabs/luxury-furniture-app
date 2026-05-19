@@ -185,6 +185,101 @@ function normalizePost(p: any): any {
   };
 }
 
+function ghlAccForPost(post: any, accounts: any[]) {
+  const id = post.accountId;
+  if (!id) return [];
+  const found = accounts.find((a: any) => (a._id || a.id) === id);
+  return found ? [found] : [];
+}
+
+function PostPreviewModal({ post, accounts, onClose }: { post: any; accounts: any[]; onClose: () => void }) {
+  if (!post) return null;
+  const platform = (post.platform || "").toLowerCase();
+  const meta = getPlatformMeta(platform);
+  const Icon = meta.icon;
+  const resolvedAccounts: any[] = post.accounts?.length
+    ? post.accounts.map((a: any) => accounts.find((ac: any) => (ac._id || ac.id) === (a._id || a.id || a)) || a)
+    : ghlAccForPost(post, accounts);
+  const firstAcc = resolvedAccounts[0];
+  const pic = firstAcc?.avatar || firstAcc?.picture || firstAcc?.profilePicture;
+  const name = firstAcc?.name || firstAcc?.displayName || meta.label || "Account";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <span className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs", meta.bg)}>
+              <Icon size={14} />
+            </span>
+            <span className="text-sm font-bold">Post Preview</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {statusBadge(post.status)}
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-1">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2.5 p-3 pb-2">
+              <div className="relative shrink-0">
+                {pic
+                  ? <img src={pic} className="w-10 h-10 rounded-full border border-border/30" alt={name} />
+                  : <span className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white", meta.bg)}><Icon size={16} /></span>}
+                <span className={cn("absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-white", meta.bg)}>
+                  <Icon size={8} />
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold leading-tight">{name}</p>
+                <p className="text-[11px] text-muted-foreground">{post.date ? new Date(post.date).toLocaleString() : "Just now"}</p>
+              </div>
+              <div className="text-lg text-muted-foreground leading-none">···</div>
+            </div>
+            <div className="px-3 pb-2">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+            </div>
+            {post.firstMedia && (
+              post.isVideo
+                ? <div className="w-full aspect-video bg-black flex items-center justify-center"><PlayCircle size={40} className="text-white/60" /></div>
+                : <img src={post.firstMedia} alt="media" className="w-full max-h-72 object-cover" />
+            )}
+            {(post.likes > 0 || post.comments > 0 || post.shares > 0) && (
+              <div className="flex items-center gap-4 px-3 py-3 border-t border-border text-xs text-muted-foreground">
+                {post.likes > 0 && <span className="flex items-center gap-1"><Heart size={12} className="text-red-400" />{post.likes} likes</span>}
+                {post.comments > 0 && <span className="flex items-center gap-1"><MessageSquare size={12} />{post.comments} comments</span>}
+                {post.shares > 0 && <span className="flex items-center gap-1"><Share2 size={12} />{post.shares} shares</span>}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 space-y-2 text-xs">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="font-semibold">Type</span>
+              <span className="bg-muted px-2 py-0.5 rounded-md font-medium">{post.type}</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="font-semibold">Platform</span>
+              <span className="capitalize">{platform || "—"}</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="font-semibold">Date</span>
+              <span>{post.date ? new Date(post.date).toLocaleString() : "—"}</span>
+            </div>
+          </div>
+        </div>
+        <div className="px-5 pb-5 pt-3 shrink-0">
+          <button onClick={onClose} className="w-full h-9 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketingPage() {
   const [activeMainTab, setActiveMainTab] = useState("social");
   const [activeSocialTab, setActiveSocialTab] = useState("planner");
@@ -199,6 +294,7 @@ export default function MarketingPage() {
   // New post full-page composer
   const [newPostView, setNewPostView] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [newPost, setNewPost] = useState({
     summary: "",
     type: "Post",
@@ -206,9 +302,16 @@ export default function MarketingPage() {
     mediaUrl: "",
     mediaPreview: "",
     mediaType: "none" as "none" | "image" | "video",
+    scheduleDateTime: "",
   });
   const [accountSearchQuery, setAccountSearchQuery] = useState("");
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduleDateInput, setScheduleDateInput] = useState("");
+  const [scheduleTimeInput, setScheduleTimeInput] = useState("");
+
+  // Post preview modal
+  const [previewPost, setPreviewPost] = useState<any>(null);
 
   // Connect Socials modal
   const [connectSocialsOpen, setConnectSocialsOpen] = useState(false);
@@ -221,20 +324,31 @@ export default function MarketingPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { toast } = useToast();
 
-  // Handle file selected from system picker
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, fileType: "image" | "video") => {
+  // Handle file selected from system picker — upload to /api/upload to get a real public URL
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, fileType: "image" | "video") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    setNewPost(p => ({
-      ...p,
-      mediaUrl: "",
-      mediaPreview: objectUrl,
-      mediaType: fileType,
-      type: fileType === "video" ? "Reel" : p.type,
-    }));
-    // Reset input so the same file can be re-selected
+    // Show local blob preview immediately
+    const blobUrl = URL.createObjectURL(file);
+    setNewPost(p => ({ ...p, mediaUrl: "", mediaPreview: blobUrl, mediaType: fileType, type: fileType === "video" ? "Reel" : p.type }));
     e.target.value = "";
+    // Upload to server to get a publicly accessible URL for GHL API
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      if (data.url) {
+        setNewPost(p => ({ ...p, mediaUrl: data.url }));
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Upload failed", description: "Could not upload file. Paste a URL instead." });
+      setNewPost(p => ({ ...p, mediaPreview: "", mediaType: "none" }));
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   // Insert or wrap text at textarea cursor position
@@ -284,9 +398,12 @@ export default function MarketingPage() {
   }, []);
 
   const resetPost = () => {
-    setNewPost({ summary: "", type: "Post", accountIds: [], mediaUrl: "", mediaPreview: "", mediaType: "none" });
+    setNewPost({ summary: "", type: "Post", accountIds: [], mediaUrl: "", mediaPreview: "", mediaType: "none", scheduleDateTime: "" });
     setAccountSearchQuery("");
     setAccountDropdownOpen(false);
+    setScheduleDialogOpen(false);
+    setScheduleDateInput("");
+    setScheduleTimeInput("");
   };
 
   const toggleAccount = (id: string) => setNewPost(prev => ({
@@ -299,7 +416,7 @@ export default function MarketingPage() {
     setNewPost(prev => ({ ...prev, accountIds: allIds }));
   };
 
-  const handleCreatePost = async (saveForLater = false) => {
+  const handleCreatePost = async (opts: { draft?: boolean; scheduleAt?: string } = {}) => {
     if (!newPost.summary.trim()) {
       toast({ variant: "destructive", title: "Missing Caption", description: "Write a caption for your post." });
       return;
@@ -308,16 +425,26 @@ export default function MarketingPage() {
       toast({ variant: "destructive", title: "No Account Selected", description: "Select at least one social account." });
       return;
     }
+    if (isUploading) {
+      toast({ variant: "destructive", title: "Upload in progress", description: "Wait for the media to finish uploading." });
+      return;
+    }
+    // Only use the server-side URL (not blob://) for media
+    const realMediaUrl = newPost.mediaUrl.startsWith("http") ? newPost.mediaUrl : undefined;
     setIsSubmitting(true);
     try {
-      const mediaUrls = (newPost.mediaUrl.trim() || newPost.mediaPreview) ? [newPost.mediaUrl.trim() || newPost.mediaPreview] : undefined;
       await createSocialPlannerPost({
         accountIds: newPost.accountIds,
         summary: newPost.summary,
         type: newPost.type.toLowerCase(),
-        mediaUrls,
+        mediaUrls: realMediaUrl ? [realMediaUrl] : undefined,
+        scheduleDateTime: opts.scheduleAt,
       });
-      toast({ title: saveForLater ? "Saved as Draft!" : "Post Published!", description: saveForLater ? "Your post has been saved." : "Your post has been sent to GHL Social Planner." });
+      const label = opts.scheduleAt ? "Post Scheduled!" : opts.draft ? "Saved as Draft!" : "Post Published!";
+      const desc = opts.scheduleAt
+        ? `Scheduled for ${new Date(opts.scheduleAt).toLocaleString()}`
+        : opts.draft ? "Your post has been saved." : "Your post has been sent to GHL Social Planner.";
+      toast({ title: label, description: desc });
       setNewPostView(false);
       resetPost();
       await fetchAll();
@@ -328,8 +455,33 @@ export default function MarketingPage() {
     }
   };
 
+  const handleSchedulePost = () => {
+    if (!scheduleDateInput || !scheduleTimeInput) {
+      toast({ variant: "destructive", title: "Pick a date and time", description: "Both date and time are required to schedule." });
+      return;
+    }
+    const scheduleAt = new Date(`${scheduleDateInput}T${scheduleTimeInput}`).toISOString();
+    setScheduleDialogOpen(false);
+    handleCreatePost({ scheduleAt });
+  };
+
+  // GHL social planner connect — per-platform OAuth URLs (requires GHL login)
+  const GHL_PLATFORM_CONNECT: Record<string, string> = {
+    facebook: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    instagram: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    gbp: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    linkedin: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    tiktok: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    youtube: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    pinterest: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    threads: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    bluesky: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+    community: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
+  };
+
   const handleConnectPlatform = (platformKey: string) => {
-    window.open(`${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/social-planner/settings`, "_blank");
+    const url = GHL_PLATFORM_CONNECT[platformKey] || `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const filteredAccounts = ghlAccounts.filter(a =>
@@ -374,6 +526,7 @@ export default function MarketingPage() {
             )}
             <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-3 w-44">Date</TableHead>
             <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-3 w-20">Social</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-3 w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -387,7 +540,7 @@ export default function MarketingPage() {
             ))
           ) : filteredPosts.length > 0 ? (
             filteredPosts.map((item, i) => (
-              <TableRow key={item.id || i} className="hover:bg-muted/30 border-border/30 transition-all">
+              <TableRow key={item.id || i} className="group hover:bg-muted/30 border-border/30 transition-all">
                 <TableCell className="px-4 py-3">
                   {item.firstMedia ? (
                     item.isVideo
@@ -431,6 +584,32 @@ export default function MarketingPage() {
                         : <span className="text-xs opacity-30">—</span>
                     }
                   </div>
+                </TableCell>
+                {/* 3-dot actions menu */}
+                <TableCell className="py-3 pr-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                        <span className="text-lg leading-none tracking-tighter">···</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
+                      <DropdownMenuItem
+                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                        onClick={() => setPreviewPost(item)}
+                      >
+                        <Eye size={13} className="text-muted-foreground" />
+                        Preview
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                        onClick={() => window.open(`${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`, "_blank")}
+                      >
+                        <ExternalLink size={13} className="text-muted-foreground" />
+                        Open in GHL
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))
@@ -890,14 +1069,29 @@ export default function MarketingPage() {
 
               {/* Footer */}
               <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-background shrink-0">
-                <div />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {isUploading && (
+                    <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                      <Loader2 size={12} className="animate-spin" /> Uploading media…
+                    </span>
+                  )}
+                  {newPost.scheduleDateTime && (
+                    <span className="flex items-center gap-1.5 text-primary font-medium">
+                      <Clock size={12} />
+                      Scheduled: {new Date(newPost.scheduleDateTime).toLocaleString()}
+                      <button type="button" onClick={() => setNewPost(p => ({ ...p, scheduleDateTime: "" }))} className="text-muted-foreground hover:text-destructive">
+                        <X size={11} />
+                      </button>
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     className="h-9 px-5 text-sm"
                     disabled={isSubmitting}
-                    onClick={() => handleCreatePost(true)}
+                    onClick={() => handleCreatePost({ draft: true })}
                   >
                     Save for later
                   </Button>
@@ -906,10 +1100,10 @@ export default function MarketingPage() {
                       <Button
                         type="button"
                         className="h-9 px-5 text-sm font-bold rounded-r-none"
-                        disabled={isSubmitting || newPost.accountIds.length === 0 || !newPost.summary.trim()}
-                        onClick={() => handleCreatePost(false)}
+                        disabled={isSubmitting || isUploading || newPost.accountIds.length === 0 || !newPost.summary.trim()}
+                        onClick={() => handleCreatePost({})}
                       >
-                        {isSubmitting ? <><Loader2 size={14} className="mr-2 animate-spin" /> Posting...</> : "Post"}
+                        {isSubmitting ? <><Loader2 size={14} className="mr-2 animate-spin" /> Posting…</> : "Post"}
                       </Button>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -921,13 +1115,74 @@ export default function MarketingPage() {
                         </Button>
                       </DropdownMenuTrigger>
                     </div>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={() => handleCreatePost(false)}>Post Now</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleCreatePost(true)}>Save as Draft</DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem className="flex items-center gap-2" onClick={() => handleCreatePost({})}>
+                        <CheckCircle2 size={13} className="text-muted-foreground" /> Post Now
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="flex items-center gap-2" onClick={() => setScheduleDialogOpen(true)}>
+                        <CalendarDays size={13} className="text-muted-foreground" /> Schedule Post
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="flex items-center gap-2" onClick={() => handleCreatePost({ draft: true })}>
+                        <FileText size={13} className="text-muted-foreground" /> Save as Draft
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </div>
+
+              {/* Schedule dialog */}
+              {scheduleDialogOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setScheduleDialogOpen(false)} />
+                  <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+                      <div className="flex items-center gap-2.5">
+                        <CalendarDays size={17} className="text-primary" />
+                        <span className="text-base font-bold">Schedule Post</span>
+                      </div>
+                      <button onClick={() => setScheduleDialogOpen(false)} className="text-muted-foreground hover:text-foreground">
+                        <X size={17} />
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Date</Label>
+                        <Input
+                          type="date"
+                          className="h-9 rounded-lg text-sm"
+                          value={scheduleDateInput}
+                          min={new Date().toISOString().split("T")[0]}
+                          onChange={e => setScheduleDateInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Time</Label>
+                        <Input
+                          type="time"
+                          className="h-9 rounded-lg text-sm"
+                          value={scheduleTimeInput}
+                          onChange={e => setScheduleTimeInput(e.target.value)}
+                        />
+                      </div>
+                      {scheduleDateInput && scheduleTimeInput && (
+                        <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                          Will post on <strong>{new Date(`${scheduleDateInput}T${scheduleTimeInput}`).toLocaleString()}</strong>
+                        </p>
+                      )}
+                    </div>
+                    <div className="px-6 pb-6 flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
+                      <Button
+                        className="flex-1 font-bold"
+                        disabled={!scheduleDateInput || !scheduleTimeInput || isSubmitting}
+                        onClick={handleSchedulePost}
+                      >
+                        {isSubmitting ? <><Loader2 size={14} className="mr-2 animate-spin" /> Scheduling…</> : "Schedule"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Post Preview */}
@@ -1416,6 +1671,9 @@ export default function MarketingPage() {
         syncPostsAuto={syncPostsAuto}
         onSyncChange={setSyncPostsAuto}
       />
+
+      {/* Post Preview modal */}
+      <PostPreviewModal post={previewPost} accounts={ghlAccounts} onClose={() => setPreviewPost(null)} />
     </div>
   );
 }
@@ -1486,3 +1744,4 @@ function ConnectSocialsModal({
     </div>
   );
 }
+
