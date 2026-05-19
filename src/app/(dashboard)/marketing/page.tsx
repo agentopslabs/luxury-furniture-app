@@ -79,15 +79,15 @@ const PLATFORM_META: Record<string, { icon: any; color: string; bg: string; labe
 };
 
 const CONNECT_PLATFORMS = [
-  { key: "facebook", label: "Connect Facebook", icon: Facebook, color: "text-blue-600", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
-  { key: "instagram", label: "Connect Instagram", icon: Instagram, color: "text-pink-500", border: "hover:border-pink-200 hover:bg-pink-50 dark:hover:bg-pink-950/30" },
-  { key: "gbp", label: "Connect GBP", icon: Globe, color: "text-blue-500", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
-  { key: "linkedin", label: "Connect LinkedIn", icon: Linkedin, color: "text-blue-700", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
-  { key: "tiktok", label: "Connect TikTok", icon: Film, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
-  { key: "youtube", label: "Connect YouTube", icon: PlayCircle, color: "text-red-600", border: "hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30" },
-  { key: "pinterest", label: "Connect Pinterest", icon: Pin, color: "text-red-600", border: "hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30" },
-  { key: "threads", label: "Connect Threads", icon: MessageSquare, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
-  { key: "bluesky", label: "Connect Bluesky", icon: Globe, color: "text-sky-500", border: "hover:border-sky-200 hover:bg-sky-50 dark:hover:bg-sky-950/30" },
+  { key: "facebook", label: "Facebook", icon: Facebook, color: "text-blue-600", border: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "instagram", label: "Instagram", icon: Instagram, color: "text-pink-500", border: "hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/30" },
+  { key: "linkedin", label: "LinkedIn", icon: Linkedin, color: "text-blue-700", border: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "youtube", label: "YouTube", icon: Youtube, color: "text-red-600", border: "hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/30" },
+  { key: "tiktok", label: "TikTok", icon: Film, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
+  { key: "twitter", label: "X / Twitter", icon: Twitter, color: "text-sky-400", border: "hover:border-sky-200 hover:bg-sky-50 dark:hover:bg-sky-950/30" },
+  { key: "gbp", label: "Google Business", icon: Globe, color: "text-blue-500", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "pinterest", label: "Pinterest", icon: Pin, color: "text-red-600", border: "hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30" },
+  { key: "threads", label: "Threads", icon: MessageSquare, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
 ];
 
 function getPlatformMeta(platform: string) {
@@ -1658,67 +1658,116 @@ export default function MarketingPage() {
 }
 
 function ConnectSocialsModal({
-  open, onClose, onConnect, syncPostsAuto, onSyncChange,
+  open, onClose, syncPostsAuto, onSyncChange,
 }: {
   open: boolean;
   onClose: () => void;
-  onConnect: (platform: string) => void;
+  onConnect?: (platform: string) => void;
   syncPostsAuto: boolean;
   onSyncChange: (v: boolean) => void;
 }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const GHL_SOCIAL_URL = `https://app.gohighlevel.com/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`;
+
   if (!open) return null;
+
+  const sel = selected ? CONNECT_PLATFORMS.find(p => p.key === selected) : null;
+  const SelIcon = sel?.icon;
+
+  const handleOpen = () => {
+    window.open(GHL_SOCIAL_URL, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <Megaphone size={18} className="text-muted-foreground" />
-            <span className="text-base font-bold">Connect socials</span>
+            {sel && SelIcon ? (
+              <>
+                <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground mr-1">
+                  <ChevronRight size={16} className="rotate-180" />
+                </button>
+                <SelIcon size={16} className={sel.color} />
+                <span className="text-sm font-bold">Connect {sel.label}</span>
+              </>
+            ) : (
+              <>
+                <Megaphone size={16} className="text-muted-foreground" />
+                <span className="text-sm font-bold">Connect Social Accounts</span>
+              </>
+            )}
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Platform grid */}
-        <div className="p-6">
-          <div className="grid grid-cols-3 gap-3">
-            {CONNECT_PLATFORMS.map(p => {
-              const Icon = p.icon;
-              return (
-                <button
-                  key={p.key}
-                  onClick={() => onConnect(p.key)}
-                  className={cn(
-                    "flex items-center gap-2.5 px-4 py-3 rounded-xl border border-border bg-background text-sm font-medium transition-all",
-                    p.border
-                  )}
-                >
-                  <Icon size={16} className={p.color} />
-                  <span className="text-sm">{p.label}</span>
-                </button>
-              );
-            })}
+        {!selected ? (
+          /* Platform picker */
+          <div className="p-5">
+            <p className="text-xs text-muted-foreground mb-4">Choose a platform to connect. You will be taken to GHL where you can sign in to that platform.</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {CONNECT_PLATFORMS.map(p => {
+                const Icon = p.icon;
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => setSelected(p.key)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border border-border bg-background text-xs font-medium transition-all",
+                      p.border
+                    )}
+                  >
+                    <Icon size={20} className={p.color} />
+                    <span>{p.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border">
+              <Switch checked={syncPostsAuto} onCheckedChange={onSyncChange} />
+              <span className="text-xs text-muted-foreground">Sync Posts Automatically</span>
+            </div>
           </div>
+        ) : (
+          /* Step-by-step for selected platform */
+          <div className="p-5">
+            <div className={cn("flex items-center gap-2 px-4 py-3 rounded-xl mb-5", "bg-muted/40 border border-border")}>
+              {SelIcon && <SelIcon size={18} className={sel?.color} />}
+              <span className="text-sm font-semibold">{sel?.label}</span>
+            </div>
 
-          {/* Add a community */}
-          <button
-            onClick={() => onConnect("community")}
-            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium"
-          >
-            <Megaphone size={15} className="text-muted-foreground" />
-            Add a community
-          </button>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">How to connect</p>
+            <ol className="space-y-3 mb-5">
+              {[
+                "Click the button below — GHL Social Planner opens in a new tab",
+                `In GHL, find the "${sel?.label}" connect button and click it`,
+                `Sign in with your ${sel?.label} account when prompted`,
+                "Once signed in, your account is connected — come back here and refresh",
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                  <span className="text-sm text-muted-foreground leading-snug">{step}</span>
+                </li>
+              ))}
+            </ol>
 
-          {/* Sync Posts Automatically */}
-          <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border">
-            <Switch checked={syncPostsAuto} onCheckedChange={onSyncChange} />
-            <span className="text-sm text-muted-foreground">Sync Posts Automatically</span>
-            <AlertCircle size={14} className="text-muted-foreground ml-1" />
+            <button
+              onClick={handleOpen}
+              className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <ExternalLink size={14} />
+              Open GHL Social Planner
+            </button>
+            <p className="text-center text-[11px] text-muted-foreground mt-3">
+              Make sure you are already logged into GHL in this browser.
+            </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
