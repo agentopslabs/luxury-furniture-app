@@ -11,12 +11,19 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import {
   CalendarDays, Mail, Link as LinkIcon, Search, Plus, Settings,
   BarChart3, Radio, RefreshCw,
   Loader2, CheckCircle2, Facebook, Instagram, Linkedin,
   Twitter, Image as ImageIcon, Video, X, Upload, Link2, PlayCircle,
   TrendingUp, Eye, Heart, Share2, Users, MessageSquare, Trash2,
   AlertCircle, ChevronDown, Clock, ExternalLink, Globe,
+  Rss, Star, LayoutGrid, List, Sparkles, ArrowLeft, Bold, Italic,
+  Smile, Hash, AtSign, Film, FileText, ChevronRight, Pin,
+  Youtube, Megaphone,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,6 +38,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+const GHL_APP_BASE = "https://app.gohighlevel.com";
+const GHL_LOCATION_ID = "nBYJTjYbHTIsJGiqT0W4";
 
 const mainTabs = [
   { name: "Social Planner", value: "social" },
@@ -59,21 +69,40 @@ const PLATFORM_META: Record<string, { icon: any; color: string; bg: string; labe
   instagram: { icon: Instagram, color: "text-pink-500", bg: "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600", label: "Instagram" },
   linkedin: { icon: Linkedin, color: "text-blue-700", bg: "bg-blue-700", label: "LinkedIn" },
   twitter: { icon: Twitter, color: "text-sky-400", bg: "bg-sky-500", label: "X / Twitter" },
-  tiktok: { icon: Video, color: "text-white", bg: "bg-black", label: "TikTok" },
+  tiktok: { icon: Film, color: "text-white", bg: "bg-black", label: "TikTok" },
   youtube: { icon: PlayCircle, color: "text-red-500", bg: "bg-red-600", label: "YouTube" },
   google: { icon: Globe, color: "text-green-600", bg: "bg-green-600", label: "Google" },
+  pinterest: { icon: Pin, color: "text-red-600", bg: "bg-red-600", label: "Pinterest" },
+  threads: { icon: MessageSquare, color: "text-foreground", bg: "bg-black", label: "Threads" },
+  bluesky: { icon: Globe, color: "text-sky-400", bg: "bg-sky-500", label: "Bluesky" },
+  gbp: { icon: Globe, color: "text-blue-500", bg: "bg-blue-500", label: "GBP" },
 };
+
+const CONNECT_PLATFORMS = [
+  { key: "facebook", label: "Connect Facebook", icon: Facebook, color: "text-blue-600", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "instagram", label: "Connect Instagram", icon: Instagram, color: "text-pink-500", border: "hover:border-pink-200 hover:bg-pink-50 dark:hover:bg-pink-950/30" },
+  { key: "gbp", label: "Connect GBP", icon: Globe, color: "text-blue-500", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "linkedin", label: "Connect LinkedIn", icon: Linkedin, color: "text-blue-700", border: "hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30" },
+  { key: "tiktok", label: "Connect TikTok", icon: Film, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
+  { key: "youtube", label: "Connect YouTube", icon: PlayCircle, color: "text-red-600", border: "hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30" },
+  { key: "pinterest", label: "Connect Pinterest", icon: Pin, color: "text-red-600", border: "hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30" },
+  { key: "threads", label: "Connect Threads", icon: MessageSquare, color: "text-foreground", border: "hover:border-border hover:bg-muted/50" },
+  { key: "bluesky", label: "Connect Bluesky", icon: Globe, color: "text-sky-500", border: "hover:border-sky-200 hover:bg-sky-50 dark:hover:bg-sky-950/30" },
+];
 
 function getPlatformMeta(platform: string) {
   return PLATFORM_META[platform?.toLowerCase()] || { icon: Globe, color: "text-muted-foreground", bg: "bg-muted", label: platform || "Unknown" };
 }
 
-function AccountBadge({ account }: { account: any }) {
+function AccountBadge({ account, accounts }: { account: any; accounts?: any[] }) {
   const platform = (account.platform || account.type || "").toLowerCase();
   const meta = getPlatformMeta(platform);
   const Icon = meta.icon;
-  const name = account.name || account.displayName || account.accountName || meta.label;
-  const pic = account.picture || account.profilePicture || account.avatar;
+
+  // Try to resolve the full account from the accounts list
+  const resolved = accounts?.find(a => (a.id || a._id) === account) || account;
+  const name = resolved.name || resolved.displayName || resolved.accountName || meta.label;
+  const pic = resolved.picture || resolved.avatar || resolved.profilePicture;
 
   return (
     <div className="flex items-center gap-1.5 relative">
@@ -129,20 +158,13 @@ function normalizePost(p: any): any {
     ""
   ).toLowerCase();
 
-  // GHL real API: accounts is an array under socialMediaAccounts or built from accountId
   const accounts: any[] = p.socialMediaAccounts || (p.socialMediaAccount ? [p.socialMediaAccount] : []) || [];
-
-  // GHL real API: media is an array of objects with url/mediaUrl fields
   const mediaUrls: string[] = p.mediaUrls
     || (Array.isArray(p.media) ? p.media.map((m: any) => m.url || m.mediaUrl || m).filter(Boolean) : [])
     || [];
   const firstMedia = mediaUrls[0] || "";
   const isVideo = /\.(mp4|mov|webm)/i.test(firstMedia) || p.type?.toLowerCase() === "reel" || p.type?.toLowerCase() === "video";
-
-  // GHL real API: engagement lives under insights
   const insights = p.insights || {};
-
-  // GHL real API: date is publishedAt (published), displayDate (scheduled), or scheduleDateTime
   const date = p.publishedAt || p.displayDate || p.scheduleDateTime || p.scheduledDate || p.scheduledAt || p.createdAt || "";
 
   return {
@@ -174,7 +196,8 @@ export default function MarketingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  const [isPostOpen, setIsPostOpen] = useState(false);
+  // New post full-page composer
+  const [newPostView, setNewPostView] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newPost, setNewPost] = useState({
     summary: "",
@@ -184,8 +207,15 @@ export default function MarketingPage() {
     mediaPreview: "",
     mediaType: "none" as "none" | "image" | "video",
   });
+  const [accountSearchQuery, setAccountSearchQuery] = useState("");
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+
+  // Connect Socials modal
+  const [connectSocialsOpen, setConnectSocialsOpen] = useState(false);
+  const [syncPostsAuto, setSyncPostsAuto] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const fetchAll = useCallback(async () => {
@@ -205,15 +235,34 @@ export default function MarketingPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const resetPost = () => setNewPost({ summary: "", type: "Post", accountIds: [], mediaUrl: "", mediaPreview: "", mediaType: "none" });
+  // Close account dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
+        setAccountDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const resetPost = () => {
+    setNewPost({ summary: "", type: "Post", accountIds: [], mediaUrl: "", mediaPreview: "", mediaType: "none" });
+    setAccountSearchQuery("");
+    setAccountDropdownOpen(false);
+  };
 
   const toggleAccount = (id: string) => setNewPost(prev => ({
     ...prev,
     accountIds: prev.accountIds.includes(id) ? prev.accountIds.filter(a => a !== id) : [...prev.accountIds, id],
   }));
 
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const selectAllAccounts = () => {
+    const allIds = ghlAccounts.map(a => a.id || a._id);
+    setNewPost(prev => ({ ...prev, accountIds: allIds }));
+  };
+
+  const handleCreatePost = async (saveForLater = false) => {
     if (!newPost.summary.trim()) {
       toast({ variant: "destructive", title: "Missing Caption", description: "Write a caption for your post." });
       return;
@@ -231,8 +280,8 @@ export default function MarketingPage() {
         type: newPost.type.toLowerCase(),
         mediaUrls,
       });
-      toast({ title: "Post Published!", description: "Your post has been sent to GHL Social Planner." });
-      setIsPostOpen(false);
+      toast({ title: saveForLater ? "Saved as Draft!" : "Post Published!", description: saveForLater ? "Your post has been saved." : "Your post has been sent to GHL Social Planner." });
+      setNewPostView(false);
       resetPost();
       await fetchAll();
     } catch (err: any) {
@@ -242,12 +291,13 @@ export default function MarketingPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const isVideo = file.type.startsWith("video/");
-    setNewPost(prev => ({ ...prev, mediaType: isVideo ? "video" : "image", mediaPreview: URL.createObjectURL(file), mediaUrl: "" }));
+  const handleConnectPlatform = (platformKey: string) => {
+    window.open(`${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/social-planner/settings`, "_blank");
   };
+
+  const filteredAccounts = ghlAccounts.filter(a =>
+    !accountSearchQuery || (a.name || a.displayName || "").toLowerCase().includes(accountSearchQuery.toLowerCase())
+  );
 
   const filteredPosts = posts.filter(p => {
     const matchSearch = !searchQuery || p.caption.toLowerCase().includes(searchQuery.toLowerCase());
@@ -338,9 +388,9 @@ export default function MarketingPage() {
                 <TableCell className="py-3">
                   <div className="flex items-center gap-1">
                     {item.accounts.length > 0
-                      ? item.accounts.map((acc: any, ai: number) => <AccountBadge key={ai} account={acc} />)
+                      ? item.accounts.map((acc: any, ai: number) => <AccountBadge key={ai} account={acc} accounts={ghlAccounts} />)
                       : item.platform
-                        ? <AccountBadge account={{ platform: item.platform }} />
+                        ? <AccountBadge account={{ platform: item.platform }} accounts={ghlAccounts} />
                         : <span className="text-xs opacity-30">—</span>
                     }
                   </div>
@@ -364,6 +414,394 @@ export default function MarketingPage() {
       </Table>
     </Card>
   );
+
+  // ── NEW SOCIAL POST FULL-PAGE COMPOSER ──
+  if (newPostView) {
+    const selectedAccounts = ghlAccounts.filter(a => newPost.accountIds.includes(a.id || a._id));
+    return (
+      <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
+        <DashboardNav />
+        <main className="flex-1 flex flex-col h-screen overflow-hidden">
+
+          {/* Header bar */}
+          <header className="h-14 border-b border-border bg-background flex items-center px-6 gap-4 shrink-0">
+            <button
+              onClick={() => { setNewPostView(false); resetPost(); }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+            <div className="flex-1 text-center">
+              <span className="text-sm font-semibold">New Social Post</span>
+            </div>
+            <div className="w-16" />
+          </header>
+
+          {/* Main content: two columns */}
+          <div className="flex flex-1 overflow-hidden">
+
+            {/* Left: Composer */}
+            <div className="flex-1 flex flex-col border-r border-border overflow-y-auto">
+              <div className="p-6 space-y-5 flex-1">
+
+                {/* Post to */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Post to</Label>
+                  <div className="relative" ref={accountDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setAccountDropdownOpen(o => !o)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/30 transition-colors text-sm"
+                    >
+                      <span className={cn(newPost.accountIds.length === 0 ? "text-muted-foreground" : "text-foreground")}>
+                        {newPost.accountIds.length === 0
+                          ? "Select a social account"
+                          : `${newPost.accountIds.length} account${newPost.accountIds.length > 1 ? "s" : ""} selected`}
+                      </span>
+                      <ChevronDown size={16} className={cn("text-muted-foreground transition-transform", accountDropdownOpen && "rotate-180")} />
+                    </button>
+
+                    {/* Dropdown panel */}
+                    {accountDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-xl z-50">
+                        {/* Search */}
+                        <div className="p-3 border-b border-border">
+                          <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              className="pl-8 h-8 text-sm rounded-lg"
+                              placeholder="Search"
+                              value={accountSearchQuery}
+                              onChange={e => setAccountSearchQuery(e.target.value)}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex border-b border-border divide-x divide-border">
+                          <button
+                            type="button"
+                            onClick={() => setConnectSocialsOpen(true)}
+                            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
+                          >
+                            <LayoutGrid size={13} />
+                            Create New Group
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setAccountDropdownOpen(false); setConnectSocialsOpen(true); }}
+                            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
+                          >
+                            <Plus size={13} />
+                            Add New Social
+                          </button>
+                        </div>
+
+                        {/* Account list */}
+                        <div className="max-h-56 overflow-y-auto">
+                          <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">All Accounts</span>
+                            <button
+                              type="button"
+                              onClick={selectAllAccounts}
+                              className="text-xs text-primary font-medium hover:underline"
+                            >
+                              Select All
+                            </button>
+                          </div>
+
+                          {filteredAccounts.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-muted-foreground">No accounts found</div>
+                          ) : filteredAccounts.map((acc) => {
+                            const id = acc.id || acc._id;
+                            const platform = (acc.platform || acc.type || "").toLowerCase();
+                            const meta = getPlatformMeta(platform);
+                            const Icon = meta.icon;
+                            const name = acc.name || acc.displayName || meta.label;
+                            const pic = acc.avatar || acc.picture || acc.profilePicture;
+                            const selected = newPost.accountIds.includes(id);
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => toggleAccount(id)}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors"
+                              >
+                                <div className={cn(
+                                  "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                  selected ? "bg-primary border-primary" : "border-border"
+                                )}>
+                                  {selected && <CheckCircle2 size={10} className="text-primary-foreground" />}
+                                </div>
+                                <div className="relative shrink-0">
+                                  {pic
+                                    ? <img src={pic} className="w-7 h-7 rounded-full border border-border/30" alt={name} />
+                                    : <span className={cn("w-7 h-7 rounded-full flex items-center justify-center text-white text-xs", meta.bg)}><Icon size={12} /></span>
+                                  }
+                                  <span className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border border-background flex items-center justify-center text-white", meta.bg)}>
+                                    <Icon size={7} />
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium">{name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selected account chips */}
+                  {selectedAccounts.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {selectedAccounts.map(acc => {
+                        const id = acc.id || acc._id;
+                        const platform = (acc.platform || acc.type || "").toLowerCase();
+                        const meta = getPlatformMeta(platform);
+                        const Icon = meta.icon;
+                        const name = acc.name || acc.displayName || meta.label;
+                        const pic = acc.avatar || acc.picture || acc.profilePicture;
+                        return (
+                          <div key={id} className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-full px-2.5 py-1 text-xs font-medium">
+                            <div className="relative">
+                              {pic
+                                ? <img src={pic} className="w-4 h-4 rounded-full" alt={name} />
+                                : <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-white", meta.bg)}><Icon size={8} /></span>
+                              }
+                            </div>
+                            {name}
+                            <button type="button" onClick={() => toggleAccount(id)} className="text-muted-foreground hover:text-foreground">
+                              <X size={10} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Post type */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Post Type</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {POST_TYPES.map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setNewPost(p => ({ ...p, type: t }))}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+                          newPost.type === t ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Caption area with toolbar */}
+                <div className="space-y-1.5">
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <Textarea
+                      className="min-h-[160px] rounded-none border-0 text-sm resize-none focus-visible:ring-0 px-4 pt-4"
+                      placeholder="Start writing your post content here... Use #hashtags and @mentions"
+                      value={newPost.summary}
+                      onChange={e => setNewPost({ ...newPost, summary: e.target.value })}
+                    />
+                    {/* Formatting toolbar */}
+                    <div className="flex items-center gap-0.5 px-3 py-2 border-t border-border bg-muted/20">
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <span className="text-xs font-bold italic">AI</span>
+                      </button>
+                      <div className="w-px h-4 bg-border mx-1" />
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Bold size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Italic size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Smile size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <ImageIcon size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <FileText size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Film size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Hash size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Star size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <Link2 size={13} />
+                      </button>
+                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <AtSign size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Media URL */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Media URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <div className="relative">
+                    <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-8 h-9 rounded-lg text-sm"
+                      placeholder="https://example.com/image.jpg"
+                      value={newPost.mediaUrl}
+                      onChange={e => setNewPost(p => ({ ...p, mediaUrl: e.target.value, mediaPreview: "" }))}
+                    />
+                  </div>
+                  {newPost.mediaUrl && (
+                    <div className="relative inline-block">
+                      <img src={newPost.mediaUrl} alt="preview" className="w-24 h-24 rounded-lg object-cover border border-border/50" />
+                      <button type="button" onClick={() => setNewPost(p => ({ ...p, mediaUrl: "", mediaPreview: "" }))}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-background shrink-0">
+                <div />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 px-5 text-sm"
+                    disabled={isSubmitting}
+                    onClick={() => handleCreatePost(true)}
+                  >
+                    Save for later
+                  </Button>
+                  <DropdownMenu>
+                    <div className="flex">
+                      <Button
+                        type="button"
+                        className="h-9 px-5 text-sm font-bold rounded-r-none"
+                        disabled={isSubmitting || newPost.accountIds.length === 0 || !newPost.summary.trim()}
+                        onClick={() => handleCreatePost(false)}
+                      >
+                        {isSubmitting ? <><Loader2 size={14} className="mr-2 animate-spin" /> Posting...</> : "Post"}
+                      </Button>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          className="h-9 px-2 rounded-l-none border-l border-primary-foreground/20 font-bold"
+                          disabled={isSubmitting}
+                        >
+                          <ChevronDown size={14} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </div>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onClick={() => handleCreatePost(false)}>Post Now</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleCreatePost(true)}>Save as Draft</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Post Preview */}
+            <div className="w-80 xl:w-96 flex flex-col bg-muted/10 overflow-y-auto shrink-0">
+              <div className="px-6 py-4 border-b border-border">
+                <span className="text-sm font-semibold">Post Preview</span>
+              </div>
+              <div className="px-6 py-4">
+                {/* Platform tabs */}
+                <div className="flex border-b border-border mb-4">
+                  <button className="px-3 py-2 text-xs font-semibold border-b-2 border-primary text-primary">All</button>
+                  {selectedAccounts.map(acc => {
+                    const platform = (acc.platform || acc.type || "").toLowerCase();
+                    const meta = getPlatformMeta(platform);
+                    const Icon = meta.icon;
+                    return (
+                      <button key={acc.id || acc._id} className="px-3 py-2">
+                        <Icon size={14} className={meta.color} />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Preview card */}
+                <div className="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
+                  {/* Profile row */}
+                  <div className="flex items-start gap-2.5 p-3 pb-2">
+                    <div className="w-9 h-9 rounded-full bg-muted shrink-0">
+                      {selectedAccounts[0]?.avatar && (
+                        <img src={selectedAccounts[0].avatar} className="w-9 h-9 rounded-full" alt="" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold leading-tight">{selectedAccounts[0]?.name || "Your Account"}</p>
+                      <p className="text-[10px] text-muted-foreground">Just now</p>
+                    </div>
+                    <div className="text-muted-foreground">···</div>
+                  </div>
+
+                  {/* Caption preview */}
+                  <div className="px-3 pb-2">
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground">
+                      {newPost.summary || <span className="text-muted-foreground italic">Your caption will appear here...</span>}
+                    </p>
+                  </div>
+
+                  {/* Media preview */}
+                  {newPost.mediaUrl ? (
+                    <img src={newPost.mediaUrl} alt="preview" className="w-full aspect-square object-cover" />
+                  ) : (
+                    <div className="w-full aspect-square bg-muted/50 flex flex-col items-center justify-center gap-3">
+                      <div className="grid grid-cols-3 gap-4 opacity-10">
+                        <Linkedin size={18} />
+                        <Film size={18} />
+                        <Facebook size={18} />
+                        <Globe size={18} />
+                        <div className="w-5 h-5 rounded-full border-2 border-current" />
+                        <Pin size={18} />
+                        <Globe size={18} />
+                        <Instagram size={18} />
+                        <div className="w-16 h-1 bg-current rounded-full col-span-3 mx-auto" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {selectedAccounts.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center mt-4 opacity-60">
+                    Select a social account to preview your post
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* Connect Socials modal */}
+        <ConnectSocialsModal
+          open={connectSocialsOpen}
+          onClose={() => setConnectSocialsOpen(false)}
+          onConnect={handleConnectPlatform}
+          syncPostsAuto={syncPostsAuto}
+          onSyncChange={setSyncPostsAuto}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
@@ -405,12 +843,54 @@ export default function MarketingPage() {
                 <Button variant="outline" size="icon" className="h-9 w-9 rounded-md" onClick={fetchAll}>
                   <RefreshCw size={16} className={cn(loading && "animate-spin")} />
                 </Button>
-                <Button variant="outline" className="h-9 rounded-md" onClick={() => setActiveSocialTab("settings")}>
+
+                {/* + Socials button → Connect modal */}
+                <Button variant="outline" className="h-9 rounded-md" onClick={() => setConnectSocialsOpen(true)}>
                   <Plus size={16} className="mr-2" /> Socials
                 </Button>
-                <Button className="h-9 rounded-md px-5 font-bold" onClick={() => setIsPostOpen(true)}>
-                  <Plus size={16} className="mr-2" /> New Post
-                </Button>
+
+                {/* New Post dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="h-9 rounded-md px-5 font-bold">
+                      <Plus size={16} className="mr-2" /> New Post
+                      <ChevronDown size={14} className="ml-1.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border border-border py-1">
+                    <DropdownMenuItem
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer"
+                      onClick={() => setNewPostView(true)}
+                    >
+                      <Plus size={15} className="text-muted-foreground" />
+                      Create New Post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <Upload size={15} className="text-muted-foreground" />
+                      Upload from CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <LayoutGrid size={15} className="text-muted-foreground" />
+                      Social Planner Templates
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <Sparkles size={15} className="text-muted-foreground" />
+                      Content AI
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <Rss size={15} className="text-muted-foreground" />
+                      RSS Posts
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <Star size={15} className="text-muted-foreground" />
+                      Post reviews
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer">
+                      <List size={15} className="text-muted-foreground" />
+                      Category Queue
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -423,7 +903,7 @@ export default function MarketingPage() {
                   const meta = getPlatformMeta(platform);
                   const Icon = meta.icon;
                   const name = acc.name || acc.displayName || meta.label;
-                  const pic = acc.picture || acc.profilePicture;
+                  const pic = acc.avatar || acc.picture || acc.profilePicture;
                   return (
                     <div key={acc._id || acc.id || i} className="flex items-center gap-1.5 bg-card border border-border/50 rounded-full px-2.5 py-1">
                       {pic
@@ -493,7 +973,6 @@ export default function MarketingPage() {
               {activeSocialTab === "planner" && postsTable(false)}
               {activeSocialTab === "content" && postsTable(true)}
 
-              {/* COMMENTS */}
               {activeSocialTab === "comments" && (
                 <div className="space-y-4">
                   {loading ? (
@@ -508,7 +987,6 @@ export default function MarketingPage() {
                 </div>
               )}
 
-              {/* STATISTICS */}
               {activeSocialTab === "stats" && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-4 gap-4">
@@ -523,8 +1001,6 @@ export default function MarketingPage() {
                       </Card>
                     ))}
                   </div>
-
-                  {/* Per-account breakdown */}
                   {ghlAccounts.length > 0 && (
                     <div className="grid grid-cols-2 gap-4">
                       {ghlAccounts.map((acc, i) => {
@@ -533,7 +1009,7 @@ export default function MarketingPage() {
                         const Icon = meta.icon;
                         const name = acc.name || acc.displayName || meta.label;
                         const accId = acc._id || acc.id;
-                        const accPosts = posts.filter(p => p.accounts?.some((a: any) => (a._id || a.id) === accId));
+                        const accPosts = posts.filter(p => p.accountId === accId || p.accounts?.some((a: any) => (a._id || a.id) === accId));
                         return (
                           <Card key={i} className="p-5 rounded-xl border border-border/50 bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
@@ -559,7 +1035,6 @@ export default function MarketingPage() {
                 </div>
               )}
 
-              {/* SOCIAL LISTENING */}
               {activeSocialTab === "listening" && (
                 <div className="space-y-6">
                   <div className="flex flex-col items-center justify-center h-64 opacity-40 gap-3">
@@ -581,7 +1056,6 @@ export default function MarketingPage() {
                 </div>
               )}
 
-              {/* SETTINGS */}
               {activeSocialTab === "settings" && (
                 <div className="max-w-2xl space-y-5">
                   <div>
@@ -590,7 +1064,6 @@ export default function MarketingPage() {
                       These accounts are connected in your GHL backend. Manage connections directly in GHL under Marketing → Social Planner → Settings.
                     </p>
                   </div>
-
                   {loading ? (
                     Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
                   ) : ghlAccounts.length > 0 ? (
@@ -600,7 +1073,7 @@ export default function MarketingPage() {
                         const meta = getPlatformMeta(platform);
                         const Icon = meta.icon;
                         const name = acc.name || acc.displayName || meta.label;
-                        const pic = acc.picture || acc.profilePicture;
+                        const pic = acc.avatar || acc.picture || acc.profilePicture;
                         return (
                           <Card key={i} className="p-4 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-card/50 transition-all">
                             <div className="flex items-center gap-3 mb-3">
@@ -631,16 +1104,18 @@ export default function MarketingPage() {
                     <Card className="p-8 rounded-xl border border-border/50 bg-card/50 flex flex-col items-center gap-3 text-center opacity-60">
                       <Users size={40} />
                       <p className="font-bold">No accounts connected yet</p>
-                      <p className="text-sm text-muted-foreground">Connect your social accounts in GHL under Marketing → Social Planner → Socials button</p>
+                      <p className="text-sm text-muted-foreground">Connect your social accounts using the "+ Socials" button above</p>
+                      <Button variant="outline" onClick={() => setConnectSocialsOpen(true)}>
+                        <Plus size={14} className="mr-2" /> Connect Socials
+                      </Button>
                     </Card>
                   )}
-
                   <Card className="p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
                     <p className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1.5">
                       <AlertCircle size={13} /> Managing Social Accounts
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
-                      Social account connections are managed directly in your GHL backend. Go to Marketing → Social Planner → click the "+ Socials" button to connect Facebook, Instagram, LinkedIn, TikTok, and more.
+                      Social account connections are managed in GHL. Click the "+ Socials" button to connect Facebook, Instagram, LinkedIn, TikTok, and more.
                     </p>
                   </Card>
                 </div>
@@ -720,134 +1195,81 @@ export default function MarketingPage() {
         )}
       </main>
 
-      {/* ── NEW POST DIALOG ── */}
-      <Dialog open={isPostOpen} onOpenChange={o => { setIsPostOpen(o); if (!o) resetPost(); }}>
-        <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden">
-          <form onSubmit={handleCreatePost}>
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <DialogTitle className="text-lg font-bold">New Social Post</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Create and publish a post to your GHL-connected social accounts.
-              </DialogDescription>
-            </DialogHeader>
+      {/* Connect Socials modal */}
+      <ConnectSocialsModal
+        open={connectSocialsOpen}
+        onClose={() => setConnectSocialsOpen(false)}
+        onConnect={handleConnectPlatform}
+        syncPostsAuto={syncPostsAuto}
+        onSyncChange={setSyncPostsAuto}
+      />
+    </div>
+  );
+}
 
-            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto no-scrollbar">
+function ConnectSocialsModal({
+  open, onClose, onConnect, syncPostsAuto, onSyncChange,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConnect: (platform: string) => void;
+  syncPostsAuto: boolean;
+  onSyncChange: (v: boolean) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <Megaphone size={18} className="text-muted-foreground" />
+            <span className="text-base font-bold">Connect socials</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X size={18} />
+          </button>
+        </div>
 
-              {/* Post to — GHL accounts */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Post to</Label>
-                {ghlAccounts.length === 0 ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-4 text-xs text-amber-700 dark:text-amber-400">
-                    No social accounts connected. Connect accounts in GHL under Marketing → Social Planner → Socials.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {ghlAccounts.map((acc, i) => {
-                      const id = acc._id || acc.id || String(i);
-                      const platform = (acc.platform || acc.type || "").toLowerCase();
-                      const meta = getPlatformMeta(platform);
-                      const Icon = meta.icon;
-                      const name = acc.name || acc.displayName || meta.label;
-                      const pic = acc.picture || acc.profilePicture;
-                      const selected = newPost.accountIds.includes(id);
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => toggleAccount(id)}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all",
-                            selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"
-                          )}
-                        >
-                          <div className="relative">
-                            {pic
-                              ? <img src={pic} className="w-8 h-8 rounded-full" alt={name} />
-                              : <span className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white", meta.bg)}><Icon size={14} /></span>
-                            }
-                            <span className={cn("absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-white", meta.bg)}>
-                              <Icon size={8} />
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold">{name}</p>
-                            <p className="text-[11px] text-muted-foreground capitalize">{platform}</p>
-                          </div>
-                          {selected && <CheckCircle2 size={16} className="text-primary shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+        {/* Platform grid */}
+        <div className="p-6">
+          <div className="grid grid-cols-3 gap-3">
+            {CONNECT_PLATFORMS.map(p => {
+              const Icon = p.icon;
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => onConnect(p.key)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-3 rounded-xl border border-border bg-background text-sm font-medium transition-all",
+                    p.border
+                  )}
+                >
+                  <Icon size={16} className={p.color} />
+                  <span className="text-sm">{p.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-              {/* Post type */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Post Type</Label>
-                <div className="flex gap-2 flex-wrap">
-                  {POST_TYPES.map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setNewPost(p => ({ ...p, type: t }))}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
-                        newPost.type === t ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Add a community */}
+          <button
+            onClick={() => onConnect("community")}
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium"
+          >
+            <Megaphone size={15} className="text-muted-foreground" />
+            Add a community
+          </button>
 
-              {/* Caption */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Caption</Label>
-                <Textarea
-                  className="min-h-[100px] rounded-xl text-sm resize-none"
-                  placeholder="Write your post content here... Use #hashtags and @mentions"
-                  value={newPost.summary}
-                  onChange={e => setNewPost({ ...newPost, summary: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Media */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Media URL (optional)</Label>
-                <div className="relative">
-                  <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-8 h-9 rounded-lg text-xs"
-                    placeholder="https://example.com/image.jpg"
-                    value={newPost.mediaUrl}
-                    onChange={e => setNewPost(p => ({ ...p, mediaUrl: e.target.value, mediaPreview: "" }))}
-                  />
-                </div>
-                {newPost.mediaUrl && (
-                  <div className="relative inline-block">
-                    <img src={newPost.mediaUrl} alt="preview" className="w-24 h-24 rounded-lg object-cover border border-border/50" />
-                    <button type="button" onClick={() => setNewPost(p => ({ ...p, mediaUrl: "", mediaPreview: "" }))}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white">
-                      <X size={10} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <DialogFooter className="px-6 pb-6 pt-4 border-t gap-2">
-              <Button type="button" variant="ghost" onClick={() => { setIsPostOpen(false); resetPost(); }}>Cancel</Button>
-              <Button type="submit" className="px-8 font-bold" disabled={isSubmitting || newPost.accountIds.length === 0 || ghlAccounts.length === 0}>
-                {isSubmitting
-                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
-                  : <><CheckCircle2 className="mr-2 h-4 w-4" /> Post</>}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          {/* Sync Posts Automatically */}
+          <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border">
+            <Switch checked={syncPostsAuto} onCheckedChange={onSyncChange} />
+            <span className="text-sm text-muted-foreground">Sync Posts Automatically</span>
+            <AlertCircle size={14} className="text-muted-foreground ml-1" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
