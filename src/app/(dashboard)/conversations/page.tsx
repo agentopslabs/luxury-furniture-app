@@ -76,13 +76,14 @@ export default function ConversationsPage() {
     if (!selectedConvo || !messageText.trim()) return;
     setSending(true);
     try {
-      await sendMessage(selectedConvo.id, messageText);
+      const msgType = (selectedConvo.type || '').toUpperCase().includes('EMAIL') ? 'Email' : 'SMS';
+      await sendMessage(selectedConvo.id, messageText, msgType, selectedConvo.contactId);
       toast({ title: "Message Sent", description: "Your reply has been delivered." });
       setMessageText("");
       fetchMessages(selectedConvo.id);
       fetchConversations();
-    } catch (error) {
-      toast({ variant: "destructive", title: "Delivery Failed", description: "Message could not be sent. Check your SMS/Email settings." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Delivery Failed", description: error?.message || "Message could not be sent." });
     } finally {
       setSending(false);
     }

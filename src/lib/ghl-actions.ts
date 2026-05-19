@@ -410,17 +410,33 @@ export async function getConversationMessages(conversationId: string): Promise<a
   }
 }
 
-export async function sendMessage(conversationId: string, body: string, type: 'Email' | 'SMS' = 'SMS'): Promise<void> {
+export async function sendMessage(
+  conversationId: string,
+  body: string,
+  type: 'Email' | 'SMS' = 'SMS',
+  contactId?: string,
+): Promise<void> {
+  const payload: Record<string, string> = {
+    type,
+    conversationId,
+    message: body,
+  };
+  if (contactId) payload.contactId = contactId;
+
   const response = await fetch(`${GHL_API_BASE_URL}/conversations/messages`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      type,
-      conversationId,
-      message: body,
-    }),
+    body: JSON.stringify(payload),
   });
-  await handleResponse(response, 'sending message');
+
+  if (!response.ok) {
+    let errMsg = `Failed to send message (${response.status})`;
+    try {
+      const e = await response.json();
+      errMsg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || e.error || errMsg);
+    } catch {}
+    throw new Error(errMsg);
+  }
 }
 
 // --- PIPELINES & OPPORTUNITIES ---
