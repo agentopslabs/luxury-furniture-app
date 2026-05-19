@@ -214,11 +214,28 @@ export default function MarketingPage() {
   const [connectSocialsOpen, setConnectSocialsOpen] = useState(false);
   const [syncPostsAuto, setSyncPostsAuto] = useState(false);
 
-  const fileRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
+  const videoFileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { toast } = useToast();
+
+  // Handle file selected from system picker
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, fileType: "image" | "video") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setNewPost(p => ({
+      ...p,
+      mediaUrl: "",
+      mediaPreview: objectUrl,
+      mediaType: fileType,
+      type: fileType === "video" ? "Reel" : p.type,
+    }));
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+  };
 
   // Insert or wrap text at textarea cursor position
   const insertAtCursor = (before: string, after = "") => {
@@ -695,14 +712,11 @@ export default function MarketingPage() {
                           </div>
                         )}
                       </div>
-                      {/* Image — opens media URL focus */}
+                      {/* Image — opens system image picker */}
                       <button
                         type="button"
-                        title="Add Image URL"
-                        onClick={() => {
-                          const mediaInput = document.querySelector('input[placeholder*="example.com/image"]') as HTMLInputElement;
-                          mediaInput?.focus();
-                        }}
+                        title="Add Image"
+                        onClick={() => imageFileRef.current?.click()}
                         className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                       >
                         <ImageIcon size={13} />
@@ -716,12 +730,12 @@ export default function MarketingPage() {
                       >
                         <FileText size={13} />
                       </button>
-                      {/* Video */}
+                      {/* Video — opens system video picker */}
                       <button
                         type="button"
                         title="Add Video"
-                        onClick={() => setNewPost(p => ({ ...p, type: "Reel" }))}
-                        className={cn("w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground", newPost.type === "Reel" && "bg-muted text-foreground")}
+                        onClick={() => videoFileRef.current?.click()}
+                        className={cn("w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground", newPost.mediaType === "video" && "bg-muted text-foreground")}
                       >
                         <Film size={13} />
                       </button>
@@ -765,25 +779,110 @@ export default function MarketingPage() {
                   </div>
                 </div>
 
-                {/* Media URL */}
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Media URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <div className="relative">
-                    <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      className="pl-8 h-9 rounded-lg text-sm"
-                      placeholder="https://example.com/image.jpg"
-                      value={newPost.mediaUrl}
-                      onChange={e => setNewPost(p => ({ ...p, mediaUrl: e.target.value, mediaPreview: "" }))}
-                    />
-                  </div>
-                  {newPost.mediaUrl && (
+                {/* Hidden file inputs */}
+                <input
+                  ref={imageFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => handleFileSelect(e, "image")}
+                />
+                <input
+                  ref={videoFileRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={e => handleFileSelect(e, "video")}
+                />
+
+                {/* Media attachment area */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Media <span className="text-muted-foreground font-normal">(optional)</span></Label>
+
+                  {/* Uploaded file preview */}
+                  {newPost.mediaPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-border/50 bg-black/5 group">
+                      {newPost.mediaType === "video" ? (
+                        <video
+                          src={newPost.mediaPreview}
+                          controls
+                          className="w-full max-h-56 object-contain bg-black rounded-xl"
+                        />
+                      ) : (
+                        <img
+                          src={newPost.mediaPreview}
+                          alt="Selected media"
+                          className="w-full max-h-56 object-contain rounded-xl"
+                        />
+                      )}
+                      <div className="absolute top-2 right-2 flex gap-1.5">
+                        {/* Swap file */}
+                        <button
+                          type="button"
+                          title="Replace"
+                          onClick={() => newPost.mediaType === "video" ? videoFileRef.current?.click() : imageFileRef.current?.click()}
+                          className="w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                        >
+                          <RefreshCw size={12} />
+                        </button>
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          title="Remove"
+                          onClick={() => setNewPost(p => ({ ...p, mediaPreview: "", mediaUrl: "", mediaType: "none" }))}
+                          className="w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        {newPost.mediaType === "video" ? <Film size={10} /> : <ImageIcon size={10} />}
+                        {newPost.mediaType === "video" ? "Video" : "Image"}
+                      </div>
+                    </div>
+                  ) : newPost.mediaUrl ? (
                     <div className="relative inline-block">
-                      <img src={newPost.mediaUrl} alt="preview" className="w-24 h-24 rounded-lg object-cover border border-border/50" />
-                      <button type="button" onClick={() => setNewPost(p => ({ ...p, mediaUrl: "", mediaPreview: "" }))}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white">
-                        <X size={10} />
+                      <img src={newPost.mediaUrl} alt="preview" className="w-full max-h-56 rounded-xl object-contain border border-border/50" />
+                      <button
+                        type="button"
+                        onClick={() => setNewPost(p => ({ ...p, mediaUrl: "", mediaPreview: "" }))}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white"
+                      >
+                        <X size={12} />
                       </button>
+                    </div>
+                  ) : (
+                    /* Upload drop zone */
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => imageFileRef.current?.click()}
+                        className="flex-1 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground"
+                      >
+                        <ImageIcon size={22} />
+                        <span className="text-xs font-medium">Add Image</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => videoFileRef.current?.click()}
+                        className="flex-1 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground"
+                      >
+                        <Film size={22} />
+                        <span className="text-xs font-medium">Add Video</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* URL fallback */}
+                  {!newPost.mediaPreview && (
+                    <div className="relative">
+                      <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="pl-8 h-9 rounded-lg text-sm"
+                        placeholder="Or paste an image/video URL…"
+                        value={newPost.mediaUrl}
+                        onChange={e => setNewPost(p => ({ ...p, mediaUrl: e.target.value, mediaPreview: "", mediaType: "none" }))}
+                      />
                     </div>
                   )}
                 </div>
