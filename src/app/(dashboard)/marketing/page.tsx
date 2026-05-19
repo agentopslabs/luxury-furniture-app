@@ -184,6 +184,7 @@ function normalizePost(p: any): any {
     likes: insights.like ?? p.likes ?? p.likesCount ?? 0,
     comments: insights.comment ?? p.commentsCount ?? p.comments ?? 0,
     shares: insights.share ?? p.shares ?? 0,
+    _raw: p,
   };
 }
 
@@ -494,7 +495,14 @@ export default function MarketingPage() {
     setEditSaving(true);
     try {
       const scheduleDate = new Date(`${editDate}T${editTime}`).toISOString();
-      await updateScheduledPost(editPost.id || editPost._id, { summary: editCaption, scheduleDate });
+      const raw = editPost._raw || {};
+      await updateScheduledPost(editPost.id || editPost._id, {
+        summary: editCaption,
+        scheduleDate,
+        accountIds: raw.accountIds || (raw.accountId ? [raw.accountId] : []),
+        media: Array.isArray(raw.media) ? raw.media : [],
+        type: raw.type || 'post',
+      });
       toast({ title: "Post updated!", description: "Scheduled post has been updated." });
       setEditPost(null);
       loadData();

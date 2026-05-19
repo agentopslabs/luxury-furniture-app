@@ -814,17 +814,41 @@ export async function deleteScheduledPost(postId: string): Promise<void> {
 }
 
 export async function updateScheduledPost(postId: string, data: {
-  summary?: string;
-  scheduleDate?: string;
-  accountIds?: string[];
+  summary: string;
+  scheduleDate: string;
+  accountIds: string[];
+  media?: { url: string; type: string }[];
+  type?: string;
+  userId?: string;
 }): Promise<any> {
-  const payload: any = {};
-  if (data.summary !== undefined) payload.summary = data.summary;
-  if (data.scheduleDate) { payload.scheduleDate = data.scheduleDate; payload.status = 'scheduled'; }
-  if (data.accountIds) payload.accountIds = data.accountIds;
+  // GHL requires PUT (not PATCH) with the full post body to update content/schedule
+  // First resolve the userId if not provided
+  let userId = data.userId || '';
+  if (!userId) {
+    try {
+      const usersRes = await fetch(
+        `${GHL_API_BASE_URL}/users/?locationId=${GHL_LOCATION_ID}`,
+        { headers, cache: 'no-store' }
+      );
+      if (usersRes.ok) {
+        const ud = await usersRes.json();
+        userId = (ud.users?.[0]?.id) || '';
+      }
+    } catch {}
+  }
+
+  const payload: any = {
+    accountIds: data.accountIds,
+    summary: data.summary,
+    media: data.media ?? [],
+    scheduleDate: data.scheduleDate,
+    status: 'scheduled',
+    type: data.type || 'post',
+    userId,
+  };
 
   const response = await fetch(`${SOCIAL_BASE}/posts/${postId}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: socialPlannerHeaders,
     body: JSON.stringify(payload),
   });
