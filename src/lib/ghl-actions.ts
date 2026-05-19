@@ -410,14 +410,14 @@ export async function getConversationMessages(conversationId: string): Promise<a
   }
 }
 
-export async function sendMessage(conversationId: string, body: string, type: 'email' | 'sms' = 'sms'): Promise<void> {
-  const response = await fetch(`${GHL_API_BASE_URL}/conversations/${conversationId}/messages`, {
+export async function sendMessage(conversationId: string, body: string, type: 'Email' | 'SMS' = 'SMS'): Promise<void> {
+  const response = await fetch(`${GHL_API_BASE_URL}/conversations/messages`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       type,
-      body,
-      locationId: GHL_LOCATION_ID,
+      conversationId,
+      message: body,
     }),
   });
   await handleResponse(response, 'sending message');
