@@ -780,8 +780,8 @@ export async function createSocialPlannerPost(postData: {
     userId: postData.userId || 'system',
   };
   if (postData.scheduleDateTime) {
-    payload.scheduleDateTime = postData.scheduleDateTime;
-    payload.status = 'SCHEDULED';
+    payload.scheduledAt = postData.scheduleDateTime;
+    payload.status = 'scheduled';
   }
 
   // Correct endpoint: POST /social-media-posting/{locationId}/posts
