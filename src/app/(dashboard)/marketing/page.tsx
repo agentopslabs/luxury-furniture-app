@@ -630,7 +630,7 @@ export default function MarketingPage() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-36 rounded-xl shadow-xl">
-                      {item.status === "scheduled" || item.status === "in_progress" ? (
+                      {item.status === "Scheduled" || item.status === "scheduled" || item.status === "in_progress" ? (
                         <>
                           <DropdownMenuItem
                             className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
