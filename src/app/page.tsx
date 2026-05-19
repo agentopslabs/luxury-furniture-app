@@ -528,14 +528,6 @@ export default function WelcomePage() {
         <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
       </section>
 
-      {/* ── WEBCHAT WIDGET ── */}
-      <Script
-        src="https://widgets.leadconnectorhq.com/loader.js"
-        data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-        data-widget-id="6a01ef3b205bf897ae837633"
-        strategy="lazyOnload"
-      />
-
       {/* ── FOOTER ── */}
       <footer className="border-t border-white/[0.06] py-10 px-6 md:px-14 mt-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-white/30 text-sm">
