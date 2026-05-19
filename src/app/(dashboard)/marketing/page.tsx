@@ -769,14 +769,6 @@ export default function MarketingPage() {
                             <LayoutGrid size={13} />
                             Create New Group
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => { setAccountDropdownOpen(false); setConnectSocialsOpen(true); }}
-                            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
-                          >
-                            <Plus size={13} />
-                            Add New Social
-                          </button>
                         </div>
 
                         {/* Account list */}
@@ -1374,11 +1366,6 @@ export default function MarketingPage() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" className="h-9 w-9 rounded-md" onClick={fetchAll}>
                   <RefreshCw size={16} className={cn(loading && "animate-spin")} />
-                </Button>
-
-                {/* + Socials button → Connect modal */}
-                <Button variant="outline" className="h-9 rounded-md" onClick={() => setConnectSocialsOpen(true)}>
-                  <Plus size={16} className="mr-2" /> Socials
                 </Button>
 
                 {/* New Post dropdown */}
