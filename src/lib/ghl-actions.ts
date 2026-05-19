@@ -760,10 +760,17 @@ export async function createSocialPlannerPost(postData: {
   userId?: string;
 }): Promise<any> {
   // Build media array from URLs
-  const media: any[] = (postData.mediaUrls || []).map(url => ({
-    url,
-    type: /\.(mp4|mov|webm)/i.test(url) ? 'video' : 'image',
-  }));
+  const EXT_MIME: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic', avif: 'image/avif',
+    mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+    avi: 'video/x-msvideo', mkv: 'video/x-matroska',
+  };
+  const media: any[] = (postData.mediaUrls || []).map(url => {
+    const ext = (url.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
+    const type = EXT_MIME[ext] || 'image/jpeg';
+    return { url, type };
+  });
 
   const payload: any = {
     accountIds: postData.accountIds,

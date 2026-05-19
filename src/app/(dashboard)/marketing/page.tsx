@@ -465,23 +465,9 @@ export default function MarketingPage() {
     handleCreatePost({ scheduleAt });
   };
 
-  // GHL social planner connect — per-platform OAuth URLs (requires GHL login)
-  const GHL_PLATFORM_CONNECT: Record<string, string> = {
-    facebook: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    instagram: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    gbp: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    linkedin: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    tiktok: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    youtube: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    pinterest: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    threads: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    bluesky: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-    community: `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`,
-  };
-
   const handleConnectPlatform = (platformKey: string) => {
-    const url = GHL_PLATFORM_CONNECT[platformKey] || `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const base = `${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`;
+    window.open(base, "_blank", "noopener,noreferrer");
   };
 
   const filteredAccounts = ghlAccounts.filter(a =>
@@ -589,24 +575,17 @@ export default function MarketingPage() {
                 <TableCell className="py-3 pr-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                         <span className="text-lg leading-none tracking-tighter">···</span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl">
+                    <DropdownMenuContent align="end" className="w-36 rounded-xl shadow-xl">
                       <DropdownMenuItem
                         className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
                         onClick={() => setPreviewPost(item)}
                       >
                         <Eye size={13} className="text-muted-foreground" />
                         Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
-                        onClick={() => window.open(`${GHL_APP_BASE}/v2/location/${GHL_LOCATION_ID}/marketing/social-planner`, "_blank")}
-                      >
-                        <ExternalLink size={13} className="text-muted-foreground" />
-                        Open in GHL
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -962,14 +941,14 @@ export default function MarketingPage() {
                 <input
                   ref={imageFileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/avif,.jpg,.jpeg,.png,.gif,.webp,.heic,.avif"
                   className="hidden"
                   onChange={e => handleFileSelect(e, "image")}
                 />
                 <input
                   ref={videoFileRef}
                   type="file"
-                  accept="video/*"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,.mp4,.mov,.webm,.avi"
                   className="hidden"
                   onChange={e => handleFileSelect(e, "video")}
                 />
