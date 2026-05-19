@@ -695,16 +695,44 @@ export async function getSocialPlannerPosts(options?: {
   limit?: number;
 }): Promise<any[]> {
   try {
-    const now = Date.now();
-    const url = new URL(`${SOCIAL_BASE}/posts`);
-    url.searchParams.append('startDate', String(options?.startDate ?? now - 180 * 24 * 60 * 60 * 1000));
-    url.searchParams.append('endDate', String(options?.endDate ?? now + 180 * 24 * 60 * 60 * 1000));
-    url.searchParams.append('skip', String(options?.skip ?? 0));
-    url.searchParams.append('limit', String(options?.limit ?? 100));
-    const response = await fetch(url.toString(), { headers: socialPlannerHeaders, cache: 'no-store' });
-    if (!response.ok) return [];
-    const data = await handleResponse(response, 'fetching social planner posts');
-    return data?.posts || data?.data || [];
+    const pageLimit = options?.limit ?? 100;
+    const allPosts: any[] = [];
+    let skip = options?.skip ?? 0;
+
+    // GHL Social Planner uses POST /posts/list with skip & limit as query params
+    while (true) {
+      const url = new URL(`${SOCIAL_BASE}/posts/list`);
+      url.searchParams.append('skip', String(skip));
+      url.searchParams.append('limit', String(pageLimit));
+
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: socialPlannerHeaders,
+        body: JSON.stringify({}),
+        cache: 'no-store',
+      });
+      if (!response.ok) break;
+
+      const data = await handleResponse(response, 'fetching social planner posts');
+      const page: any[] = data?.results?.posts || data?.posts || data?.data || data?.result || [];
+      const total: number = data?.results?.count ?? data?.count ?? 0;
+
+      if (page.length === 0) break;
+      allPosts.push(...page);
+
+      // If we got fewer than the limit, or reached the total, stop
+      if (page.length < pageLimit || allPosts.length >= total) break;
+
+      // If caller specified an explicit skip, don't auto-paginate
+      if (options?.skip !== undefined) break;
+
+      skip += pageLimit;
+
+      // Safety cap at 2000 posts
+      if (allPosts.length >= 2000) break;
+    }
+
+    return allPosts;
   } catch {
     return [];
   }
@@ -716,7 +744,8 @@ export async function getSocialPlannerAccounts(): Promise<any[]> {
     const response = await fetch(url.toString(), { headers: socialPlannerHeaders, cache: 'no-store' });
     if (!response.ok) return [];
     const data = await handleResponse(response, 'fetching social planner accounts');
-    return data?.accounts || data?.data || [];
+    // GHL returns: { results: { accounts: [...], groups: [...] } }
+    return data?.results?.accounts || data?.accounts || data?.data || [];
   } catch {
     return [];
   }

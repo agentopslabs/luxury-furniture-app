@@ -129,25 +129,37 @@ function normalizePost(p: any): any {
     ""
   ).toLowerCase();
 
+  // GHL real API: accounts is an array under socialMediaAccounts or built from accountId
   const accounts: any[] = p.socialMediaAccounts || (p.socialMediaAccount ? [p.socialMediaAccount] : []) || [];
-  const mediaUrls: string[] = p.mediaUrls || p.media?.map((m: any) => m.url || m) || [];
+
+  // GHL real API: media is an array of objects with url/mediaUrl fields
+  const mediaUrls: string[] = p.mediaUrls
+    || (Array.isArray(p.media) ? p.media.map((m: any) => m.url || m.mediaUrl || m).filter(Boolean) : [])
+    || [];
   const firstMedia = mediaUrls[0] || "";
   const isVideo = /\.(mp4|mov|webm)/i.test(firstMedia) || p.type?.toLowerCase() === "reel" || p.type?.toLowerCase() === "video";
+
+  // GHL real API: engagement lives under insights
+  const insights = p.insights || {};
+
+  // GHL real API: date is publishedAt (published), displayDate (scheduled), or scheduleDateTime
+  const date = p.publishedAt || p.displayDate || p.scheduleDateTime || p.scheduledDate || p.scheduledAt || p.createdAt || "";
 
   return {
     id: p._id || p.id,
     caption: p.summary || p.caption || p.content || "No caption",
     status: normalizeStatus(p.status || ""),
     type: p.type ? (p.type.charAt(0).toUpperCase() + p.type.slice(1)) : "Post",
-    date: p.scheduleDateTime || p.scheduledDate || p.scheduledAt || p.createdAt || p.updatedAt || p.publishedAt || "",
+    date,
     accounts,
     platform,
+    accountId: p.accountId || "",
     mediaUrls,
     firstMedia,
     isVideo,
-    likes: p.likes || p.likesCount || 0,
-    comments: p.commentsCount || p.comments || 0,
-    shares: p.shares || 0,
+    likes: insights.like ?? p.likes ?? p.likesCount ?? 0,
+    comments: insights.comment ?? p.commentsCount ?? p.comments ?? 0,
+    shares: insights.share ?? p.shares ?? 0,
   };
 }
 
