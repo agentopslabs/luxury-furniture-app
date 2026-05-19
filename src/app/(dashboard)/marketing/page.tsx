@@ -505,7 +505,7 @@ export default function MarketingPage() {
       });
       toast({ title: "Post updated!", description: "Scheduled post has been updated." });
       setEditPost(null);
-      loadData();
+      fetchAll();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Update failed", description: err.message });
     } finally {
@@ -520,7 +520,7 @@ export default function MarketingPage() {
       await deleteScheduledPost(deletePost.id || deletePost._id);
       toast({ title: "Post deleted", description: "The scheduled post was removed." });
       setDeletePost(null);
-      loadData();
+      fetchAll();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Delete failed", description: err.message });
     } finally {
