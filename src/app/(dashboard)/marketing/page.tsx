@@ -215,8 +215,28 @@ export default function MarketingPage() {
   const [syncPostsAuto, setSyncPostsAuto] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { toast } = useToast();
+
+  // Insert or wrap text at textarea cursor position
+  const insertAtCursor = (before: string, after = "") => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const selected = newPost.summary.slice(start, end);
+    const replacement = before + (selected || (after ? "text" : "")) + after;
+    const next = newPost.summary.slice(0, start) + replacement + newPost.summary.slice(end);
+    setNewPost(p => ({ ...p, summary: next }));
+    // Restore focus and cursor after React re-render
+    setTimeout(() => {
+      el.focus();
+      const newCursor = start + before.length + (selected || (after ? "text" : "")).length + after.length;
+      el.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -606,45 +626,139 @@ export default function MarketingPage() {
                 <div className="space-y-1.5">
                   <div className="rounded-xl border border-border overflow-hidden">
                     <Textarea
+                      ref={textareaRef}
                       className="min-h-[160px] rounded-none border-0 text-sm resize-none focus-visible:ring-0 px-4 pt-4"
                       placeholder="Start writing your post content here... Use #hashtags and @mentions"
                       value={newPost.summary}
                       onChange={e => setNewPost({ ...newPost, summary: e.target.value })}
                     />
                     {/* Formatting toolbar */}
-                    <div className="flex items-center gap-0.5 px-3 py-2 border-t border-border bg-muted/20">
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                    <div className="relative flex items-center gap-0.5 px-3 py-2 border-t border-border bg-muted/20">
+                      {/* AI */}
+                      <button
+                        type="button"
+                        title="AI Write"
+                        onClick={() => {
+                          const el = textareaRef.current;
+                          if (!el) return;
+                          const prompt = "[AI] ";
+                          setNewPost(p => ({ ...p, summary: p.summary + prompt }));
+                          setTimeout(() => { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 0);
+                        }}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <span className="text-xs font-bold italic">AI</span>
                       </button>
                       <div className="w-px h-4 bg-border mx-1" />
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Bold */}
+                      <button
+                        type="button"
+                        title="Bold"
+                        onClick={() => insertAtCursor("**", "**")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <Bold size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Italic */}
+                      <button
+                        type="button"
+                        title="Italic"
+                        onClick={() => insertAtCursor("_", "_")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <Italic size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                        <Smile size={13} />
-                      </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Emoji */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          title="Emoji"
+                          onClick={() => setShowEmojiPicker(p => !p)}
+                          className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Smile size={13} />
+                        </button>
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-9 left-0 z-50 bg-background border border-border rounded-xl shadow-xl p-3 w-64">
+                            <div className="grid grid-cols-8 gap-1">
+                              {["😀","😂","🥰","😍","🤩","😎","🥳","🎉","❤️","🔥","✨","💯","👍","🙌","💪","🎯","📢","🛍️","💼","🚀","🌟","💡","📸","🎬","📱","💻","🌈","🎶"].map(e => (
+                                <button
+                                  key={e}
+                                  type="button"
+                                  onClick={() => { insertAtCursor(e); setShowEmojiPicker(false); }}
+                                  className="text-lg hover:bg-muted rounded p-0.5 transition-colors"
+                                >
+                                  {e}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Image — opens media URL focus */}
+                      <button
+                        type="button"
+                        title="Add Image URL"
+                        onClick={() => {
+                          const mediaInput = document.querySelector('input[placeholder*="example.com/image"]') as HTMLInputElement;
+                          mediaInput?.focus();
+                        }}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <ImageIcon size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Document — insert a link placeholder */}
+                      <button
+                        type="button"
+                        title="Insert Link"
+                        onClick={() => insertAtCursor("[Link Text](https://)")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <FileText size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Video */}
+                      <button
+                        type="button"
+                        title="Add Video"
+                        onClick={() => setNewPost(p => ({ ...p, type: "Reel" }))}
+                        className={cn("w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground", newPost.type === "Reel" && "bg-muted text-foreground")}
+                      >
                         <Film size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Hashtag */}
+                      <button
+                        type="button"
+                        title="Hashtag"
+                        onClick={() => insertAtCursor(" #")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <Hash size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Star / first comment */}
+                      <button
+                        type="button"
+                        title="Add to first comment"
+                        onClick={() => insertAtCursor("\n\n⭐ ")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <Star size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Link */}
+                      <button
+                        type="button"
+                        title="Insert URL"
+                        onClick={() => insertAtCursor("https://")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <Link2 size={13} />
                       </button>
-                      <button type="button" className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      {/* Mention */}
+                      <button
+                        type="button"
+                        title="Mention"
+                        onClick={() => insertAtCursor(" @")}
+                        className="w-7 h-7 rounded flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <AtSign size={13} />
                       </button>
                     </div>

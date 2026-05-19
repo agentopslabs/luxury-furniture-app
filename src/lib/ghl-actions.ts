@@ -757,24 +757,38 @@ export async function createSocialPlannerPost(postData: {
   type?: string;
   scheduleDateTime?: string;
   mediaUrls?: string[];
+  userId?: string;
 }): Promise<any> {
+  // Build media array from URLs
+  const media: any[] = (postData.mediaUrls || []).map(url => ({
+    url,
+    type: /\.(mp4|mov|webm)/i.test(url) ? 'video' : 'image',
+  }));
+
   const payload: any = {
     accountIds: postData.accountIds,
     summary: postData.summary,
     type: postData.type || 'post',
-    status: postData.scheduleDateTime ? 'SCHEDULED' : 'NOW',
+    media,
+    userId: postData.userId || 'system',
   };
-  if (postData.scheduleDateTime) payload.scheduleDateTime = postData.scheduleDateTime;
-  if (postData.mediaUrls?.length) payload.mediaUrls = postData.mediaUrls;
+  if (postData.scheduleDateTime) {
+    payload.scheduleDateTime = postData.scheduleDateTime;
+    payload.status = 'SCHEDULED';
+  }
 
-  const response = await fetch(`${SOCIAL_BASE}/post`, {
+  // Correct endpoint: POST /social-media-posting/{locationId}/posts
+  const response = await fetch(`${SOCIAL_BASE}/posts`, {
     method: 'POST',
     headers: socialPlannerHeaders,
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     let msg = '';
-    try { const e = await response.json(); msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || ''); } catch {}
+    try {
+      const e = await response.json();
+      msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || '');
+    } catch {}
     throw new Error(msg || `Failed to create post (${response.status})`);
   }
   return await handleResponse(response, 'creating social planner post');
